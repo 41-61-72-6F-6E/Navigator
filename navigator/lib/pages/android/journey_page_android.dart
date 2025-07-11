@@ -623,6 +623,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     Color arrivalPlatformColor = Theme.of(context).colorScheme.onSurface;
     Color departurePlatformColor = Theme.of(context).colorScheme.onPrimaryContainer;
 
+    Color arrivingLineDirectionColor = Theme.of(context).colorScheme.onSurface;
+    Color departingLineDirectionColor = Theme.of(context).colorScheme.onSurface;
+
     if (arrivingLeg.arrivalDelayMinutes != null) {
       if (arrivingLeg.arrivalDelayMinutes! > 10) {
         arrivalTimeColor = Theme.of(context).colorScheme.error;
@@ -865,8 +868,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                               Container(
                                                 constraints: BoxConstraints(maxWidth: 120),
                                                 child: Text(
-                                                  'to ${arrivingLeg.direction}',
-                                                  style: textTheme.bodySmall,
+                                                  arrivingLeg.direction ?? arrivingLeg.destination.name,
+                                                  style: textTheme.bodyMedium?.copyWith(
+                                                    color: arrivingLineDirectionColor, // Use the high contrast color
+                                                  ),
+                                                  maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
@@ -918,8 +924,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                               Container(
                                                 constraints: BoxConstraints(maxWidth: 120),
                                                 child: Text(
-                                                  'to ${departingLeg.direction}',
-                                                  style: textTheme.bodySmall,
+                                                  departingLeg.direction ?? departingLeg.destination.name,
+                                                  style: textTheme.bodyMedium?.copyWith(
+                                                    color: departingLineDirectionColor, // Use the high contrast color
+                                                  ),
+                                                  maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
@@ -966,7 +975,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                   message: l.origin.name,
                   child: Text(
                     l.origin.name,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface, // Ensure good contrast
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     softWrap: true,
@@ -1029,7 +1040,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                   message: l.destination.name,
                   child: Text(
                     l.destination.name,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface, // Ensure good contrast
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     softWrap: true,
