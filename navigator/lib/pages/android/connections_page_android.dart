@@ -28,7 +28,6 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   late final TextEditingController _fromController;
   late TimeOfDay _selectedTime;
   late DateTime _selectedDate;
-  late Position _selectedPosition;
   List<Journey>? _currentJourneys;
   late List<Location> _searchResultsFrom;
   late List<Location> _searchResultsTo;
@@ -60,7 +59,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   void initState() {
     super.initState();
     //Initializers
-    updateLocationWithCurrentPosition();
+    updateLocationWithCurrentPosition(true);
     _fromFocusNode = FocusNode();
     _toFocusNode = FocusNode();
     _toController = TextEditingController(text: widget.page.to.name);
@@ -128,11 +127,19 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   }
 
   //async to Sync functions
-  Future<void> updateLocationWithCurrentPosition() async {
+  Future<void> updateLocationWithCurrentPosition(bool from) async {
     try {
-      _selectedPosition = await Geolocator.getCurrentPosition();
       // Update the from location if needed
-      widget.page.from = await widget.page.services.getCurrentLocation();
+      Location l = await widget.page.services.getCurrentLocation();
+      setState(()
+      {
+        if(from){
+        widget.page.from = l;
+        }
+        else {
+          widget.page.to = l;
+        }
+      });
     } catch (e) {
       print('Error getting location: $e');
     }
@@ -277,7 +284,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           _fromFocusNode.unfocus();
 
                           // Get current location and update the from field
-                          await updateLocationWithCurrentPosition();
+                          await updateLocationWithCurrentPosition(true);
 
                           // Update the controller and state
                           _fromController.text =
@@ -313,7 +320,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           _toFocusNode.unfocus();
 
                           // Get current location and update the to field
-                          await updateLocationWithCurrentPosition();
+                          await updateLocationWithCurrentPosition(false);
 
                           // Update the controller and state - FIX: use correct field
                           _toController.text =
@@ -354,6 +361,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                     ),
                   ),
                   onPressed: () {
+                    print(widget.page.from.name);
+                    print(widget.page.to.name);
                     // Swap the controllers' text
                     String temp = _fromController.text;
                     _fromController.text = _toController.text;
