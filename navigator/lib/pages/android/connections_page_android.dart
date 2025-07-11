@@ -63,7 +63,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     _fromFocusNode = FocusNode();
     _toFocusNode = FocusNode();
     _toController = TextEditingController(text: widget.page.to.name);
-    _fromController = TextEditingController();
+    _fromController = TextEditingController(text: 'Current Location');
     _selectedTime = TimeOfDay.now();
     _selectedDate = DateTime.now();
     _searchResultsFrom = [];
