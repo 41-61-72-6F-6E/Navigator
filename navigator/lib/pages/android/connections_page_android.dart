@@ -127,17 +127,16 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     });
   }
 
-
   //async to Sync functions
   Future<void> updateLocationWithCurrentPosition() async {
-  try {
-    _selectedPosition = await Geolocator.getCurrentPosition();
-    // Update the from location if needed
-    widget.page.from = await widget.page.services.getCurrentLocation();
-  } catch (e) {
-    print('Error getting location: $e');
+    try {
+      _selectedPosition = await Geolocator.getCurrentPosition();
+      // Update the from location if needed
+      widget.page.from = await widget.page.services.getCurrentLocation();
+    } catch (e) {
+      print('Error getting location: $e');
+    }
   }
-}
 
   Future<void> getSearchResults(String query, bool from) async {
     final results = await widget.page.services.getLocations(query);
@@ -153,60 +152,59 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   }
 
   Future<void> getJourneys(
-  String fromId,
-  String toId,
-  double fromLat,
-  double fromLon,
-  double toLat,
-  double toLong,
-  DateAndTime when,
-  bool departure,
-) async {
-  try {
-    print('Getting journeys with params:');
-    print('From: $fromId ($fromLat, $fromLon)');
-    print('To: $toId ($toLat, $toLong)');
-    
-    // Build Location objects
-    final from = Location(
-      id: fromId,
-      latitude: fromLat,
-      longitude: fromLon,
-      name: widget.page.from.name,
-      type: widget.page.from.type,
-      address: null,
-    );
+    String fromId,
+    String toId,
+    double fromLat,
+    double fromLon,
+    double toLat,
+    double toLong,
+    DateAndTime when,
+    bool departure,
+  ) async {
+    try {
+      print('Getting journeys with params:');
+      print('From: $fromId ($fromLat, $fromLon)');
+      print('To: $toId ($toLat, $toLong)');
 
-    final to = Location(
-      id: toId,
-      latitude: toLat,
-      longitude: toLong,
-      name: widget.page.to.name,
-      type: widget.page.to.type,
-      address: null,
-    );
+      // Build Location objects
+      final from = Location(
+        id: fromId,
+        latitude: fromLat,
+        longitude: fromLon,
+        name: widget.page.from.name,
+        type: widget.page.from.type,
+        address: null,
+      );
 
-    final journeys = await widget.page.services.getJourneys(
-      from,
-      to,
-      when,
-      departure,
-      journeySettings: journeySettings,
-    );
+      final to = Location(
+        id: toId,
+        latitude: toLat,
+        longitude: toLong,
+        name: widget.page.to.name,
+        type: widget.page.to.type,
+        address: null,
+      );
 
-    print('Received ${journeys.length} journeys');
-    
-    setState(() {
-      _currentJourneys = journeys;
-    });
-  } catch (e) {
-    print('Error getting journeys: $e');
-    setState(() {
-      _currentJourneys = []; // Empty list to show "no results"
-    });
+      final journeys = await widget.page.services.getJourneys(
+        from,
+        to,
+        when,
+        departure,
+        journeySettings: journeySettings,
+      );
+
+      print('Received ${journeys.length} journeys');
+
+      setState(() {
+        _currentJourneys = journeys;
+      });
+    } catch (e) {
+      print('Error getting journeys: $e');
+      setState(() {
+        _currentJourneys = []; // Empty list to show "no results"
+      });
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -220,17 +218,18 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
           child: Column(
             children: [
               //Input Fields
-
               _buildInputFields(context),
+
+              SizedBox(height: 16),
 
               //Search related Buttons
               _buildButtons(context),
 
               //Results
-              if (searching) Expanded(child: _buildSearchResults(context, searchingFrom)),
+              if (searching)
+                Expanded(child: _buildSearchResults(context, searchingFrom)),
 
               if (!searching) _buildJourneys(context),
-
             ],
           ),
         ),
@@ -245,61 +244,133 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     );
   }
 
-  Widget _buildInputFields(BuildContext context)
-  {
+  Widget _buildInputFields(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(16)),
-        border: Border.all(width: 2, color: Theme.of(context).colorScheme.primary),
-        color: Theme.of(context).colorScheme.primaryContainer
+        border: Border.all(
+          width: 1,
+          color: Theme.of(context).colorScheme.outline,
+        ),
+        color: Theme.of(context).colorScheme.secondaryContainer,
       ),
-      child: Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 8),
+      child: Padding(
+        padding: EdgeInsets.all(12),
         child: Stack(
           children: [
-            // From input
             Column(
+              mainAxisSize: MainAxisSize.min,
               spacing: 8,
               children: [
-                TextField(
-                  controller: _fromController,
-                  focusNode: _fromFocusNode,
-                  decoration: InputDecoration(
-                    labelText: 'From',
-                    prefixIcon: Icon(Icons.location_on),
-                    border: OutlineInputBorder().copyWith(borderRadius: BorderRadius.all(Radius.circular(32))),
+                Padding(
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: TextField(
+                    controller: _fromController,
+                    focusNode: _fromFocusNode,
+                    decoration: InputDecoration(
+                      fillColor: Theme.of(context).colorScheme.surface,
+                      filled: true,
+                      labelText: 'From',
+                      prefixIcon: GestureDetector(
+                        onTap: () async {
+                          // Unfocus the text field first
+                          _fromFocusNode.unfocus();
+
+                          // Get current location and update the from field
+                          await updateLocationWithCurrentPosition();
+
+                          // Update the controller and state
+                          _fromController.text =
+                              "Current Location"; // This should probably be widget.page.from.name
+                          // Don't set widget.page.from = widget.page.from (redundant)
+                        },
+                        child: Icon(Icons.location_on),
+                      ),
+                      border: OutlineInputBorder().copyWith(
+                        borderRadius: BorderRadius.all(Radius.circular(32)),
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        searching = true;
+                        searchingFrom = true;
+                      });
+                    },
                   ),
-                  onTap: () {
-                    setState(() {
-                      searching = true;
-                      searchingFrom = true;
-                    });
-                  },
                 ),
-                TextField(
-                  controller: _toController,
-                  focusNode: _toFocusNode,
-                  decoration: InputDecoration(
-                    labelText: 'To',
-                    prefixIcon: Icon(Icons.location_on),
-                    border: OutlineInputBorder().copyWith(borderRadius: BorderRadius.all(Radius.circular(32))),
+                Padding(
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: TextField(
+                    controller: _toController,
+                    focusNode: _toFocusNode,
+                    decoration: InputDecoration(
+                      fillColor: Theme.of(context).colorScheme.surface,
+                      filled: true,
+                      labelText: 'To',
+                      prefixIcon: GestureDetector(
+                        onTap: () async {
+                          // Unfocus the text field first
+                          _toFocusNode.unfocus();
+
+                          // Get current location and update the to field
+                          await updateLocationWithCurrentPosition();
+
+                          // Update the controller and state - FIX: use correct field
+                          _toController.text =
+                              "Current Location"; // This should probably be widget.page.to.name
+                          //widget.page.to = widget.page.from; // This should probably be widget.page.to = currentLocation
+                        },
+                        child: Icon(Icons.location_on),
+                      ),
+                      border: OutlineInputBorder().copyWith(
+                        borderRadius: BorderRadius.all(Radius.circular(32)),
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        searching = true;
+                        searchingFrom = false;
+                      });
+                    },
                   ),
-                  onTap: () {
-                    setState(() {
-                      searching = true;
-                      searchingFrom = false;
-                    });
-                  },
                 ),
               ],
             ),
             Positioned.fill(
               child: Align(
                 alignment: Alignment.centerRight,
-                child: IconButton.filledTonal(onPressed: () => {}, icon: Icon(Icons.swap_vert))))
+                child: IconButton.filled(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.surface,
+                    foregroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary,
+                    iconSize: 32,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outline,
+                      width: 1,
+                    ),
+                  ),
+                  onPressed: () {
+                    // Swap the controllers' text
+                    String temp = _fromController.text;
+                    _fromController.text = _toController.text;
+                    _toController.text = temp;
+
+                    // Also swap the page data
+                    var tempLocation = widget.page.from;
+                    widget.page.from = widget.page.to;
+                    widget.page.to = tempLocation;
+                  },
+                  icon: Icon(Icons.swap_vert),
+                ),
+              ),
+            ),
           ],
-        
         ),
-        )
+      ),
     );
   }
 
@@ -318,11 +389,15 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
             if (searchingFrom) {
               widget.page.from = station;
               _fromController.text = station.name;
+              _fromFocusNode.unfocus();
             } else {
               widget.page.to = station;
               _toController.text = station.name;
+              _toFocusNode.unfocus();
             }
+            
           });
+          _search();
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -432,11 +507,16 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
             if (searchingFrom) {
               widget.page.from = location;
               _fromController.text = location.name;
+              _fromFocusNode.unfocus();
             } else {
               widget.page.to = location;
               _toController.text = location.name;
+              _toFocusNode.unfocus();
             }
+            
           });
+          _search();
+          
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -475,8 +555,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
   Widget _buildSearchResults(BuildContext context, bool searchingFrom) {
     if (searchingFrom) {
-      if(_searchResultsFrom.isEmpty)
-      {
+      if (_searchResultsFrom.isEmpty) {
         return Center(child: CircularProgressIndicator());
       }
       return ListView.builder(
@@ -494,9 +573,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         },
       );
     } else {
-      if(_searchResultsTo.isEmpty)
-      {
-        return CircularProgressIndicator();
+      if (_searchResultsTo.isEmpty) {
+        return Center(child: CircularProgressIndicator());
       }
       return ListView.builder(
         key: const ValueKey('list'),
@@ -553,7 +631,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
                 try {
                   // Refresh the journey using the service
-                  final refreshedJourney = await widget.page.services.refreshJourney(r);
+                  final refreshedJourney = await widget.page.services
+                      .refreshJourney(r);
 
                   // Close the loading dialog
                   Navigator.pop(context);
@@ -575,7 +654,9 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                   // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Could not refresh journey: ${e.toString()}'),
+                      content: Text(
+                        'Could not refresh journey: ${e.toString()}',
+                      ),
                       backgroundColor: Theme.of(context).colorScheme.error,
                     ),
                   );
@@ -592,107 +673,119 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                   );
                 }
               },
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Planned Departure Time
-                          Text(
-                            '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          // Actual Departure Time
-                          Text(
-                            '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
-                            style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                              color: r.legs[0].departureDateTime != r.legs[0].plannedDepartureDateTime
-                                  ? Colors.redAccent[400]
-                                  : Theme.of(context).textTheme.labelSmall!.color,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Planned Departure Time
+                            Text(
+                              '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
-                          ),
-                        ],
-                      ),
-                      Icon(Icons.arrow_forward),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Planned Arrival Time
-                          Text(
-                            '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          // Actual Arrival Time
-                          Text(
-                            '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: r.legs.last.arrivalDateTime != r.legs.last.plannedArrivalDateTime
-                                  ? Colors.redAccent[400]
-                                  : Theme.of(context).textTheme.labelSmall!.color,
+                            // Actual Departure Time
+                            Text(
+                              '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
+                              style: Theme.of(context).textTheme.labelSmall!
+                                  .copyWith(
+                                    color:
+                                        r.legs[0].departureDateTime !=
+                                            r.legs[0].plannedDepartureDateTime
+                                        ? Colors.redAccent[400]
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall!.color,
+                                  ),
                             ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          // Planned Duration
-                          Text(
-                            r.legs.last.plannedArrivalDateTime
-                                .difference(r.legs[0].plannedDepartureDateTime)
-                                .inMinutes
-                                .toString(),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          // Actual Duration
-                          Text(
-                            r.legs.last.arrivalDateTime
-                                .difference(r.legs[0].departureDateTime)
-                                .inMinutes
-                                .toString(),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          ],
+                        ),
+                        Icon(Icons.arrow_forward),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // Planned Arrival Time
+                            Text(
+                              '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            // Actual Arrival Time
+                            Text(
+                              '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    r.legs.last.arrivalDateTime !=
+                                        r.legs.last.plannedArrivalDateTime
+                                    ? Colors.redAccent[400]
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall!.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            // Planned Duration
+                            Text(
+                              r.legs.last.plannedArrivalDateTime
+                                  .difference(
+                                    r.legs[0].plannedDepartureDateTime,
+                                  )
+                                  .inMinutes
+                                  .toString(),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            // Actual Duration
+                            Text(
+                              r.legs.last.arrivalDateTime
+                                  .difference(r.legs[0].departureDateTime)
+                                  .inMinutes
+                                  .toString(),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
 
-                  Row(
-                    children: [
-                      Expanded(child: _buildModeLine(context, r)),
-                      Row(
-                        children: [
-                          Text((r.legs.length - 2).toString()),
-                      Icon(Icons.transfer_within_a_station),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Row(children: [
-                    Text('Leave in: ${r.legs[0].departureDateTime.difference(DateTime.now()).inMinutes}'),
-                  ],)
-            
-                ],
+                    Row(
+                      children: [
+                        Expanded(child: _buildModeLine(context, r)),
+                        Row(
+                          children: [
+                            Text((r.legs.length - 2).toString()),
+                            Icon(Icons.transfer_within_a_station),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Leave in: ${r.legs[0].departureDateTime.difference(DateTime.now()).inMinutes}',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
+          );
+        },
+      ),
+    );
+  }
 
-  Widget _buildModeLine(BuildContext context, Journey j)
-  {
+  Widget _buildModeLine(BuildContext context, Journey j) {
     return Text('test');
   }
 
   Widget _buildButtons(BuildContext context) {
-
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
@@ -715,7 +808,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                         data: Theme.of(context).copyWith(
                           timePickerTheme: TimePickerThemeData(
                             helpTextStyle: TextStyle(
-                              color: colors.onSurface, // Use a high-contrast color
+                              color:
+                                  colors.onSurface, // Use a high-contrast color
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -787,242 +881,305 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                       tram: journeySettings.tram,
                       bus: journeySettings.bus,
                       ferry: journeySettings.ferry,
-                      deutschlandTicketConnectionsOnly: journeySettings.deutschlandTicketConnectionsOnly,
+                      deutschlandTicketConnectionsOnly:
+                          journeySettings.deutschlandTicketConnectionsOnly,
                       accessibility: journeySettings.accessibility,
                       walkingSpeed: journeySettings.walkingSpeed,
                       transferTime: journeySettings.transferTime,
                     );
 
                     return AlertDialog(
-                      title: Text('Journey Preferences', style: TextStyle(color: colors.primary)),
+                      title: Text(
+                        'Journey Preferences',
+                        style: TextStyle(color: colors.primary),
+                      ),
                       content: StatefulBuilder(
                         builder: (context, setState) {
                           return SingleChildScrollView(
                             child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Text(
-                                  'Modes of Transport',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Text(
+                                    'Modes of Transport',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.primary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include ICE', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.national ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.national = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include IC/EC', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.nationalExpress ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.nationalExpress = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include RE/RB', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.regional ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.regional = value;
-                                    tempSettings.regionalExpress = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include S-Bahn', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.suburban ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.suburban = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include U-Bahn', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.subway ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.subway = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include Tram', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.tram ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.tram = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include Bus', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.bus ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.bus = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Include Ferry', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.ferry ?? true,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.ferry = value;
-                                  });
-                                },
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Text(
-                                  'Journey Settings',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.primary,
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include ICE',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.national ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.national = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include IC/EC',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.nationalExpress ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.nationalExpress = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include RE/RB',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.regional ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.regional = value;
+                                      tempSettings.regionalExpress = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include S-Bahn',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.suburban ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.suburban = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include U-Bahn',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.subway ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.subway = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include Tram',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.tram ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.tram = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include Bus',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.bus ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.bus = value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Include Ferry',
+                                    style: TextStyle(color: colors.primary),
+                                  ),
+                                  value: tempSettings.ferry ?? true,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.ferry = value;
+                                    });
+                                  },
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Text(
+                                    'Journey Settings',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.primary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              CheckboxListTile(
-                                title: Text('Deutschlandticket only', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.deutschlandTicketConnectionsOnly ?? false,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.deutschlandTicketConnectionsOnly = value;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: Text('Accessibility', style: TextStyle(color: colors.primary)),
-                                value: tempSettings.accessibility ?? false,
-                                onChanged: (value) {
-                                  setState(() {
-                                    tempSettings.accessibility = value;
-                                  });
-                                },
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Walking Speed',
-                                        style: TextStyle(
-                                          color: colors.primary,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      SizedBox(width: 16),
-                                      Expanded(
-                                        child: DropdownButtonFormField<String>(
-                                          value: tempSettings.walkingSpeed ?? 'normal',
-                                          decoration: InputDecoration(
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                          ),
-                                          style: TextStyle(color: colors.primary),
-                                          iconEnabledColor: colors.primary,
-                                          items: [
-                                            DropdownMenuItem(
-                                              value: 'slow',
-                                              child: Text('Slow'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'normal',
-                                              child: Text('Normal'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 'fast',
-                                              child: Text('Fast'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              tempSettings.walkingSpeed = value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Deutschlandticket only',
+                                    style: TextStyle(color: colors.primary),
                                   ),
-                                  SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Transfer Time',
-                                        style: TextStyle(
-                                          color: colors.primary,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      SizedBox(width: 16),
-                                      Expanded(
-                                        child: DropdownButtonFormField<int?>(
-                                          value: tempSettings.transferTime,
-                                          decoration: InputDecoration(
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                          ),
-                                          style: TextStyle(color: colors.primary),
-                                          iconEnabledColor: colors.primary,
-                                          items: [
-                                            DropdownMenuItem(
-                                              value: null,
-                                              child: Text('Default (None)'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 5,
-                                              child: Text('Min. 5 Minutes'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 15,
-                                              child: Text('Min. 15 Minutes'),
-                                            ),
-                                            DropdownMenuItem(
-                                              value: 30,
-                                              child: Text('Min. 30 Minutes'),
-                                            ),
-                                          ],
-                                          onChanged: (value) {
-                                            setState(() {
-                                              tempSettings.transferTime = value;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                                  value:
+                                      tempSettings
+                                          .deutschlandTicketConnectionsOnly ??
+                                      false,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings
+                                              .deutschlandTicketConnectionsOnly =
+                                          value;
+                                    });
+                                  },
+                                ),
+                                CheckboxListTile(
+                                  title: Text(
+                                    'Accessibility',
+                                    style: TextStyle(color: colors.primary),
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-
+                                  value: tempSettings.accessibility ?? false,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      tempSettings.accessibility = value;
+                                    });
+                                  },
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Walking Speed',
+                                          style: TextStyle(
+                                            color: colors.primary,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(width: 16),
+                                        Expanded(
+                                          child:
+                                              DropdownButtonFormField<String>(
+                                                value:
+                                                    tempSettings.walkingSpeed ??
+                                                    'normal',
+                                                decoration: InputDecoration(
+                                                  border: OutlineInputBorder(),
+                                                  contentPadding:
+                                                      EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 10,
+                                                      ),
+                                                ),
+                                                style: TextStyle(
+                                                  color: colors.primary,
+                                                ),
+                                                iconEnabledColor:
+                                                    colors.primary,
+                                                items: [
+                                                  DropdownMenuItem(
+                                                    value: 'slow',
+                                                    child: Text('Slow'),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'normal',
+                                                    child: Text('Normal'),
+                                                  ),
+                                                  DropdownMenuItem(
+                                                    value: 'fast',
+                                                    child: Text('Fast'),
+                                                  ),
+                                                ],
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    tempSettings.walkingSpeed =
+                                                        value;
+                                                  });
+                                                },
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Transfer Time',
+                                          style: TextStyle(
+                                            color: colors.primary,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(width: 16),
+                                        Expanded(
+                                          child: DropdownButtonFormField<int?>(
+                                            value: tempSettings.transferTime,
+                                            decoration: InputDecoration(
+                                              border: OutlineInputBorder(),
+                                              contentPadding:
+                                                  EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 10,
+                                                  ),
+                                            ),
+                                            style: TextStyle(
+                                              color: colors.primary,
+                                            ),
+                                            iconEnabledColor: colors.primary,
+                                            items: [
+                                              DropdownMenuItem(
+                                                value: null,
+                                                child: Text('Default (None)'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 5,
+                                                child: Text('Min. 5 Minutes'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 15,
+                                                child: Text('Min. 15 Minutes'),
+                                              ),
+                                              DropdownMenuItem(
+                                                value: 30,
+                                                child: Text('Min. 30 Minutes'),
+                                              ),
+                                            ],
+                                            onChanged: (value) {
+                                              setState(() {
+                                                tempSettings.transferTime =
+                                                    value;
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           );
                         },
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.of(context).pop(), // Cancel
+                          onPressed: () =>
+                              Navigator.of(context).pop(), // Cancel
                           child: Text('Cancel'),
                         ),
                         FilledButton(
                           onPressed: () {
-                            Navigator.of(context).pop(tempSettings); // Return updated settings
+                            Navigator.of(
+                              context,
+                            ).pop(tempSettings); // Return updated settings
                           },
                           child: Text('Apply'),
                         ),
@@ -1065,30 +1222,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
               ),
             ),
             FilledButton.tonalIcon(
-              onPressed: () async {
-              try {
-                // Debug prints
-                print('From: ${widget.page.from}');
-                print('To: ${widget.page.to}');
-                searching = false;
-                
-                await getJourneys(
-                  widget.page.from.id,
-                  widget.page.to.id,
-                  widget.page.from.latitude,
-                  widget.page.from.longitude,
-                  widget.page.to.latitude,
-                  widget.page.to.longitude,
-                  DateAndTime.fromDateTimeAndTime(_selectedDate, _selectedTime),
-                  departure
-                );
-              } catch (e) {
-                print('Error in search: $e');
-                setState(() {
-                  _currentJourneys = []; // Set to empty list to show "no results"
-                });
-              }
-            },
+              onPressed: () => _search(),
+
               label: Text('Search'),
               icon: Icon(Icons.search),
             ),
@@ -1096,5 +1231,30 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         ),
       ],
     );
+  }
+
+  void _search() async {
+    try {
+      // Debug prints
+      print('From: ${widget.page.from}');
+      print('To: ${widget.page.to}');
+      searching = false;
+
+      await getJourneys(
+        widget.page.from.id,
+        widget.page.to.id,
+        widget.page.from.latitude,
+        widget.page.from.longitude,
+        widget.page.to.latitude,
+        widget.page.to.longitude,
+        DateAndTime.fromDateTimeAndTime(_selectedDate, _selectedTime),
+        departure,
+      );
+    } catch (e) {
+      print('Error in search: $e');
+      setState(() {
+        _currentJourneys = []; // Set to empty list to show "no results"
+      });
+    }
   }
 }
