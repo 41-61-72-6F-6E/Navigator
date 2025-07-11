@@ -538,17 +538,18 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildInterchangeComponent(
-      BuildContext context,
-      Leg arrivingLeg,
-      Leg departingLeg,
-      String? platformChangeText,
-      bool showInterchangeTime,
-      ) {
-    // Handle colors based on delays consistently
+    BuildContext context,
+    Leg arrivingLeg,
+    Leg departingLeg,
+    String? platformChangeText,
+    bool showInterchangeTime,
+  ) {
     Color arrivalTimeColor = Theme.of(context).colorScheme.onSurface;
     Color departureTimeColor = Theme.of(context).colorScheme.onPrimaryContainer;
     Color arrivalPlatformColor = Theme.of(context).colorScheme.onSurface;
-    Color departurePlatformColor = Theme.of(context).colorScheme.onPrimaryContainer;
+    Color departurePlatformColor = Theme.of(
+      context,
+    ).colorScheme.onPrimaryContainer;
 
     if (arrivingLeg.arrivalDelayMinutes != null) {
       if (arrivingLeg.arrivalDelayMinutes! > 10) {
@@ -562,7 +563,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       if (departingLeg.departureDelayMinutes! > 10) {
         departureTimeColor = Theme.of(context).colorScheme.error;
       } else if (departingLeg.departureDelayMinutes! > 0) {
-        departureTimeColor = Theme.of(context).colorScheme.tertiary;
+        departureTimeColor = Theme.of(context).colorScheme.onPrimaryContainer;
       }
     }
 
@@ -570,12 +571,10 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       arrivalPlatformColor = Theme.of(context).colorScheme.error;
     }
 
-    if (departingLeg.departurePlatform != departingLeg.departurePlatformEffective) {
+    if (departingLeg.departurePlatform !=
+        departingLeg.departurePlatformEffective) {
       departurePlatformColor = Theme.of(context).colorScheme.error;
     }
-
-    // Calculate connection time in minutes
-    final connectionMinutes = departingLeg.departureDateTime.difference(arrivingLeg.arrivalDateTime).inMinutes;
 
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
@@ -589,7 +588,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     return Column(
       children: [
         SizedBox(
-          height: height,
+          height: height, // Reduced from 300
           child: Column(
             children: [
               Flexible(
@@ -604,86 +603,48 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: colorScheme.surfaceContainerHighest,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8), // Reduced from 8.0
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.all(Radius.circular(16)),
                         color: colorScheme.surfaceContainerLowest,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow.withAlpha(20),
-                            spreadRadius: 1,
-                            blurRadius: 4,
-                            offset: const Offset(0, 3),
-                          )
-                        ],
+                        boxShadow: [BoxShadow(
+                      color: Theme.of(context).colorScheme.shadow.withAlpha(20),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 3),
+                    )]
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                        padding: const EdgeInsets.fromLTRB(
+                          16,
+                          4,
+                          16,
+                          4,
+                        ), // Reduced from 16
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _formatTime(arrivingLeg.arrivalDateTime),
-                                  style: textTheme.titleMedium!.copyWith(
-                                    color: arrivalTimeColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (showInterchangeTime)
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.tertiaryContainer,
-                                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                      child: Text(
-                                        '${connectionMinutes}min',
-                                        style: textTheme.labelMedium!.copyWith(
-                                          color: colorScheme.onTertiaryContainer,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                Text(
-                                  _formatTime(departingLeg.departureDateTime),
-                                  style: textTheme.titleMedium!.copyWith(
-                                    color: departureTimeColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              'Arrival ' +
+                                  arrivingLeg.effectiveArrivalFormatted,
+                              style: textTheme.titleMedium!.copyWith(
+                                color: arrivalTimeColor,
+                              ),
                             ),
-                            if (arrivingLeg.arrivalPlatformEffective.isNotEmpty ||
-                                departingLeg.departurePlatformEffective.isNotEmpty)
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  if (arrivingLeg.arrivalPlatformEffective.isNotEmpty)
-                                    Text(
-                                      'Platform ${arrivingLeg.arrivalPlatformEffective}',
-                                      style: textTheme.bodySmall!.copyWith(
-                                        color: arrivalPlatformColor,
-                                      ),
-                                    )
-                                  else
-                                    SizedBox(),
-                                  if (departingLeg.departurePlatformEffective.isNotEmpty)
-                                    Text(
-                                      'Platform ${departingLeg.departurePlatformEffective}',
-                                      style: textTheme.bodySmall!.copyWith(
-                                        color: departurePlatformColor,
-                                      ),
-                                    )
-                                  else
-                                    SizedBox(),
-                                ],
+                            if (arrivingLeg.arrivalPlatform == null)
+                              Text(
+                                'at the Station',
+                                style: textTheme.bodySmall,
+                              ),
+                            if (arrivingLeg.arrivalPlatform != null)
+                              Text(
+                                'Platform ' +
+                                    arrivingLeg.effectiveArrivalPlatform,
+                                style: textTheme.bodySmall!.copyWith(
+                                  color: arrivalPlatformColor,
+                                ),
                               ),
                           ],
                         ),
@@ -704,7 +665,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: colorScheme.surfaceContainerLowest,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                    ), // Reduced from 24.0
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -713,149 +676,173 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.swap_vert,
-                                    color: colorScheme.primary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Interchange',
-                                    style: textTheme.titleSmall!.copyWith(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                departingLeg.origin.name,
+                                style: textTheme.headlineMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 4),
-                              if (platformChangeText != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 28),
-                                  child: Text(
-                                    platformChangeText,
-                                    style: textTheme.bodySmall!.copyWith(
+                              if (departingLeg.departureDateTime
+                                      .difference(arrivingLeg.arrivalDateTime)
+                                      .inMinutes <
+                                  4)
+                                if (showInterchangeTime)
+                                  Text(
+                                    'Interchange Time: ' +
+                                        departingLeg.departureDateTime
+                                            .difference(
+                                              arrivingLeg.arrivalDateTime,
+                                            )
+                                            .inMinutes
+                                            .toString() +
+                                        ' min',
+                                    style: textTheme.titleSmall!.copyWith(
                                       color: colorScheme.error,
-                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ),
+                              if (departingLeg.departureDateTime
+                                      .difference(arrivingLeg.arrivalDateTime)
+                                      .inMinutes >=
+                                  4)
+                                if (showInterchangeTime)
+                                  Text(
+                                    'Interchange Time: ' +
+                                        departingLeg.departureDateTime
+                                            .difference(
+                                              arrivingLeg.arrivalDateTime,
+                                            )
+                                            .inMinutes
+                                            .toString() +
+                                        ' min',
+                                    style: textTheme.titleSmall,
+                                  ),
                             ],
                           ),
                         ),
-                        SizedBox(height: 8),
+                        SizedBox(height: 8), // Reduced from 16
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: SizedBox(
-                            height: 50,
+                            height: 60, // Reduced from 80
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              spacing: 16,
                               children: [
-                                if (arrivingLeg.lineName != null && arrivingLeg.direction != null)
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(16),
+                                    ),
+                                    color: colorScheme.primaryContainer,
+                                    boxShadow: [BoxShadow(
+                      color: Theme.of(context).colorScheme.shadow.withAlpha(20),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 3),
+                    )]
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      4,
+                                      16,
+                                      4,
+                                    ), // Reduced from 16
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Departure ' +
+                                              departingLeg
+                                                  .effectiveDepartureFormatted,
+                                          style: textTheme.titleMedium!
+                                              .copyWith(
+                                                color: departureTimeColor,
+                                              ),
+                                        ),
+                                        if (departingLeg.departurePlatform ==
+                                            null)
+                                          Text(
+                                            'at the Station',
+                                            style: textTheme.bodyMedium!
+                                                .copyWith(
+                                                  color: colorScheme
+                                                      .onPrimaryContainer,
+                                                ),
+                                          ),
+                                        if (departingLeg.departurePlatform !=
+                                            null)
+                                          Text(
+                                            'Platform ' +
+                                                departingLeg
+                                                    .effectiveDeparturePlatform,
+                                            style: textTheme.bodyMedium!
+                                                .copyWith(
+                                                  color: departurePlatformColor,
+                                                ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (departingLeg.lineName != null &&
+                                    departingLeg.direction != null)
                                   Container(
                                     alignment: Alignment.centerLeft,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.all(Radius.circular(16)),
-                                      color: colorScheme.surfaceContainerLowest,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Theme.of(context).colorScheme.shadow.withAlpha(20),
-                                          spreadRadius: 1,
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 3),
-                                        )
-                                      ],
+                                      borderRadius: BorderRadius.all(
+                                        Radius.circular(16),
+                                      ),
+                                      border: Border.all(
+                                        color: colorScheme.primary,
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                                      padding: const EdgeInsets.all(
+                                        8.0,
+                                      ), // Reduced from 8.0
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        spacing: 2,
                                         children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: arrivingLeg.lineColorNotifier.value ?? Colors.grey,
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  arrivingLeg.lineName!,
-                                                  style: textTheme.bodySmall!.copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
+                                          Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.all(
+                                                Radius.circular(8),
+                                              ),
+                                              color: colorScheme
+                                                  .tertiaryContainer,
+                                            ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    4,
+                                                    1,
+                                                    4,
+                                                    1,
                                                   ),
-                                                ),
+                                              child: Text(
+                                                departingLeg.lineName!,
+                                                style: textTheme.titleSmall,
                                               ),
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                constraints: BoxConstraints(maxWidth: 120),
-                                                child: Text(
-                                                  'to ${arrivingLeg.direction}',
-                                                  style: textTheme.bodySmall,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
+                                            ),
+                                          ),
+                                          Text(
+                                            departingLeg.direction!,
+                                            style: textTheme.bodySmall,
                                           ),
                                         ],
                                       ),
                                     ),
                                   ),
-                                Spacer(),
-                                if (departingLeg.lineName != null && departingLeg.direction != null)
-                                  Container(
-                                    alignment: Alignment.centerLeft,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.all(Radius.circular(16)),
-                                      color: colorScheme.surfaceContainerLowest,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Theme.of(context).colorScheme.shadow.withAlpha(20),
-                                          spreadRadius: 1,
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 3),
-                                        )
-                                      ],
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: departingLeg.lineColorNotifier.value ?? Colors.grey,
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  departingLeg.lineName!,
-                                                  style: textTheme.bodySmall!.copyWith(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                constraints: BoxConstraints(maxWidth: 120),
-                                                child: Text(
-                                                  'to ${departingLeg.direction}',
-                                                  style: textTheme.bodySmall,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                                
                               ],
                             ),
                           ),
