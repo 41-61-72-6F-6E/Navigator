@@ -168,7 +168,20 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     });
   }
 
+  String _formatTime(DateTime dateTime) {
+    // Use local time formatting to match connections_page approach
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+  }
 
+  String _formatLegDuration(DateTime? start, DateTime? end) {
+    if (start == null || end == null) return '0min';
+
+    // Calculate duration with timezone awareness
+    final duration = end.difference(start);
+    final minutes = (duration.inSeconds / 60).ceil();
+
+    return minutes <= 0 ? '1min' : '${minutes}min';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -598,18 +611,17 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildInterchangeComponent(
-    BuildContext context,
-    Leg arrivingLeg,
-    Leg departingLeg,
-    String? platformChangeText,
-    bool showInterchangeTime,
-  ) {
+      BuildContext context,
+      Leg arrivingLeg,
+      Leg departingLeg,
+      String? platformChangeText,
+      bool showInterchangeTime,
+      ) {
+    // Handle colors based on delays consistently
     Color arrivalTimeColor = Theme.of(context).colorScheme.onSurface;
     Color departureTimeColor = Theme.of(context).colorScheme.onPrimaryContainer;
     Color arrivalPlatformColor = Theme.of(context).colorScheme.onSurface;
-    Color departurePlatformColor = Theme.of(
-      context,
-    ).colorScheme.onPrimaryContainer;
+    Color departurePlatformColor = Theme.of(context).colorScheme.onPrimaryContainer;
 
     if (arrivingLeg.arrivalDelayMinutes != null) {
       if (arrivingLeg.arrivalDelayMinutes! > 10) {
@@ -623,7 +635,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       if (departingLeg.departureDelayMinutes! > 10) {
         departureTimeColor = Theme.of(context).colorScheme.error;
       } else if (departingLeg.departureDelayMinutes! > 0) {
-        departureTimeColor = Theme.of(context).colorScheme.onPrimaryContainer;
+        departureTimeColor = Theme.of(context).colorScheme.tertiary;
       }
     }
 
@@ -631,10 +643,12 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       arrivalPlatformColor = Theme.of(context).colorScheme.error;
     }
 
-    if (departingLeg.departurePlatform !=
-        departingLeg.departurePlatformEffective) {
+    if (departingLeg.departurePlatform != departingLeg.departurePlatformEffective) {
       departurePlatformColor = Theme.of(context).colorScheme.error;
     }
+
+    // Calculate connection time in minutes
+    final connectionMinutes = departingLeg.departureDateTime.difference(arrivingLeg.arrivalDateTime).inMinutes;
 
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     TextTheme textTheme = Theme.of(context).textTheme;
@@ -648,7 +662,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     return Column(
       children: [
         SizedBox(
-          height: height, // Reduced from 300
+          height: height,
           child: Column(
             children: [
               Flexible(
@@ -663,48 +677,86 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: colorScheme.surfaceContainerHighest,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8), // Reduced from 8.0
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.all(Radius.circular(16)),
                         color: colorScheme.surfaceContainerLowest,
-                        boxShadow: [BoxShadow(
-                      color: Theme.of(context).colorScheme.shadow.withAlpha(20),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 3),
-                    )]
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.shadow.withAlpha(20),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 3),
+                          )
+                        ],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          16,
-                          4,
-                          16,
-                          4,
-                        ), // Reduced from 16
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              'Arrival ' +
-                                  arrivingLeg.effectiveArrivalFormatted,
-                              style: textTheme.titleMedium!.copyWith(
-                                color: arrivalTimeColor,
-                              ),
-                            ),
-                            if (arrivingLeg.arrivalPlatform == null)
-                              Text(
-                                'at the Station',
-                                style: textTheme.bodySmall,
-                              ),
-                            if (arrivingLeg.arrivalPlatform != null)
-                              Text(
-                                'Platform ' +
-                                    arrivingLeg.effectiveArrivalPlatform,
-                                style: textTheme.bodySmall!.copyWith(
-                                  color: arrivalPlatformColor,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _formatTime(arrivingLeg.arrivalDateTime),
+                                  style: textTheme.titleMedium!.copyWith(
+                                    color: arrivalTimeColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
+                                if (showInterchangeTime)
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.tertiaryContainer,
+                                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                      child: Text(
+                                        '${connectionMinutes}min',
+                                        style: textTheme.labelMedium!.copyWith(
+                                          color: colorScheme.onTertiaryContainer,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  _formatTime(departingLeg.departureDateTime),
+                                  style: textTheme.titleMedium!.copyWith(
+                                    color: departureTimeColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (arrivingLeg.arrivalPlatformEffective.isNotEmpty ||
+                                departingLeg.departurePlatformEffective.isNotEmpty)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (arrivingLeg.arrivalPlatformEffective.isNotEmpty)
+                                    Text(
+                                      'Platform ${arrivingLeg.arrivalPlatformEffective}',
+                                      style: textTheme.bodySmall!.copyWith(
+                                        color: arrivalPlatformColor,
+                                      ),
+                                    )
+                                  else
+                                    SizedBox(),
+                                  if (departingLeg.departurePlatformEffective.isNotEmpty)
+                                    Text(
+                                      'Platform ${departingLeg.departurePlatformEffective}',
+                                      style: textTheme.bodySmall!.copyWith(
+                                        color: departurePlatformColor,
+                                      ),
+                                    )
+                                  else
+                                    SizedBox(),
+                                ],
                               ),
                           ],
                         ),
@@ -725,9 +777,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: colorScheme.surfaceContainerLowest,
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 8.0,
-                    ), // Reduced from 24.0
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -736,173 +786,149 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                departingLeg.origin.name,
-                                style: textTheme.headlineMedium,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (departingLeg.departureDateTime
-                                      .difference(arrivingLeg.arrivalDateTime)
-                                      .inMinutes <
-                                  4)
-                                if (showInterchangeTime)
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.swap_vert,
+                                    color: colorScheme.primary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    'Interchange Time: ' +
-                                        departingLeg.departureDateTime
-                                            .difference(
-                                              arrivingLeg.arrivalDateTime,
-                                            )
-                                            .inMinutes
-                                            .toString() +
-                                        ' min',
+                                    'Interchange',
                                     style: textTheme.titleSmall!.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              if (platformChangeText != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 28),
+                                  child: Text(
+                                    platformChangeText,
+                                    style: textTheme.bodySmall!.copyWith(
                                       color: colorScheme.error,
-                                    ),
-                                  ),
-                              if (departingLeg.departureDateTime
-                                      .difference(arrivingLeg.arrivalDateTime)
-                                      .inMinutes >=
-                                  4)
-                                if (showInterchangeTime)
-                                  Text(
-                                    'Interchange Time: ' +
-                                        departingLeg.departureDateTime
-                                            .difference(
-                                              arrivingLeg.arrivalDateTime,
-                                            )
-                                            .inMinutes
-                                            .toString() +
-                                        ' min',
-                                    style: textTheme.titleSmall,
-                                  ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 8), // Reduced from 16
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: SizedBox(
-                            height: 60, // Reduced from 80
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: 16,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(16),
-                                    ),
-                                    color: colorScheme.primaryContainer,
-                                    boxShadow: [BoxShadow(
-                      color: Theme.of(context).colorScheme.shadow.withAlpha(20),
-                      spreadRadius: 1,
-                      blurRadius: 4,
-                      offset: const Offset(0, 3),
-                    )]
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      4,
-                                      16,
-                                      4,
-                                    ), // Reduced from 16
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Departure ' +
-                                              departingLeg
-                                                  .effectiveDepartureFormatted,
-                                          style: textTheme.titleMedium!
-                                              .copyWith(
-                                                color: departureTimeColor,
-                                              ),
-                                        ),
-                                        if (departingLeg.departurePlatform ==
-                                            null)
-                                          Text(
-                                            'at the Station',
-                                            style: textTheme.bodyMedium!
-                                                .copyWith(
-                                                  color: colorScheme
-                                                      .onPrimaryContainer,
-                                                ),
-                                          ),
-                                        if (departingLeg.departurePlatform !=
-                                            null)
-                                          Text(
-                                            'Platform ' +
-                                                departingLeg
-                                                    .effectiveDeparturePlatform,
-                                            style: textTheme.bodyMedium!
-                                                .copyWith(
-                                                  color: departurePlatformColor,
-                                                ),
-                                          ),
-                                      ],
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                                if (departingLeg.lineName != null &&
-                                    departingLeg.direction != null)
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            height: 50,
+                            child: Row(
+                              children: [
+                                if (arrivingLeg.lineName != null && arrivingLeg.direction != null)
                                   Container(
                                     alignment: Alignment.centerLeft,
                                     decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.all(
-                                        Radius.circular(16),
-                                      ),
-                                      border: Border.all(
-                                        color: colorScheme.primary,
-                                        width: 1,
-                                      ),
+                                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                                      color: colorScheme.surfaceContainerLowest,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).colorScheme.shadow.withAlpha(20),
+                                          spreadRadius: 1,
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ],
                                     ),
                                     child: Padding(
-                                      padding: const EdgeInsets.all(
-                                        8.0,
-                                      ), // Reduced from 8.0
+                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
                                       child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        spacing: 2,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.all(
-                                                Radius.circular(8),
-                                              ),
-                                              color: colorScheme
-                                                  .tertiaryContainer,
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    4,
-                                                    1,
-                                                    4,
-                                                    1,
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: arrivingLeg.lineColorNotifier.value ?? Colors.grey,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  arrivingLeg.lineName!,
+                                                  style: textTheme.bodySmall!.copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
-                                              child: Text(
-                                                departingLeg.lineName!,
-                                                style: textTheme.titleSmall,
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          Text(
-                                            departingLeg.direction!,
-                                            style: textTheme.bodySmall,
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                constraints: BoxConstraints(maxWidth: 120),
+                                                child: Text(
+                                                  'to ${arrivingLeg.direction}',
+                                                  style: textTheme.bodySmall,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
                                     ),
                                   ),
-                                
+                                Spacer(),
+                                if (departingLeg.lineName != null && departingLeg.direction != null)
+                                  Container(
+                                    alignment: Alignment.centerLeft,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.all(Radius.circular(16)),
+                                      color: colorScheme.surfaceContainerLowest,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Theme.of(context).colorScheme.shadow.withAlpha(20),
+                                          spreadRadius: 1,
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 3),
+                                        )
+                                      ],
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: departingLeg.lineColorNotifier.value ?? Colors.grey,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  departingLeg.lineName!,
+                                                  style: textTheme.bodySmall!.copyWith(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                constraints: BoxConstraints(maxWidth: 120),
+                                                child: Text(
+                                                  'to ${departingLeg.direction}',
+                                                  style: textTheme.bodySmall,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -941,7 +967,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                   child: Text(
                     l.origin.name,
                     style: Theme.of(context).textTheme.titleLarge,
-                    maxLines: 2, // allow 2 lines if you want wrapping
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     softWrap: true,
                   ),
@@ -955,27 +981,21 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: Theme.of(context).colorScheme.primaryContainer,
                   ),
                   child: Padding(
-                    padding: EdgeInsetsGeometry.all(8),
+                    padding: const EdgeInsets.all(8),
                     child: Column(
                       children: [
                         Text(
-                          l.effectiveDepartureFormatted,
-                          style: Theme.of(context).textTheme.titleMedium!
-                              .copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                              ),
+                          _formatTime(l.departureDateTime),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
                         ),
                         if (l.departurePlatformEffective.isNotEmpty)
                           Text(
                             'Platform ' + l.departurePlatformEffective,
-                            style: Theme.of(context).textTheme.bodyMedium!
-                                .copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
                           ),
                       ],
                     ),
@@ -1010,7 +1030,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                   child: Text(
                     l.destination.name,
                     style: Theme.of(context).textTheme.titleLarge,
-                    maxLines: 2, // allow 2 lines if you want wrapping
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     softWrap: true,
                   ),
@@ -1024,27 +1044,21 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     color: Theme.of(context).colorScheme.primaryContainer,
                   ),
                   child: Padding(
-                    padding: EdgeInsetsGeometry.all(8),
+                    padding: const EdgeInsets.all(8),
                     child: Column(
                       children: [
                         Text(
-                          l.effectiveArrivalFormatted,
-                          style: Theme.of(context).textTheme.titleMedium!
-                              .copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                              ),
+                          _formatTime(l.arrivalDateTime),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
                         ),
                         if (l.arrivalPlatformEffective.isNotEmpty)
                           Text(
                             'Platform ' + l.arrivalPlatformEffective,
-                            style: Theme.of(context).textTheme.bodyMedium!
-                                .copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimaryContainer,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
                           ),
                       ],
                     ),
@@ -1351,13 +1365,17 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildDelayChip(BuildContext context, Leg leg) {
-    final delayMinutes =
-        leg.departureDelayMinutes ?? leg.arrivalDelayMinutes ?? 0;
+    // Use the most relevant delay (departure or arrival)
+    final delayMinutes = leg.departureDelayMinutes ?? leg.arrivalDelayMinutes ?? 0;
+
+    if (delayMinutes <= 0) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.errorContainer,
+        color: delayMinutes > 10
+            ? Theme.of(context).colorScheme.errorContainer
+            : Theme.of(context).colorScheme.tertiaryContainer,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1366,14 +1384,18 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           Icon(
             Icons.access_time,
             size: 12,
-            color: Theme.of(context).colorScheme.onErrorContainer,
+            color: delayMinutes > 10
+                ? Theme.of(context).colorScheme.onErrorContainer
+                : Theme.of(context).colorScheme.onTertiaryContainer,
           ),
           const SizedBox(width: 4),
           Text(
             '+${delayMinutes}min',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onErrorContainer,
-              fontWeight: FontWeight.w500,
+              color: delayMinutes > 10
+                  ? Theme.of(context).colorScheme.onErrorContainer
+                  : Theme.of(context).colorScheme.onTertiaryContainer,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -1394,6 +1416,16 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildDepartureInfo(BuildContext context, Leg leg) {
+    // Determine color based on delay
+    Color timeColor = Theme.of(context).colorScheme.onSurface;
+    if (leg.departureDelayMinutes != null) {
+      if (leg.departureDelayMinutes! > 10) {
+        timeColor = Theme.of(context).colorScheme.error;
+      } else if (leg.departureDelayMinutes! > 0) {
+        timeColor = Theme.of(context).colorScheme.tertiary;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1403,16 +1435,16 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              'Departure',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                fontWeight: FontWeight.w500,
+              _formatTime(leg.departureDateTime),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: timeColor,
               ),
             ),
           ],
@@ -1425,32 +1457,16 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             children: [
               Text(
                 leg.origin.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatTime(leg.departureDateTime),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
               ),
               if (leg.departurePlatformEffective.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Platform ${leg.departurePlatformEffective}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
+                Text(
+                  'Platform ${leg.departurePlatformEffective}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: leg.departurePlatform != leg.departurePlatformEffective
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -1461,6 +1477,16 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildArrivalInfo(BuildContext context, Leg leg) {
+    // Determine color based on delay
+    Color timeColor = Theme.of(context).colorScheme.onSurface;
+    if (leg.arrivalDelayMinutes != null) {
+      if (leg.arrivalDelayMinutes! > 10) {
+        timeColor = Theme.of(context).colorScheme.error;
+      } else if (leg.arrivalDelayMinutes! > 0) {
+        timeColor = Theme.of(context).colorScheme.tertiary;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -1468,10 +1494,10 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
-              'Arrival',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                fontWeight: FontWeight.w500,
+              _formatTime(leg.arrivalDateTime),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: timeColor,
               ),
             ),
             const SizedBox(width: 8),
@@ -1479,8 +1505,8 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
@@ -1493,33 +1519,16 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             children: [
               Text(
                 leg.destination.name,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium,
                 overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-                textAlign: TextAlign.end,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatTime(leg.arrivalDateTime),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
               ),
               if (leg.arrivalPlatformEffective.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Platform ${leg.arrivalPlatformEffective}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
+                Text(
+                  'Platform ${leg.arrivalPlatformEffective}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: leg.arrivalPlatform != leg.arrivalPlatformEffective
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
             ],
@@ -1769,19 +1778,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     }
   }
 
-  // Helper methods
-  String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  String _formatLegDuration(DateTime? start, DateTime? end) {
-    if (start == null || end == null) return '0min';
-
-    final duration = end.difference(start);
-    final minutes = (duration.inSeconds / 60).ceil();
-
-    return minutes <= 0 ? '1min' : '${minutes}min';
-  }
 
   // Add this as a class field
   final Map<String, Color> _transitLineColorCache = {};
