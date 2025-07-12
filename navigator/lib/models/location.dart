@@ -7,7 +7,7 @@ class Location {
   final double latitude;
   final double longitude;
   String? address;
-
+  
   Location({
     required this.type,
     required this.id,
@@ -16,7 +16,7 @@ class Location {
     required this.longitude,
     this.address
   });
-
+  
   factory Location.fromJson(Map<String, dynamic> json) {
     return Location(
       type: json['type'],
@@ -24,12 +24,28 @@ class Location {
       name: json['name'],
       latitude: json['latitude'],
       longitude: json['longitude'],
+      address: json['address'],
     );
   }
-
-  factory Location.fromPosition(Position p)
-  {
-    return Location(type: 'Address', id: '0', name: 'emptyName', latitude: p.latitude, longitude: p.longitude);
+  
+  factory Location.fromPosition(Position p) {
+    return Location(
+      type: 'Address', 
+      id: '0', 
+      name: 'emptyName', 
+      latitude: p.latitude, 
+      longitude: p.longitude
+    );
   }
-
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'id': id,
+      'name': name,
+      'latitude': latitude,
+      'longitude': longitude,
+      'address': address,
+    };
+  }
 }
