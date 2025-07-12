@@ -168,10 +168,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     });
   }
 
-  String _formatTime(DateTime dateTime) {
-    // Use local time formatting to match connections_page approach
-    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  
 
   String _formatLegDuration(DateTime? start, DateTime? end) {
     if (start == null || end == null) return '0min';
@@ -975,7 +972,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     child: Column(
                       children: [
                         Text(
-                          _formatTime(l.departureDateTime),
+                          l.effectiveDepartureFormatted,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: Theme.of(context).colorScheme.onPrimaryContainer,
                           ),
@@ -1040,7 +1037,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     child: Column(
                       children: [
                         Text(
-                          _formatTime(l.arrivalDateTime),
+                          l.effectiveArrivalFormatted,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: Theme.of(context).colorScheme.onPrimaryContainer,
                           ),
@@ -1180,14 +1177,14 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                _formatTime(leg.departureDateTime),
+                leg.effectiveDepartureFormatted,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                _formatTime(leg.arrivalDateTime),
+                leg.effectiveArrivalFormatted,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
@@ -1433,7 +1430,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             ),
             const SizedBox(width: 8),
             Text(
-              _formatTime(leg.departureDateTime),
+              leg.effectiveDepartureFormatted,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: timeColor,
@@ -1486,7 +1483,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
-              _formatTime(leg.arrivalDateTime),
+              leg.effectiveArrivalFormatted,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: timeColor,
