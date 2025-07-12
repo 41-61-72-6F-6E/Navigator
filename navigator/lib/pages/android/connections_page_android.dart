@@ -698,12 +698,12 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           children: [
                             // Planned Departure Time
                             Text(
-                              '${r.legs[0].plannedDepartureDateTime?.hour}:${r.legs[0].plannedDepartureDateTime?.minute}',
+                              '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             // Actual Departure Time
                             Text(
-                              '${r.legs[0].departureDateTime?.hour}:${r.legs[0].departureDateTime?.minute}',
+                              '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
                               style: Theme.of(context).textTheme.labelSmall!
                                   .copyWith(
                                     color:
@@ -723,12 +723,14 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           children: [
                             // Planned Arrival Time
                             Text(
-                              '${r.legs.last.plannedArrivalDateTime.hour}:${r.legs.last.plannedArrivalDateTime.minute}',
+                              '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             // Actual Arrival Time
                             Text(
-                              '${r.legs.last.arrivalDateTime.hour}:${r.legs.last.arrivalDateTime.minute}',
+                              r.legs.last.arrivalDateTime != null
+                                  ? '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}'
+                                  : '--:--',
                               style: TextStyle(
                                 fontSize: 12,
                                 color:
