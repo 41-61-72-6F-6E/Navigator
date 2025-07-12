@@ -560,7 +560,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       if (departingLeg.departureDelayMinutes! > 10) {
         departureTimeColor = Theme.of(context).colorScheme.error;
       } else if (departingLeg.departureDelayMinutes! > 0) {
-        departureTimeColor = Theme.of(context).colorScheme.onPrimaryContainer;
+        departureTimeColor = Theme.of(context).colorScheme.tertiary;
       }
     }
 
@@ -633,7 +633,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                             if (arrivingLeg.arrivalPlatform == null)
                               Text(
                                 'at the Station',
-                                style: textTheme.bodySmall,
+                                style: textTheme.bodySmall!.copyWith(color: colorScheme.onSurface),
                               ),
                             if (arrivingLeg.arrivalPlatform != null)
                               Text(
@@ -675,7 +675,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                             children: [
                               Text(
                                 departingLeg.origin.name,
-                                style: textTheme.headlineMedium,
+                                style: textTheme.headlineMedium?.copyWith(color: colorScheme.onSurface),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -711,7 +711,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                             .inMinutes
                                             .toString() +
                                         ' min',
-                                    style: textTheme.titleSmall,
+                                    style: textTheme.titleSmall!.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
                                   ),
                             ],
                           ),
@@ -827,13 +829,15 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                                   ),
                                               child: Text(
                                                 departingLeg.lineName!,
-                                                style: textTheme.titleSmall,
+                                                style: textTheme.titleSmall!.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
                                               ),
                                             ),
                                           ),
                                           Text(
                                             departingLeg.direction!,
-                                            style: textTheme.bodySmall,
+                                            style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface),
                                           ),
                                         ],
                                       ),
@@ -1327,28 +1331,32 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     return Row(
       children: [
         Text(
-          parts[0], // Keep the "Platform change: X" text intact
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.orange,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(Icons.arrow_forward, size: 14, color: Colors.orange),
-        ),
-        Flexible(
-          child: Text(
-            parts[1],
+            parts[0], // Keep the "Platform change: X" text intact
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.orange,
+              color: Theme.of(context).colorScheme.tertiary,
               fontWeight: FontWeight.w600,
               fontSize: 13,
             ),
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Icon(
+                Icons.arrow_forward,
+                size: 14,
+                color: Theme.of(context).colorScheme.tertiary
+            ),
+          ),
+          Flexible(
+            child: Text(
+              parts[1],
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.tertiary,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
       ],
     );
   }
