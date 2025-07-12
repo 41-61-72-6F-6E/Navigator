@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/pages/android/connections_page_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
@@ -9,6 +10,7 @@ import 'package:navigator/models/station.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:navigator/services/localDataSaver.dart';
 
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
@@ -52,6 +54,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   List<Polyline> _funicularLines = [];
   late AlignOnUpdate _alignPositionOnUpdate;
   late final StreamController<double?> _alignPositionStreamController;
+  List<FavoriteLocation> faves = [];
 
   @override
   void initState() {
@@ -67,6 +70,15 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     });
 
     _setInitialUserLocation();
+    _getFaves();
+  }
+
+  Future<void> _getFaves() async
+  {
+    List<FavoriteLocation> f = await Localdatasaver.getFavouriteLocations();
+    setState(() {
+      faves = f;
+    });
   }
 
   Future<void> initiateLines() async {
@@ -607,180 +619,187 @@ class _HomePageAndroidState extends State<HomePageAndroid>
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              spacing: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    onChanged: _onSearchChanged,
-                    style: TextStyle(color: colors.onPrimaryContainer),
-                    decoration: InputDecoration(
-                      hintText: 'Where do you want to go?',
-                      prefixIcon: Icon(Icons.location_pin, color: colors.primary),
-                      filled: true,
-                      fillColor: colors.primaryContainer,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                Row(
+                  spacing: 16,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        onChanged: _onSearchChanged,
+                        style: TextStyle(color: colors.onPrimaryContainer),
+                        decoration: InputDecoration(
+                          hintText: 'Where do you want to go?',
+                          prefixIcon: Icon(Icons.location_pin, color: colors.primary),
+                          filled: true,
+                          fillColor: colors.primaryContainer,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
+                    ),
+                    IconButton.filledTonal(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (BuildContext context) {
+                        return StatefulBuilder(
+                          builder: (BuildContext context, StateSetter setModalState) {
+                return Container(
+                  height: MediaQuery.of(context).size.height * 0.4, // 40% of screen
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      children: <Widget>[
+                        // Handle bar
+                        Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Map Options',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            children: [
+                              CheckboxListTile(
+                                title: const Text('Show Station Labels'),
+                                value: showStationLabels,
+                                onChanged: (bool? value) {
+                                  setModalState(() {
+                                    showStationLabels = value!;
+                                  });
+                                  setState(() {
+                                    showStationLabels = value!;
+                                  });
+                                },
+                              ),
+                              CheckboxListTile(
+                                    title: const Text('Show S-Bahn'),
+                                    value: showLightRail,
+                                    onChanged: (bool? value) {
+                                      setModalState(() {
+                                        showLightRail = value!;
+                                      });
+                                      setState(() {
+                                        showLightRail = value!;
+                                      });
+                                    },
+                                  ),
+                                  CheckboxListTile(
+                                    title: const Text('Show U-Bahn'),
+                                    value: showSubway,
+                                    onChanged: (bool? value) {
+                                      setModalState(() {
+                                        showSubway = value!;
+                                      });
+                                      setState(() {
+                                        showSubway = value!;
+                                      });
+                                    },
+                                  ),
+                                  CheckboxListTile(
+                                    title: const Text('Show Tram'),
+                                    value: showTram,
+                                    onChanged: (bool? value) {
+                                      setModalState(() {
+                                        showTram = value!;
+                                      });
+                                      setState(() {
+                                        showTram = value!;
+                                      });
+                                    },
+                                  ),
+                                  // CheckboxListTile(
+                                  //   title: const Text('Show Bus'),
+                                  //   value: showBus,
+                                  //   onChanged: (bool? value) {
+                                  //     setModalState(() {
+                                  //       showBus = value!;
+                                  //     });
+                                  //     setState(() {
+                                  //       showBus = value!;
+                                  //     });
+                                  //   },
+                                  // ),
+                                  // CheckboxListTile(
+                                  //   title: const Text('Show Trolleybus'),
+                                  //   value: showTrolleybus,
+                                  //   onChanged: (bool? value) {
+                                  //     setModalState(() {
+                                  //       showTrolleybus = value!;
+                                  //     });
+                                  //     setState(() {
+                                  //       showTrolleybus = value!;
+                                  //     });
+                                  //   },
+                                  // ),
+                                  CheckboxListTile(
+                                    title: const Text('Show Ferry'),
+                                    value: showFerry,
+                                    onChanged: (bool? value) {
+                                      setModalState(() {
+                                        showFerry = value!;
+                                      });
+                                      setState(() {
+                                        showFerry = value!;
+                                      });
+                                    },
+                                  ),
+                                  CheckboxListTile(
+                                    title: const Text('Show Funicular'),
+                                    value: showFunicular,
+                                    onChanged: (bool? value) {
+                                      setModalState(() {
+                                        showFunicular = value!;
+                                      });
+                                      setState(() {
+                                        showFunicular = value!;
+                                      });
+                                    },
+                                  ),
+                
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  icon: Icon(Icons.settings),
+                )
+                   ],
                 ),
-                IconButton.filledTonal(
-  onPressed: () {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.4, // 40% of screen
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: SafeArea(
-                child: Column(
-                  children: <Widget>[
-                    // Handle bar
-                    Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Map Options',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          CheckboxListTile(
-                            title: const Text('Show Station Labels'),
-                            value: showStationLabels,
-                            onChanged: (bool? value) {
-                              setModalState(() {
-                                showStationLabels = value!;
-                              });
-                              setState(() {
-                                showStationLabels = value!;
-                              });
-                            },
-                          ),
-                          CheckboxListTile(
-                                title: const Text('Show S-Bahn'),
-                                value: showLightRail,
-                                onChanged: (bool? value) {
-                                  setModalState(() {
-                                    showLightRail = value!;
-                                  });
-                                  setState(() {
-                                    showLightRail = value!;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: const Text('Show U-Bahn'),
-                                value: showSubway,
-                                onChanged: (bool? value) {
-                                  setModalState(() {
-                                    showSubway = value!;
-                                  });
-                                  setState(() {
-                                    showSubway = value!;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: const Text('Show Tram'),
-                                value: showTram,
-                                onChanged: (bool? value) {
-                                  setModalState(() {
-                                    showTram = value!;
-                                  });
-                                  setState(() {
-                                    showTram = value!;
-                                  });
-                                },
-                              ),
-                              // CheckboxListTile(
-                              //   title: const Text('Show Bus'),
-                              //   value: showBus,
-                              //   onChanged: (bool? value) {
-                              //     setModalState(() {
-                              //       showBus = value!;
-                              //     });
-                              //     setState(() {
-                              //       showBus = value!;
-                              //     });
-                              //   },
-                              // ),
-                              // CheckboxListTile(
-                              //   title: const Text('Show Trolleybus'),
-                              //   value: showTrolleybus,
-                              //   onChanged: (bool? value) {
-                              //     setModalState(() {
-                              //       showTrolleybus = value!;
-                              //     });
-                              //     setState(() {
-                              //       showTrolleybus = value!;
-                              //     });
-                              //   },
-                              // ),
-                              CheckboxListTile(
-                                title: const Text('Show Ferry'),
-                                value: showFerry,
-                                onChanged: (bool? value) {
-                                  setModalState(() {
-                                    showFerry = value!;
-                                  });
-                                  setState(() {
-                                    showFerry = value!;
-                                  });
-                                },
-                              ),
-                              CheckboxListTile(
-                                title: const Text('Show Funicular'),
-                                value: showFunicular,
-                                onChanged: (bool? value) {
-                                  setModalState(() {
-                                    showFunicular = value!;
-                                  });
-                                  setState(() {
-                                    showFunicular = value!;
-                                  });
-                                },
-                              ),
-
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  },
-  icon: Icon(Icons.settings),
-)
-               ],
+                SizedBox(height: 8),
+                _buildFaves(context),
+              ],
             ),
           ),
         ),
@@ -794,6 +813,28 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     );
   }
 
+  Widget _buildFaves(BuildContext context)
+  {
+    return Row(
+      children: [
+        Icon(Icons.favorite),
+        if(faves.isEmpty)
+        Text('No saved Locations so far'),
+        if(faves.isNotEmpty)
+        ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: faves.length,
+          itemBuilder: (context, i)
+          {
+            FavoriteLocation f = faves[i];
+            ActionChip(
+              label: Text(f.name),
+            );
+          }
+          ),
+      ],
+    );
+  }
 
 
   Widget _stationResult(BuildContext context, Station station) {

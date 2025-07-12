@@ -53,6 +53,7 @@ class Station extends Location {
     );
   }
 
+  @override
   factory Station.fromJson(Map<String, dynamic> json) {
     final location = json['location'];
     final products = json['products'];
@@ -89,6 +90,7 @@ class Station extends Location {
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'type': type,
