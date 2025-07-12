@@ -252,14 +252,15 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   }
 
   Widget _buildInputFields(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(16)),
         border: Border.all(
           width: 1,
-          color: Theme.of(context).colorScheme.outline,
+          color: colors.outline,
         ),
-        color: Theme.of(context).colorScheme.secondaryContainer,
+        color: colors.secondaryContainer,
       ),
       child: Padding(
         padding: EdgeInsets.all(12),
@@ -274,10 +275,12 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                   child: TextField(
                     controller: _fromController,
                     focusNode: _fromFocusNode,
+                    style: TextStyle(color: colors.onSurface),
                     decoration: InputDecoration(
-                      fillColor: Theme.of(context).colorScheme.surface,
+                      fillColor: colors.surface,
                       filled: true,
                       labelText: 'From',
+                      labelStyle: TextStyle(color: colors.onSurface),
                       prefixIcon: GestureDetector(
                         onTap: () async {
                           // Unfocus the text field first
@@ -291,7 +294,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                               "Current Location"; // This should probably be widget.page.from.name
                           // Don't set widget.page.from = widget.page.from (redundant)
                         },
-                        child: Icon(Icons.location_on),
+                        child: Icon(Icons.location_on, color: colors.onSurface),
                       ),
                       border: OutlineInputBorder().copyWith(
                         borderRadius: BorderRadius.all(Radius.circular(32)),
@@ -310,10 +313,12 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                   child: TextField(
                     controller: _toController,
                     focusNode: _toFocusNode,
+                    style: TextStyle(color: colors.onSurface),
                     decoration: InputDecoration(
-                      fillColor: Theme.of(context).colorScheme.surface,
+                      fillColor: colors.surface,
                       filled: true,
                       labelText: 'To',
+                      labelStyle: TextStyle(color: colors.onSurface),
                       prefixIcon: GestureDetector(
                         onTap: () async {
                           // Unfocus the text field first
@@ -327,7 +332,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                               "Current Location"; // This should probably be widget.page.to.name
                           //widget.page.to = widget.page.from; // This should probably be widget.page.to = currentLocation
                         },
-                        child: Icon(Icons.location_on),
+                        child: Icon(Icons.location_on, color: colors.onSurface),
                       ),
                       border: OutlineInputBorder().copyWith(
                         borderRadius: BorderRadius.all(Radius.circular(32)),
@@ -348,15 +353,11 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                 alignment: Alignment.centerRight,
                 child: IconButton.filled(
                   style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surface,
-                    foregroundColor: Theme.of(
-                      context,
-                    ).colorScheme.primary,
+                    backgroundColor: colors.surface,
+                    foregroundColor: colors.primary,
                     iconSize: 32,
                     side: BorderSide(
-                      color: Theme.of(context).colorScheme.outline,
+                      color: colors.outline,
                       width: 1,
                     ),
                   ),
@@ -632,7 +633,10 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
-                        Text('Refreshing journey information...'),
+                        Text(
+                          'Refreshing journey information...',
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        ),
                       ],
                     ),
                   ),
@@ -705,7 +709,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                     color:
                                         r.legs[0].departureDateTime !=
                                             r.legs[0].plannedDepartureDateTime
-                                        ? Colors.redAccent[400]
+                                        ? Theme.of(context).colorScheme.error
                                         : Theme.of(
                                             context,
                                           ).textTheme.labelSmall!.color,
@@ -730,7 +734,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 color:
                                     r.legs.last.arrivalDateTime !=
                                         r.legs.last.plannedArrivalDateTime
-                                    ? Colors.redAccent[400]
+                                    ? Theme.of(context).colorScheme.error
                                     : Theme.of(
                                         context,
                                       ).textTheme.labelSmall!.color,
@@ -900,7 +904,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                     return AlertDialog(
                       title: Text(
                         'Journey Preferences',
-                        style: TextStyle(color: colors.primary),
+                        style: TextStyle(color: colors.onSurface),
                       ),
                       content: StatefulBuilder(
                         builder: (context, setState) {
@@ -925,7 +929,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include ICE',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.national ?? true,
                                   onChanged: (value) {
@@ -937,7 +941,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include IC/EC',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.nationalExpress ?? true,
                                   onChanged: (value) {
@@ -949,7 +953,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include RE/RB',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.regional ?? true,
                                   onChanged: (value) {
@@ -962,7 +966,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include S-Bahn',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.suburban ?? true,
                                   onChanged: (value) {
@@ -974,7 +978,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include U-Bahn',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.subway ?? true,
                                   onChanged: (value) {
@@ -986,7 +990,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include Tram',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.tram ?? true,
                                   onChanged: (value) {
@@ -998,7 +1002,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include Bus',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.bus ?? true,
                                   onChanged: (value) {
@@ -1010,7 +1014,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Include Ferry',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.ferry ?? true,
                                   onChanged: (value) {
@@ -1035,7 +1039,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Deutschlandticket only',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value:
                                       tempSettings
@@ -1052,7 +1056,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                 CheckboxListTile(
                                   title: Text(
                                     'Accessibility',
-                                    style: TextStyle(color: colors.primary),
+                                    style: TextStyle(color: colors.onSurface),
                                   ),
                                   value: tempSettings.accessibility ?? false,
                                   onChanged: (value) {
@@ -1069,7 +1073,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                         Text(
                                           'Walking Speed',
                                           style: TextStyle(
-                                            color: colors.primary,
+                                            color: colors.onSurface,
                                             fontSize: 16,
                                           ),
                                         ),
@@ -1089,7 +1093,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                                       ),
                                                 ),
                                                 style: TextStyle(
-                                                  color: colors.primary,
+                                                  color: colors.onSurface,
                                                 ),
                                                 iconEnabledColor:
                                                     colors.primary,
@@ -1123,7 +1127,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                         Text(
                                           'Transfer Time',
                                           style: TextStyle(
-                                            color: colors.primary,
+                                            color: colors.onSurface,
                                             fontSize: 16,
                                           ),
                                         ),
@@ -1140,7 +1144,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                                                   ),
                                             ),
                                             style: TextStyle(
-                                              color: colors.primary,
+                                              color: colors.onSurface,
                                             ),
                                             iconEnabledColor: colors.primary,
                                             items: [
