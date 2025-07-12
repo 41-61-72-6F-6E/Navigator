@@ -447,7 +447,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Padding(
-                        padding: const EdgeInsets.only(right: 20.0, bottom: 116.0),
+                        padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
                         child: FloatingActionButton(
                           shape: const CircleBorder(),
                           onPressed: () {
@@ -813,28 +813,53 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     );
   }
 
-  Widget _buildFaves(BuildContext context)
-  {
-    return Row(
-      children: [
-        Icon(Icons.favorite),
-        if(faves.isEmpty)
+  Widget _buildFaves(BuildContext context) {
+  return Row(
+    children: [
+      if(faves.isEmpty)
+      Icon(Icons.favorite),
+      if(faves.isEmpty)
+      SizedBox(width: 16,),
+      if(faves.isEmpty)
         Text('No saved Locations so far'),
-        if(faves.isNotEmpty)
-        ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: faves.length,
-          itemBuilder: (context, i)
-          {
-            FavoriteLocation f = faves[i];
-            ActionChip(
-              label: Text(f.name),
-            );
-          }
+      if(faves.isNotEmpty)
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: faves.map((f) => Padding(
+                padding: EdgeInsets.only(right: 8.0),
+                child: IntrinsicWidth(
+                  child: ActionChip(
+                    label: Text(f.name, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer),),
+                    disabledColor: Theme.of(context).colorScheme.tertiaryContainer,
+                    onPressed: () => {Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ConnectionsPageAndroid(
+                ConnectionsPage(
+                  from: Location(
+                    id: '',
+                    latitude: 0,
+                    longitude: 0,
+                    name: '',
+                    type: '',
+                  ),
+                  to: f.location,
+                  services: widget.page.service,
+                ),
+              ),
+            ),
+          )},
+                  ),
+                ),
+              )).toList(),
+            ),
           ),
-      ],
-    );
-  }
+        ),
+    ],
+  );
+}
 
 
   Widget _stationResult(BuildContext context, Station station) {
@@ -1014,6 +1039,30 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                     color: colors.onSurfaceVariant,
                   ),
                 ),
+              ),
+
+              IconButton(
+                icon: Icon(Icons.favorite_border),
+                onPressed: () => showDialog(context: context, builder: (BuildContext context)
+                {
+                  TextEditingController c = new TextEditingController();
+                  return AlertDialog(
+                    title: Text('Save Location'),
+                    content: 
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Give the location a name so you can better remember it'),
+                        TextField(controller: c),
+                      ],
+                      
+                    ),
+                    actions: [
+                      TextButton(onPressed: () {Navigator.of(context).pop();}, child: Text('Cancel')),
+                      TextButton(onPressed: () {Localdatasaver.addLocationToFavourites(location, c.text); Navigator.of(context).pop();}, child: Text('Save'))
+                    ],
+                  );
+                })
               ),
 
               // Chevron affordance
