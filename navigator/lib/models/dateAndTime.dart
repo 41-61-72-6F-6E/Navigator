@@ -18,6 +18,30 @@ class DateAndTime {
     required this.timeZoneHourShift,
     required this.timeZoneMinuteShift
   });
+
+  Map<String, dynamic> toJson()
+  {
+    return {
+      'day': day,
+      'month' : month,
+      'year' : year,
+      'hour' : hour,
+      'minute' : minute,
+      'timeZoneHourShift' : timeZoneHourShift,
+      'timeZoneMinuteShift' : timeZoneMinuteShift
+    };
+  }
+
+  factory DateAndTime.fromJson(Map<String, dynamic> json)
+  {
+    return DateAndTime(day: json['day'] as int, 
+    month: json['month'] as int, 
+    year: json['year'] as int, 
+    hour: json['hour'] as int, 
+    minute: json['minute'] as int, 
+    timeZoneHourShift: json['timeZoneHourShift'] as int, 
+    timeZoneMinuteShift: json['timeZoneMinuteShift'] as int);
+  }
   
   String ISO8601String() {
     String y = year.toString().padLeft(4, '0');
