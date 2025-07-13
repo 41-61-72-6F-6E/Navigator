@@ -977,6 +977,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                   ],
                 ),
               ),
+              buildFavouriteButton(context, station),
 
               // Trailing chevron
               Icon(Icons.chevron_right, color: colors.onSurfaceVariant),

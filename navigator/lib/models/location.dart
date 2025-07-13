@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:navigator/models/station.dart';
 
 class Location {
   final String type;
@@ -18,6 +19,11 @@ class Location {
   });
   
   factory Location.fromJson(Map<String, dynamic> json) {
+
+    if(json.containsKey('products') || json.containsKey('ril100Ids'))
+    {
+      return Station.fromJson(json);
+    }
     return Location(
       type: json['type'],
       id: json['id'],
