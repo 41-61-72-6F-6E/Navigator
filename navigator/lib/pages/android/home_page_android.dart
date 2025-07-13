@@ -832,7 +832,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                 child: IntrinsicWidth(
                   child: ActionChip(
                     label: Text(f.name, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer),),
-                    disabledColor: Theme.of(context).colorScheme.tertiaryContainer,
+                    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
                     onPressed: () => {Navigator.push(
             context,
             MaterialPageRoute(
@@ -857,6 +857,8 @@ class _HomePageAndroidState extends State<HomePageAndroid>
             ),
           ),
         ),
+
+        IconButton(onPressed: (){}, icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary,))
     ],
   );
 }
