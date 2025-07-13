@@ -18,6 +18,19 @@ class Localdatasaver {
       print('Error saving to preferences: $e');
     }
   }
+
+  static Future<void> removeFavouriteLocation(FavoriteLocation l) async
+  {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<FavoriteLocation> faves = await getFavouriteLocations();
+    faves.removeWhere((fave) => fave.location.id == l.location.id);
+    List<String> favesJson = [];
+    for(FavoriteLocation lo in faves)
+    {
+      favesJson.add(jsonEncode(lo));
+    }
+    prefs.setStringList(favesListKey, favesJson);
+  }
  
   static Future<List<FavoriteLocation>> getFavouriteLocations() async {
     try {

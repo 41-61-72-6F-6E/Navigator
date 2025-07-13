@@ -1041,7 +1041,47 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                 ),
               ),
 
-              IconButton(
+              buildFavouriteButton(context, location),
+              // Chevron affordance
+              Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
+  Widget buildFavouriteButton(BuildContext context, Location location){
+
+    bool alreadyFave = false;
+    FavoriteLocation? thatFave;
+    for(int i = 0; i < faves.length; i++)
+    {
+      if(faves[i].location.id == location.id)
+      {
+        print(location.id);
+        print(faves[i].location.id);
+        alreadyFave = true;
+        thatFave = faves[i];
+      }
+    }
+
+    if(alreadyFave)
+    {
+      return IconButton(
+                icon: Icon(Icons.favorite),
+                onPressed: () => 
+                {
+                  setState(() {
+                    faves.remove(thatFave);
+                    Localdatasaver.removeFavouriteLocation(thatFave!);
+                  })
+                });
+    }
+
+    
+    return IconButton(
                 icon: Icon(Icons.favorite_border),
                 onPressed: () => showDialog(context: context, builder: (BuildContext context)
                 {
@@ -1059,18 +1099,18 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                     ),
                     actions: [
                       TextButton(onPressed: () {Navigator.of(context).pop();}, child: Text('Cancel')),
-                      TextButton(onPressed: () {Localdatasaver.addLocationToFavourites(location, c.text); Navigator.of(context).pop();}, child: Text('Save'))
+                      TextButton(onPressed: () async {
+                        Localdatasaver.addLocationToFavourites(location, c.text); 
+                        List<FavoriteLocation> updatedFaves = await Localdatasaver.getFavouriteLocations();
+                        setState(() {
+                          faves = updatedFaves;
+                        });
+                        Navigator.of(context).pop();
+                        }, 
+                        child: Text('Save'))
                     ],
                   );
                 })
-              ),
-
-              // Chevron affordance
-              Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
-            ],
-          ),
-        ),
-      ),
-    );
+              );
   }
 }
