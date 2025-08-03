@@ -13,6 +13,7 @@ import 'package:navigator/models/remark.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/services/localDataSaver.dart';
 
 import 'package:navigator/services/overpassApi.dart';
 import 'package:navigator/services/overpassApi.dart' as overpassApi;
@@ -33,13 +34,14 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     with SingleTickerProviderStateMixin {
   late AlignOnUpdate _alignPositionOnUpdate;
   late final StreamController<double?> _alignPositionStreamController;
+  bool _isSaved = false;
 
   // Sheet controller for the draggable bottom sheet
   final DraggableScrollableController _sheetController =
       DraggableScrollableController();
 
   // Sheet size constants
-  static const double _minChildSize = 0.1;
+  static const double _minChildSize = 0.15;
   static const double _maxChildSize = 1.0;
   static const double _initialChildSize = 0.6;
 
@@ -60,6 +62,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     _alignPositionOnUpdate = AlignOnUpdate.never;
     _alignPositionStreamController = StreamController<double?>();
     _initializeLocationTracking();
+    updateIsSaved();
   }
 
   @override
@@ -70,6 +73,20 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     _geolocatorSubscription?.cancel();
     _alignPositionStreamController.close();
     super.dispose();
+  }
+
+  Future<void> updateIsSaved() async
+  {
+    List<String> refreshTokens = await Localdatasaver.getSavedJourneyRefreshTokens();
+    if (refreshTokens.contains(widget.journey.refreshToken)) {
+      setState(() {
+        _isSaved = true;
+      });
+    } else {
+      setState(() {
+        _isSaved = false;
+      });
+    }
   }
 
   void animatedMapMove(LatLng destLocation, double destZoom) {
@@ -198,48 +215,64 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
         minChildSize: _minChildSize,
         maxChildSize: _maxChildSize,
         snap: true,
-        snapSizes: const [0.1, 0.4, 0.6, 1],
+        snapSizes: [0.15, 0.4, 0.6, 1],
         builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onVerticalDragUpdate: (details) {
+              final fractionDelta = details.primaryDelta! / MediaQuery.of(context).size.height;
+              final newSize = (_sheetController.size - fractionDelta).clamp(
+                _minChildSize,
+                _maxChildSize,
+              );
+              _sheetController.jumpTo(newSize);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    spreadRadius: 0,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildSheetHandle(context),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 24.0),
-                        child: Text('Journey Details', style: Theme.of(context).textTheme.headlineSmall,),
-                      ),
+                child: Column(
+                  children: [
+                    _buildSheetHandle(context),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0, left: 24, right: 24),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Journey Details', style: Theme.of(context).textTheme.headlineSmall,),
+                              ),
+                              if(!_isSaved)
+                              FilledButton.tonalIcon(onPressed: () => {
+                                Localdatasaver.saveJourney(widget.journey.refreshToken),
+                                updateIsSaved()
+                              }, label: Text('Save Journey'), icon: const Icon(Icons.bookmark_outline)),
+                              if(_isSaved)
+                              FilledButton.tonalIcon(onPressed: () => {
+                                Localdatasaver.removeSavedJourney(widget.journey.refreshToken),
+                                updateIsSaved()
+                              }, label: Text('Journey Saved'), icon: const Icon(Icons.bookmark)),
+                            ],
+                          ),
+                        ),
+                    Expanded(
+                      child: _buildJourneyContent(context, scrollController),
                     ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Row(children: [
-                    Icon(Icons.bookmark_outline),
-                    Text('Save Journey', style: Theme.of(context).textTheme.bodyMedium,),
-                    Spacer(),
-                    Switch(value: false, onChanged: (value) {
-                      
-                    },),
-                  ],),
+                  ],
                 ),
-                Expanded(
-                  child: _buildJourneyContent(context, scrollController),
-                ),
-              ],
+              
             ),
           );
         },
@@ -248,33 +281,21 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   }
 
   Widget _buildSheetHandle(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 12),
-        GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onVerticalDragUpdate: (details) {
-            final fractionDelta =
-                details.primaryDelta! / MediaQuery.of(context).size.height;
-            final newSize = (_sheetController.size - fractionDelta).clamp(
-              _minChildSize,
-              _maxChildSize,
-            );
-            _sheetController.jumpTo(newSize);
-          },
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.outline,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
+  return Column(
+    children: [
+      const SizedBox(height: 12),
+      Container(
+        width: 40,
+        height: 4,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.outline,
+          borderRadius: BorderRadius.circular(2),
         ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
+      ),
+      const SizedBox(height: 16),
+    ],
+  );
+}
 
   Widget _buildJourneyContent(
     BuildContext context,
