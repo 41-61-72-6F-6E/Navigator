@@ -218,6 +218,24 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             child: Column(
               children: [
                 _buildSheetHandle(context),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 24.0),
+                        child: Text('Journey Details', style: Theme.of(context).textTheme.headlineSmall,),
+                      ),
+                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(children: [
+                    Icon(Icons.bookmark_outline),
+                    Text('Save Journey', style: Theme.of(context).textTheme.bodyMedium,),
+                    Spacer(),
+                    Switch(value: false, onChanged: (value) {
+                      
+                    },),
+                  ],),
+                ),
                 Expanded(
                   child: _buildJourneyContent(context, scrollController),
                 ),

@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:navigator/models/favouriteLocation.dart';
+import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart';
+import 'package:navigator/models/savedJourney.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Localdatasaver {
   static const String favesListKey = 'favesList';
- 
+  static const String savedJourneysKey = 'savedJourneys';
+
   static Future<void> addLocationToFavourites(Location location, String name) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -58,4 +61,30 @@ class Localdatasaver {
       return [];
     }
   }
+
+  static Future<void> saveJourney(String refreshToken) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      List<String> savedJourneys = prefs.getStringList(savedJourneysKey) ?? [];
+      savedJourneys.add(refreshToken);
+      await prefs.setStringList(savedJourneysKey, savedJourneys);
+    }
+    catch (e) {
+      print('Error saving journey: $e');
+    }
+  }
+
+  static Future<void> removeSavedJourney(String refreshToken) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> savedJourneys = prefs.getStringList(savedJourneysKey) ?? [];
+    savedJourneys.remove(refreshToken);
+    prefs.setStringList(savedJourneysKey, savedJourneys);
+  }
+
+  static Future<List<String>> getSavedJourneyRefreshTokens() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getStringList(savedJourneysKey) ?? [];
+  }
+
 }
+
