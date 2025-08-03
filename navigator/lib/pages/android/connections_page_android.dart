@@ -7,6 +7,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
+import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
@@ -241,13 +242,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: colors.surfaceContainerHighest,
-        destinations: [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
-        ],
-      ),
+            bottomNavigationBar: SharedBottomNavigation(),
     );
   }
 

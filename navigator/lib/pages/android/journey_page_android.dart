@@ -10,6 +10,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/remark.dart';
+import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
 import 'package:navigator/models/station.dart';
@@ -203,7 +204,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       body: Stack(
         children: [_buildMapView(context), _buildDraggableSheet(context)],
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
+            bottomNavigationBar: SharedBottomNavigation(),
     );
   }
 
@@ -1781,15 +1782,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildBottomNavigation() {
-    return NavigationBar(
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-        NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
-      ],
     );
   }
 

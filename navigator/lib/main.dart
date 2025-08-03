@@ -1,5 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
+import 'package:navigator/pages/main_navigation_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
@@ -94,8 +95,11 @@ class MyApp extends StatelessWidget {
             ? _enhanceColorScheme(darkDynamic)
             : _generateCustomColorScheme(Colors.blue, Brightness.dark);
 
+        final NavigationService _navService = NavigationService();
+
         return MaterialApp(
           title: 'Navigator',
+          navigatorKey: _navService.navigatorKey,
           themeMode: ThemeMode.system,
           theme: ThemeData(
             useMaterial3: true,
@@ -109,7 +113,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
             textTheme: GoogleFonts.robotoTextTheme(),
           ),
-          home: HomePage(),
+          home: MainNavigationPage(),
         );
       },
     );

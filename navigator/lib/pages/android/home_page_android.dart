@@ -4,6 +4,7 @@ import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/pages/android/connections_page_android.dart';
+import 'package:navigator/pages/android/savedJourneys_page_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/models/station.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
@@ -802,12 +804,6 @@ class _HomePageAndroidState extends State<HomePageAndroid>
               ],
             ),
           ),
-        ),
-        bottomNavigationBar: NavigationBar(
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-            NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
-          ],
         ),
       ),
     );
