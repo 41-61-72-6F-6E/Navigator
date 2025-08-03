@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
+import 'package:navigator/services/servicesMiddle.dart';
 
 class SavedjourneysPageWindows extends SavedjourneysPage
 {
   SavedjourneysPage page;
   SavedjourneysPageWindows(this.page, {Key? key});
+  ServicesMiddle _servicesMiddle = ServicesMiddle();
 
   
   @override

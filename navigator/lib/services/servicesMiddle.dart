@@ -68,6 +68,18 @@ class ServicesMiddle {
     }
   }
 
+  Future<Journey> refreshJourneyByToken(String refreshToken) async {
+    try {
+      print("Refreshing journey with token: $refreshToken");
+      final refreshedJourney = await dbRest.refreshJourneybyToken(refreshToken);
+      print("Journey refreshed successfully");
+      return refreshedJourney;
+    } catch (e) {
+      print('Error refreshing journey by token: $e');
+      throw Exception('Failed to refresh journey by token: $e');
+    }
+  }
+
   Future<myApp.Location> getCurrentLocation() async {
     try {
       final pos = await geoService.determinePosition();

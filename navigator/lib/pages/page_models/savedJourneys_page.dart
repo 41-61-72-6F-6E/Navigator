@@ -5,12 +5,14 @@ import 'package:navigator/pages/macos/savedJourneys_page_macos.dart';
 import 'package:navigator/pages/web/savedJourneys_page_web.dart';
 import 'package:navigator/pages/windows/savedJourneys_page_windows.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:navigator/services/servicesMiddle.dart';
 
 class SavedjourneysPage extends StatelessWidget{
   List<String> savedJourneyrefreshTokens = [];
 
   final int design = 0; //0 = Android, 1 = ios, 2 = linux, 3 = macos, 4 = web, 5 = windows
-
+  
+  ServicesMiddle services = ServicesMiddle();
 
 
   Future<void> getSavedJourneyRefreshTokens() async {

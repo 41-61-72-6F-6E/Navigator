@@ -112,6 +112,42 @@ class dbApiService {
       rethrow;
     }
   }
+  Future<Journey> refreshJourneybyToken(String token) async {
+    final encodedToken = Uri.encodeComponent(token);
+    final url = 'http://$base_url/journeys/$encodedToken?polylines=true';
+    final uri = Uri.parse(url);
+
+    print('Refreshing journey with token: ${token}');
+    print('Final URI: $uri');
+
+    try {
+      final response = await http.get(uri);
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        if (data is Map<String, dynamic>) {
+          final journeyJson = data['journey'];
+
+          return Journey.parseSingleJourneyResponse(journeyJson);
+        } else {
+          throw FormatException('Unexpected response format: expected a JSON object.');
+        }
+      } else {
+        throw HttpException(
+          'Failed to refresh journey. Status code: ${response.statusCode}',
+          uri: uri,
+        );
+      }
+    } catch (e, stackTrace) {
+      print('Exception in refreshJourney: $e');
+      print('Stack trace: $stackTrace');
+      throw Exception('Could not refresh journey: $e');
+    }
+  }
 
   Future<Journey> refreshJourney(Journey journey) async {
     final encodedToken = Uri.encodeComponent(journey.refreshToken);
