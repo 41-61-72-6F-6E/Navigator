@@ -429,9 +429,21 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.app',
                     ),
+                    // Move all polyline layers here, before the location layers
+                    if(showSubway)
+                      PolylineLayer(polylines: _subwayLines),
+                    if(showLightRail)
+                      PolylineLayer(polylines: _lightRailLines),
+                    if(showTram)
+                      PolylineLayer(polylines: _tramLines),
+                    if(showFerry)
+                      PolylineLayer(polylines: _ferryLines),
+                    if(showFunicular)
+                      PolylineLayer(polylines: _funicularLines),
+
                     CurrentLocationLayer(
                       alignPositionStream: _alignPositionStreamController.stream,
                       alignPositionOnUpdate: _alignPositionOnUpdate,
@@ -446,43 +458,6 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                         headingSectorRadius: 60,
                       ),
                     ),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
-                        child: FloatingActionButton(
-                          shape: const CircleBorder(),
-                          onPressed: () {
-                            // Align the location marker to the center of the map widget
-                            // on location update until user interact with the map.
-                            setState(
-                                  () => _alignPositionOnUpdate = AlignOnUpdate.always,
-                            );
-                            // Align the location marker to the center of the map widget
-                            // and zoom the map to level 18.
-                            _alignPositionStreamController.add(18);
-                          },
-                          child: Icon(
-                            Icons.my_location,
-                            color: colors.tertiary.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if(showSubway)
-                    PolylineLayer(polylines: _subwayLines),
-                    if(showLightRail)
-                    PolylineLayer(polylines: _lightRailLines),
-                    if(showTram)
-                    PolylineLayer(polylines: _tramLines),
-                    // if(showBus)
-                    // PolylineLayer(polylines: _busLines),
-                    // if(showTrolleybus)
-                    // PolylineLayer(polylines: _trolleyBusLines),
-                    if(showFerry)
-                    PolylineLayer(polylines: _ferryLines),
-                    if(showFunicular)
-                    PolylineLayer(polylines: _funicularLines),
                     if (showStationLabels && _currentZoom > 14) // Only show labels when zoomed in enough
                       MarkerLayer(
                         markers: _stations
@@ -610,6 +585,25 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                           );
                         }).toList(),
                       ),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
+                        child: FloatingActionButton(
+                          shape: const CircleBorder(),
+                          onPressed: () {
+                            setState(
+                                  () => _alignPositionOnUpdate = AlignOnUpdate.always,
+                            );
+                            _alignPositionStreamController.add(18);
+                          },
+                          child: Icon(
+                            Icons.my_location,
+                            color: colors.tertiary.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
