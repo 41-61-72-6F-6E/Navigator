@@ -462,7 +462,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              _buildModes(context),
+                              _buildModes(context, savedJourneys.first, Theme.of(context).colorScheme.onPrimary),
                               Spacer(),
                               FilledButton.tonalIcon(
                                 style: FilledButton.styleFrom(
@@ -510,8 +510,62 @@ Future<void> getSavedJourneyRefreshTokens() async {
     );
   }
 
-  Widget _buildModes(BuildContext context) {
-    return Container();
+ Widget _buildModes(BuildContext context, Journey journey, Color color) {
+  List<String> products = [];
+  for (Leg leg in journey.legs) {
+    if (leg.product != null && leg.product!.isNotEmpty) {
+      products.add(leg.product!);
+    }
+  }
+  
+  // Build list of widgets for the row
+  List<Widget> modeWidgets = [];
+  for (int index = 0; index < products.length; index++) {
+    if (index > 0) {
+      // Add chevron between modes
+      modeWidgets.add(Icon(Icons.chevron_right, color: color, size: 20));
+    }
+    modeWidgets.add(Icon(
+      getModeIcon(products[index]).icon,
+      color: color,
+      size: 20,
+    ));
+  }
+  
+  return SizedBox(
+    height: 24,
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: modeWidgets,
+    ),
+  );
+}
+
+  Icon getModeIcon(String mode) {
+    switch (mode.toLowerCase()) {
+      case 'bus':
+        return Icon(Icons.directions_bus);
+      case 'nationalExpress':
+        return Icon(Icons.train);
+      case 'national':
+        return Icon(Icons.train);
+      case 'regional':
+        return Icon(Icons.directions_railway);
+      case 'regionalExpress':
+        return Icon(Icons.directions);
+      case 'suburban':
+        return Icon(Icons.directions_subway);
+      case 'subway':
+        return Icon(Icons.subway);
+      case 'tram':
+        return Icon(Icons.tram);
+      case 'taxi':
+        return Icon(Icons.local_taxi);
+      case 'ferry':
+        return Icon(Icons.directions_boat);
+      default:
+        return Icon(Icons.train);
+    }
   }
 
   Widget _buildJourneysList(BuildContext context) {
@@ -763,7 +817,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                _buildModes(context),
+                                _buildModes(context, journey, Theme.of(context).colorScheme.onPrimaryContainer),
                                 Spacer(),
                                 FilledButton.tonalIcon(
                                   style: FilledButton.styleFrom(
@@ -807,11 +861,38 @@ Future<void> getSavedJourneyRefreshTokens() async {
     );
   }
 
+  String _findHighestMode(Journey journey)
+  {
+    String currentHighest = 'walk';
+    for(Leg l in journey.legs)
+    {
+      if(l.product != null && l.product!.isNotEmpty)
+      {
+        if(modeIsHigher(currentHighest, l.product!))
+        {
+          currentHighest = l.product!;
+        }
+      }
+    }
+    return currentHighest;
+  }
+
+  bool modeIsHigher(String compareMode, String newMode)
+  {
+    List<String> modes = ['walk', 'taxi', 'bus', 'tram', 'ferry', 'subway', 'suburban', 'regional', 'regionalExpress', 'national', 'nationalExpress'];
+    int compareIndex = modes.indexOf(compareMode.toLowerCase());
+    int newIndex = modes.indexOf(newMode.toLowerCase());
+    return newIndex > compareIndex;
+  }
+
   Widget _buildListView(BuildContext context, Journey journey)
   {
     bool delayed = false;
     String timeText = '';
     timeText = generateJourneyTimeText(journey);
+    Icon modeIcon = Icon(Icons.train, color: Theme.of(context).colorScheme.tertiary);
+    String highestMode = _findHighestMode(journey);
+    modeIcon = Icon(getModeIcon(highestMode).icon, color: Theme.of(context).colorScheme.tertiary,);
     if(journey.legs.first.departureDelayMinutes != null || journey.legs.last.arrivalDelayMinutes != null){
       delayed = true;
     }
@@ -880,7 +961,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 // Navigate with the original journey as fallback
               }
             },
-          leading: Icon(Icons.train, color: Theme.of(context).colorScheme.tertiary),
+          leading: modeIcon,
           title: Text(
             '${journey.legs.first.origin.name} - ${journey.legs.last.destination.name}',
             style: Theme.of(context).textTheme.bodySmall!.copyWith(
@@ -916,73 +997,6 @@ Future<void> getSavedJourneyRefreshTokens() async {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    return ListView.builder(
-      itemCount: savedJourneyrefreshTokens.length,
-      itemBuilder: (context, index) {
-        final journey = savedJourneyrefreshTokens[index];
-        return ListTile(
-          title: Text(journey),
-          onTap: () async {
-            // Show loading indicator
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Refreshing journey information...',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-
-            try {
-              // Refresh the journey using the service
-              final refreshedJourney = await widget.page.services
-                  .refreshJourneyByToken(journey);
-
-              // Close the loading dialog
-              Navigator.pop(context);
-
-              // Navigate to journey page with the refreshed journey
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => JourneyPageAndroid(
-                    JourneyPage(journey: refreshedJourney),
-                    journey: refreshedJourney,
-                  ),
-                ),
-              );
-            } catch (e) {
-              // Close the loading dialog
-              Navigator.pop(context);
-
-              // Show error message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Could not refresh journey: ${e.toString()}'),
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                ),
-              );
-
-              // Navigate with the original journey as fallback
-            }
-          },
-        );
-      },
     );
   }
 

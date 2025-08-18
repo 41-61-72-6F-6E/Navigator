@@ -19,6 +19,7 @@ class Leg {
   final String? arrivalPlatform;
   final String? plannedArrivalPlatform;
   final dynamic polyline;
+  final String? product;
 
 
   // Additional fields
@@ -50,6 +51,7 @@ class Leg {
     this.productName,
     this.polyline,
     this.remarks,
+    this.product
   });
 
   factory Leg.fromJson(Map<String, dynamic> json) {
@@ -102,6 +104,7 @@ class Leg {
       productName: safeGetNestedString(json['line'], 'productName'),
       polyline: json['polyline'], // Optional, can be null
       remarks: remarks,
+      product: safeGetNestedString(json['line'], 'product')
     );
   }
 
@@ -126,6 +129,7 @@ class Leg {
       'line': lineName != null || productName != null ? {
         'name': lineName,
         'productName': productName,
+        'product': product
       } : null,
       if (polyline != null) 'polyline': polyline,
     };
