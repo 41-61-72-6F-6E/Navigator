@@ -536,6 +536,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
 
     return Expanded(
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(16),
@@ -549,7 +550,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
               _buildCardView(context, journey) :
               _buildListView(context, journey);
           }
-      )),
+              )),
     );
 
 
@@ -739,19 +740,21 @@ Future<void> getSavedJourneyRefreshTokens() async {
                         ),
                                   ),
                                       SizedBox(width: 8),
-                                      Text(
-                                              timeText,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium!
-                                                  .copyWith(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.onPrimaryContainer,
-                                                    fontWeight: FontWeight.bold
-                                                  ),
-                                              overflow: TextOverflow.ellipsis,
-                                            )
+                                      Flexible(
+                                        child: Text(
+                                                timeText,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium!
+                                                    .copyWith(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.onPrimaryContainer,
+                                                      fontWeight: FontWeight.bold
+                                                    ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                      )
                                     ],
                                   ),
                                 ],
