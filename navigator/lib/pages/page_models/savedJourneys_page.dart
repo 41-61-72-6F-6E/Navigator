@@ -10,7 +10,6 @@ import 'package:navigator/services/servicesMiddle.dart';
 class SavedjourneysPage extends StatefulWidget {
   int design;
   SavedjourneysPage({Key? key, this.design = 0}) : super(key: key);
-  List<String> savedJourneyrefreshTokens = [];
   ServicesMiddle services = ServicesMiddle();
 
   @override
@@ -28,7 +27,6 @@ List<String> savedJourneyrefreshTokensState = [];
 
   Future<void> getSavedJourneyRefreshTokens() async {
     savedJourneyrefreshTokensState = await Localdatasaver.getSavedJourneyRefreshTokens();
-    widget.savedJourneyrefreshTokens = savedJourneyrefreshTokensState;
     setState(() {}); 
   }
 

@@ -24,6 +24,10 @@ class _SavedjourneysPageAndroidState extends State<SavedjourneysPageAndroid> {
   List<Journey> savedJourneys = [];
   bool isLoading = false;
   bool isRefreshing = false;
+  bool cardView = true;
+  Color successColor = Color.fromARGB(255, 195, 230, 183);
+  Color onSuccessColor = Color.fromARGB(255, 50, 70, 42);
+  Color successIconColor = Color.fromARGB(255, 91, 128, 77);
 
   @override
 void didUpdateWidget(SavedjourneysPageAndroid oldWidget) {
@@ -31,6 +35,17 @@ void didUpdateWidget(SavedjourneysPageAndroid oldWidget) {
   // Force reload when widget updates
   WidgetsBinding.instance.addPostFrameCallback((_) {
     getSavedJourneyRefreshTokens();
+    Brightness brightness = Theme.of(context).brightness;
+    if(brightness == Brightness.dark)
+    {
+      successColor = Color(0xFF1C2717);
+      onSuccessColor = Color.fromARGB(255, 195, 230, 183);
+    }
+    else
+    {
+      successColor = Color.fromARGB(255, 195, 230, 183);
+      onSuccessColor = Color(0xFF1C2717);
+    }
   });
 }
 
@@ -113,6 +128,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
         if(savedJourneys.isNotEmpty)
         _buildNextJourney(context),
         _buildJourneysList(context),
+        SizedBox(height: 8),
       ],
     );
   }
@@ -133,6 +149,28 @@ Future<void> getSavedJourneyRefreshTokens() async {
                   // Implement filter functionality here
                 },
               ),
+            ),
+            if(cardView)
+            Tooltip(
+              message: "Switch to list view",
+              child: IconButton(
+                onPressed: () => {
+                  setState(() {
+                    cardView = false;
+                  })
+                }, 
+                icon: Icon(Icons.list))
+            ),
+            if(!cardView)
+            Tooltip(
+              message: "Switch to card view",
+              child: IconButton(
+                onPressed: () => {
+                  setState(() {
+                    cardView = true;
+                  })
+                }, 
+                icon: Icon(Icons.view_agenda_outlined))
             ),
           ],
         );
@@ -176,11 +214,11 @@ Future<void> getSavedJourneyRefreshTokens() async {
     }
     Color delayColor = delayed
         ? Theme.of(context).colorScheme.errorContainer
-        : Theme.of(context).colorScheme.primaryContainer;
+        : successColor;
     
     Color onDelayColor = delayed
         ? Theme.of(context).colorScheme.onErrorContainer
-        : Theme.of(context).colorScheme.onPrimaryContainer;
+        : onSuccessColor;
 
 
     return GestureDetector(
@@ -254,206 +292,213 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
                 child: Text(
                   'Next Journey',
-                  style: Theme.of(context).textTheme.headlineLarge,
+                  style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+                  
                 ),
               ),
-              Card(
+              Material(
+                borderRadius: BorderRadius.circular(16),
                 elevation: 10,
-                color: Theme.of(context).colorScheme.primary,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: IntrinsicHeight(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Flexible(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.trip_origin,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                  SizedBox(width: 8),
-                                  savedJourneys.isNotEmpty
-                                      ? Flexible(
-                                        child: Text(
-                                          maxLines: 2,
-                                            savedJourneys.first.legs.first.origin.name,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                      )
-                                      : Flexible(
-                                        child: Text(
-                                            'No saved journeys',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                      ),
-                                ],
-                              ),
-                              
-                              SvgPicture.asset("assets/Icon/go_to_line.svg",
-                              width: 24,
-                              height: 24,
-                              colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.onPrimary,
-                      BlendMode.srcIn,
-                    ),
-                              ),
-                              
-                              Row(
-                                children: [
-                                  SvgPicture.asset("assets/Icon/distance.svg",
-                              width: 24,
-                              height: 24,
-                              colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.onPrimary,
-                      BlendMode.srcIn,
-                    ),
-                              ),
-                                  SizedBox(width: 8),
-                                  savedJourneys.isNotEmpty
-                                      ? Flexible(
-                                        child: Text(
-                                          maxLines: 2,
-                                            savedJourneys
-                                                .first
-                                                .legs
-                                                .last
-                                                .destination
-                                                .name,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                      )
-                                      : Flexible(
-                                        child: Text(
-                                            'No saved journeys',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                      ),
-                                ],
-                              ),
-                              SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  SvgPicture.asset("assets/Icon/calendar_clock.svg",
-                              width: 24,
-                              height: 24,
-                              colorFilter: ColorFilter.mode(
-                      Theme.of(context).colorScheme.onPrimary,
-                      BlendMode.srcIn,
-                    ),
-                              ),
-                                  SizedBox(width: 8),
-                                  savedJourneys.isNotEmpty
-                                      ? Text(
-                                          timeText,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium!
-                                              .copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onPrimary,
-                                                fontWeight: FontWeight.bold
-                                              ),
-                                          overflow: TextOverflow.ellipsis,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.trip_origin,
+                                      color: Theme.of(context).colorScheme.onPrimary,
+                                    ),
+                                    SizedBox(width: 8),
+                                    savedJourneys.isNotEmpty
+                                        ? Flexible(
+                                          child: Text(
+                                            maxLines: 2,
+                                              savedJourneys.first.legs.first.origin.name,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium!
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimary,
+                                                    fontWeight: FontWeight.bold
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                         )
-                                      : Text(
-                                          'No saved journeys',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium!
-                                              .copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onPrimary,
-                                              ),
-                                          overflow: TextOverflow.ellipsis,
+                                        : Flexible(
+                                          child: Text(
+                                              'No saved journeys',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium!
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimary,
+                                                    fontWeight: FontWeight.bold
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                         ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                                
+                                SvgPicture.asset("assets/Icon/go_to_line.svg",
+                                width: 24,
+                                height: 24,
+                                colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
+                                ),
+                                
+                                Row(
+                                  children: [
+                                    SvgPicture.asset("assets/Icon/distance.svg",
+                                width: 24,
+                                height: 24,
+                                colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
+                                ),
+                                    SizedBox(width: 8),
+                                    savedJourneys.isNotEmpty
+                                        ? Flexible(
+                                          child: Text(
+                                            maxLines: 2,
+                                              savedJourneys
+                                                  .first
+                                                  .legs
+                                                  .last
+                                                  .destination
+                                                  .name,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium!
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimary,
+                                                    fontWeight: FontWeight.bold
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        )
+                                        : Flexible(
+                                          child: Text(
+                                              'No saved journeys',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium!
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimary,
+                                                    fontWeight: FontWeight.bold
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    SvgPicture.asset("assets/Icon/calendar_clock.svg",
+                                width: 24,
+                                height: 24,
+                                colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
+                                ),
+                                    SizedBox(width: 8),
+                                    savedJourneys.isNotEmpty
+                                        ? Text(
+                                            timeText,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium!
+                                                .copyWith(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.onPrimary,
+                                                  fontWeight: FontWeight.bold
+                                                ),
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : Text(
+                                            'No saved journeys',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium!
+                                                .copyWith(
+                                                  color: Theme.of(
+                                                    context,
+                                                  ).colorScheme.onPrimary,
+                                                ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              _buildModes(context),
+                              Spacer(),
+                              FilledButton.tonalIcon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .errorContainer,
+                                ),
+                                onPressed: () => {},
+                                label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer,
+                                    )),
+                                iconAlignment: IconAlignment.end,
+                                icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
+                                width: 24,
+                                height: 24,
+                                colorFilter: ColorFilter.mode(
+                                              Theme.of(context).colorScheme.onErrorContainer,
+                                              BlendMode.srcIn,
+                                            ),
+                                ),
+                                ),
+                              
+                              FilledButton.tonalIcon(onPressed: ()=>{}, 
+                                label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
+                                iconAlignment: IconAlignment.end,
+                                icon: Icon(Icons.more_time, color: onDelayColor,),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: delayColor,
+                                ),
+                              )
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            _buildModes(context),
-                            Spacer(),
-                            FilledButton.tonalIcon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .errorContainer,
-                              ),
-                              onPressed: () => {},
-                              label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
-                                  )),
-                              iconAlignment: IconAlignment.end,
-                              icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
-                              width: 24,
-                              height: 24,
-                              colorFilter: ColorFilter.mode(
-                                            Theme.of(context).colorScheme.onErrorContainer,
-                                            BlendMode.srcIn,
-                                          ),
-                              ),
-                              ),
-                            
-                            FilledButton.tonalIcon(onPressed: ()=>{}, 
-                              label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
-                              iconAlignment: IconAlignment.end,
-                              icon: Icon(Icons.more_time, color: onDelayColor,),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: delayColor,
-                              ),
-                            )
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -488,7 +533,387 @@ Future<void> getSavedJourneyRefreshTokens() async {
         ),
       );
     }
-    return Container();
+
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListView.builder(
+          itemCount: journeys.length,
+          itemBuilder: (context, index)
+          {
+            final journey = journeys[index];
+            return cardView ?
+              _buildCardView(context, journey) :
+              _buildListView(context, journey);
+          }
+      )),
+    );
+
+
+  }
+
+  Widget _buildCardView(BuildContext context, Journey  journey)
+  {
+    bool delayed = false;
+    String delayText = 'no delays';
+    String timeText = '';
+    timeText = generateJourneyTimeText(journey);
+    if(journey.legs.first.departureDelayMinutes != null){
+      delayed = true;
+      delayText = 'Departure delayed';
+    }
+    if(journey.legs.last.arrivalDelayMinutes != null){
+      if(delayed)
+      {
+        delayText = 'Delayed';
+      }
+      else{
+        delayed = true;
+        delayText = 'Arrival delayed';
+      }
+    }
+    
+    Color delayColor = delayed
+        ? Theme.of(context).colorScheme.errorContainer
+        : successColor;
+    
+    Color onDelayColor = delayed
+        ? Theme.of(context).colorScheme.onErrorContainer
+        : onSuccessColor;
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GestureDetector(
+        onTap: () async {
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Refreshing journey information...',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+      
+              try {
+                // Refresh the journey using the service
+                final refreshedJourney = await widget.page.services
+                    .refreshJourneyByToken(journey.refreshToken);
+      
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Navigate to journey page with the refreshed journey
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => JourneyPageAndroid(
+                      JourneyPage(journey: refreshedJourney),
+                      journey: refreshedJourney,
+                    ),
+                  ),
+                ).then((_) {
+                  getSavedJourneyRefreshTokens();
+                });
+              } catch (e) {
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Show error message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Could not refresh journey: ${e.toString()}'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+      
+                // Navigate with the original journey as fallback
+              }
+            },
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.trip_origin,
+                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Flexible(
+                                            child: Text(
+                                              maxLines: 2,
+                                                journey.legs.first.origin.name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium!
+                                                    .copyWith(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.onPrimaryContainer,
+                                                      fontWeight: FontWeight.bold
+                                                    ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                          )
+                                    ],
+                                  ),
+                                  
+                                  SvgPicture.asset("assets/Icon/go_to_line.svg",
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                          Theme.of(context).colorScheme.onPrimaryContainer,
+                          BlendMode.srcIn,
+                        ),
+                                  ),
+                                  
+                                  Row(
+                                    children: [
+                                      SvgPicture.asset("assets/Icon/distance.svg",
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                          Theme.of(context).colorScheme.onPrimaryContainer,
+                          BlendMode.srcIn,
+                        ),
+                                  ),
+                                      SizedBox(width: 8),
+                                      Flexible(
+                                            child: Text(
+                                              maxLines: 2,
+                                                journey
+                                                    .legs
+                                                    .last
+                                                    .destination
+                                                    .name,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium!
+                                                    .copyWith(
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.onPrimaryContainer,
+                                                      fontWeight: FontWeight.bold
+                                                    ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                          )
+                                    ],
+                                  ),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      SvgPicture.asset("assets/Icon/calendar_clock.svg",
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                          Theme.of(context).colorScheme.onPrimaryContainer,
+                          BlendMode.srcIn,
+                        ),
+                                  ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                              timeText,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium!
+                                                  .copyWith(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimaryContainer,
+                                                    fontWeight: FontWeight.bold
+                                                  ),
+                                              overflow: TextOverflow.ellipsis,
+                                            )
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                _buildModes(context),
+                                Spacer(),
+                                FilledButton.tonalIcon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .errorContainer,
+                                  ),
+                                  onPressed: () => {},
+                                  label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onErrorContainer,
+                                      )),
+                                  iconAlignment: IconAlignment.end,
+                                  icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                                                Theme.of(context).colorScheme.onErrorContainer,
+                                                BlendMode.srcIn,
+                                              ),
+                                  ),
+                                  ),
+                                
+                                FilledButton.tonalIcon(onPressed: ()=>{}, 
+                                  label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
+                                  iconAlignment: IconAlignment.end,
+                                  icon: Icon(Icons.more_time, color: onDelayColor,),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: delayColor,
+                                  ),
+                                )
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+      ),
+    );
+  }
+
+  Widget _buildListView(BuildContext context, Journey journey)
+  {
+    bool delayed = false;
+    String timeText = '';
+    timeText = generateJourneyTimeText(journey);
+    if(journey.legs.first.departureDelayMinutes != null || journey.legs.last.arrivalDelayMinutes != null){
+      delayed = true;
+    }
+    
+    Color onDelayColor = delayed
+        ? Theme.of(context).colorScheme.onErrorContainer
+        : successIconColor;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          onTap: () async {
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Refreshing journey information...',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+      
+              try {
+                // Refresh the journey using the service
+                final refreshedJourney = await widget.page.services
+                    .refreshJourneyByToken(journey.refreshToken);
+      
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Navigate to journey page with the refreshed journey
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => JourneyPageAndroid(
+                      JourneyPage(journey: refreshedJourney),
+                      journey: refreshedJourney,
+                    ),
+                  ),
+                ).then((_) {
+                  getSavedJourneyRefreshTokens();
+                });
+              } catch (e) {
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Show error message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Could not refresh journey: ${e.toString()}'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+      
+                // Navigate with the original journey as fallback
+              }
+            },
+          leading: Icon(Icons.train, color: Theme.of(context).colorScheme.tertiary),
+          title: Text(
+            '${journey.legs.first.origin.name} - ${journey.legs.last.destination.name}',
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.bold
+                ),
+          ),
+          subtitle: Text(
+            timeText,
+            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            IconButton(onPressed: ()=>{}, icon: Icon(Icons.more_time), color: onDelayColor,),
+            IconButton(onPressed: ()=>{}, icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
+                                      width: 24,
+                                      height: 24,
+                                      colorFilter: ColorFilter.mode(
+                                                    Theme.of(context).colorScheme.onErrorContainer,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                      ),)
+          ],),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Divider(
+            color: Theme.of(context).colorScheme.outline,
+            thickness: 1,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildBody(BuildContext context) {
