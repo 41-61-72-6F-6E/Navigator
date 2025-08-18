@@ -35,7 +35,8 @@ class Overpassapi {
       final data = jsonDecode(response.body);
       return parseSubwayLinesFromOverpass(data);
     } else {
-      throw Exception('Failed to fetch Overpass data');
+      return List<SubwayLine>.empty();
+      //throw Exception('Failed to fetch Overpass data');
     }
   }
 

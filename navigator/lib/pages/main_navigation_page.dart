@@ -51,14 +51,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   // These page instances are created once and reused
   // This is what preserves the state!
   late final List<Widget> _pages;
-
+  GlobalKey<SavedjourneysPageState> savedJourneysKey = GlobalKey();
   @override
   void initState() {
     super.initState();
+    savedJourneysKey = GlobalKey();
     // Create pages once - they'll keep their state
     _pages = [
       HomePage(),                                    // Tab 0: Home
-      SavedjourneysPage(), // Tab 1: Saved
+      SavedjourneysPage(key:savedJourneysKey), // Tab 1: Saved
     ];
   }
 
@@ -80,6 +81,9 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             onDestinationSelected: (index) {
               // When user taps a tab, update the service
               _navService.setTab(index);
+              setState(() {
+                _pages[1] = SavedjourneysPage(key: GlobalKey());
+              });
             },
             destinations: const [
               NavigationDestination(icon: Icon(Icons.home), label: 'Home'),

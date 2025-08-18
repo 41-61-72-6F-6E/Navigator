@@ -74,6 +74,10 @@ flutter:
   assets:
     - assets/Icon/Train_Station_Icon.svg
     - assets/Images/image.png
+    - assets/Icon/go_to_line.svg
+    - assets/Icon/distance.svg
+    - assets/Icon/transit_ticket.svg
+    - assets/Icon/calendar_clock.svg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

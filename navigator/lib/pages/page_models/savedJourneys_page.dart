@@ -7,40 +7,45 @@ import 'package:navigator/pages/windows/savedJourneys_page_windows.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/services/servicesMiddle.dart';
 
-class SavedjourneysPage extends StatelessWidget{
+class SavedjourneysPage extends StatefulWidget {
+  int design;
+  SavedjourneysPage({Key? key, this.design = 0}) : super(key: key);
   List<String> savedJourneyrefreshTokens = [];
-
-  final int design = 0; //0 = Android, 1 = ios, 2 = linux, 3 = macos, 4 = web, 5 = windows
-  
   ServicesMiddle services = ServicesMiddle();
 
+  @override
+  SavedjourneysPageState createState() => SavedjourneysPageState();
+}
+
+class SavedjourneysPageState extends State<SavedjourneysPage> {
+List<String> savedJourneyrefreshTokensState = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getSavedJourneyRefreshTokens();
+  }
 
   Future<void> getSavedJourneyRefreshTokens() async {
-    savedJourneyrefreshTokens = await Localdatasaver.getSavedJourneyRefreshTokens();
+    savedJourneyrefreshTokensState = await Localdatasaver.getSavedJourneyRefreshTokens();
+    widget.savedJourneyrefreshTokens = savedJourneyrefreshTokensState;
+    setState(() {}); 
+  }
+
+  void reloadPage() {
+    print('reloaded');
+    getSavedJourneyRefreshTokens();
   }
 
   @override
   Widget build(BuildContext context) {
-    switch(design)
-    {
-      case 1:
-      return SavedjourneysPageAndroid(this);
-
-      case 2:
-      return SavedjourneysPageLinux(this);
-
-      case 3:
-      return SavedjourneysPageMacos(this);
-
-      case 4:
-      return SavedjourneysPageWeb(this);
-
-      case 5:
-      return SavedjourneysPageWindows(this);
-
-      default:
-      return SavedjourneysPageAndroid(this);
+    switch(widget.design) {
+      case 1: return SavedjourneysPageAndroid(widget, savedJourneyrefreshTokensState);
+      case 2: return SavedjourneysPageLinux(widget);
+      case 3: return SavedjourneysPageMacos(widget);
+      case 4: return SavedjourneysPageWeb(widget);
+      case 5: return SavedjourneysPageWindows(widget);
+      default: return SavedjourneysPageAndroid(widget, savedJourneyrefreshTokensState);
     }
-    
   }
 }
