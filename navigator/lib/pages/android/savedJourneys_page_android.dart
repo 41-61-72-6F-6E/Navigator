@@ -487,7 +487,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                                 ),
                                 ),
                               
-                              FilledButton.tonalIcon(onPressed: ()=>{}, 
+                              FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, savedJourneys.first), 
                                 label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
                                 iconAlignment: IconAlignment.end,
                                 icon: Icon(Icons.more_time, color: onDelayColor,),
@@ -788,7 +788,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                                   ),
                                   ),
                                 
-                                FilledButton.tonalIcon(onPressed: ()=>{}, 
+                                FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, journey), 
                                   label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
                                   iconAlignment: IconAlignment.end,
                                   icon: Icon(Icons.more_time, color: onDelayColor,),
@@ -897,7 +897,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-            IconButton(onPressed: ()=>{}, icon: Icon(Icons.more_time), color: onDelayColor,),
+            IconButton(onPressed: ()=>showDelayInfo(context, journey), icon: Icon(Icons.more_time), color: onDelayColor,),
             IconButton(onPressed: ()=>{}, icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
                                       width: 24,
                                       height: 24,
@@ -984,6 +984,43 @@ Future<void> getSavedJourneyRefreshTokens() async {
         );
       },
     );
+  }
+
+  void showDelayInfo(BuildContext context, Journey journey)
+  {
+    Color arrivalColor = journey.legs.last.arrivalDelayMinutes != null
+        ? Theme.of(context).colorScheme.error
+        : successIconColor;
+
+    Color departureColor = journey.legs.first.departureDelayMinutes != null
+        ? Theme.of(context).colorScheme.error
+        : successIconColor;
+
+    showDialog(context: context, builder: (BuildContext context)
+    {
+      return AlertDialog(
+        title: Text('Delay Information'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Departure Delay: ', style: Theme.of(context).textTheme.bodyMedium,),
+            Text(journey.legs.first.departureDelayMinutes != null ? '${journey.legs.first.departureDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: departureColor),),
+            SizedBox(height: 8),
+            Text('Arrival Delay: ', style: Theme.of(context).textTheme.bodyMedium,),
+            Text(journey.legs.last.arrivalDelayMinutes != null ? '${journey.legs.last.arrivalDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: arrivalColor),),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: Text('Close', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.primary)),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    });
   }
 
   String generateJourneyTimeText(Journey journey)
