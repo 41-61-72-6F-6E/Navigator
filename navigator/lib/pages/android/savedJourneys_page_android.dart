@@ -590,6 +590,8 @@ Future<void> getSavedJourneyRefreshTokens() async {
 
     return Expanded(
       child: Container(
+        padding: cardView ? EdgeInsets.all(0) : EdgeInsets.only(top: 8),
+        
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainer,
@@ -1013,15 +1015,15 @@ Future<void> getSavedJourneyRefreshTokens() async {
     showDialog(context: context, builder: (BuildContext context)
     {
       return AlertDialog(
-        title: Text('Delay Information'),
+        title: Text('Delay Information', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Departure Delay: ', style: Theme.of(context).textTheme.bodyMedium,),
+            Text('Departure Delay: ', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
             Text(journey.legs.first.departureDelayMinutes != null ? '${journey.legs.first.departureDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: departureColor),),
             SizedBox(height: 8),
-            Text('Arrival Delay: ', style: Theme.of(context).textTheme.bodyMedium,),
+            Text('Arrival Delay: ', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
             Text(journey.legs.last.arrivalDelayMinutes != null ? '${journey.legs.last.arrivalDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: arrivalColor),),
           ],
         ),
