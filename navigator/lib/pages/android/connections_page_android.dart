@@ -828,7 +828,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     String plannedDepartureTimeHour = '${j.legs.first.plannedDepartureDateTime.toLocal().hour}'.padLeft(2, '0');
     String plannedDepartureTimeMinute = '${j.legs.first.plannedDepartureDateTime.toLocal().minute}'.padLeft(2,'0');
     String plannedArrivalTimeHour = '${j.legs.last.plannedArrivalDateTime.toLocal().hour}'.padLeft(2, '0');
-    String plannedArrivalTimeMinute ='${j.legs.last.plannedArrivalDateTime.toLocal().hour}'.padLeft(2, '0');
+    String plannedArrivalTimeMinute ='${j.legs.last.plannedArrivalDateTime.toLocal().minute}'.padLeft(2, '0');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: InkWell(
