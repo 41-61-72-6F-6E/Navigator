@@ -12,6 +12,7 @@ import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
+import 'dart:math' as math;
 
 import '../../models/journeySettings.dart';
 
@@ -795,11 +796,21 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
   Widget _buildJourneyCard(BuildContext context, Journey j)
   {
+    int shortestInterchangeInMinutes = 100;
+    bool shouldShowShortInterchange = false;
+    if(getShortestInterchange(j) != null)
+    {
+      shortestInterchangeInMinutes = getShortestInterchange(j)!;
+      if(shortestInterchangeInMinutes <= 5)
+      {
+        shouldShowShortInterchange = true;
+      }
+    }
     String tripDuration = '';
     Duration tripD = j.legs.last.plannedArrivalDateTime.difference(j.legs.first.plannedDepartureDateTime);
     if(tripD.inMinutes < 60)
     {
-      tripDuration = '${tripD.inMinutes} m';
+      tripDuration = '${tripD.inMinutes} min';
     }
     else if(tripD.inHours < 24)
     {
@@ -937,6 +948,23 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           ),
                         ),
                       ),
+                      if(shouldShowShortInterchange)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(16)
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Row(
+                            spacing: 4,
+                            children: [
+                              Icon(Icons.error, size: 16, color: Theme.of(context).colorScheme.onErrorContainer),
+                              Text('short Transfer: $shortestInterchangeInMinutes min', style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Theme.of(context).colorScheme.onErrorContainer),)
+                            ],
+                          ),
+                        )
+                      )
                     ],
                   ),
                   
@@ -949,7 +977,9 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     );
   }
 
-  Widget _buildModeLine(BuildContext context, Journey j) {
+
+
+Widget _buildModeLine(BuildContext context, Journey j) {
   int totalTripDuration = j.legs.last.plannedArrivalDateTime
       .difference(j.legs.first.plannedDepartureDateTime).inSeconds;
   List<String> legNames = [];
@@ -1080,7 +1110,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         String text = legLineNames[index];
         
         // Define minimum widths for showing content
-        const double minWidthForIcon = 32.0; // Need at least 24px for icon
+        const double minWidthForIcon = 24.0; // Need at least 24px for icon
         const double minWidthForText = 60.0; // Need at least 60px for icon + text
         
         bool shouldShowIcon = segmentWidth >= minWidthForIcon;
@@ -1141,32 +1171,40 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         }
         
         return Flexible(
-          flex: legPercentages[index].round(),
+          flex: math.max(legPercentages[index].round(), 1), // Ensure minimum flex of 1
           child: Container(
             height: 32,
             decoration: BoxDecoration(color: color),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: shouldShowIcon 
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          icon.icon,
-                          color: onColor,
-                          size: 16
-                        ),
-                        if(shouldShowTextContent)
-                        Flexible(child: Padding(
-                          padding: const EdgeInsets.only(left: 4.0),
-                          child: Text(text, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onColor, fontWeight: FontWeight.bold) , overflow: TextOverflow.ellipsis,),
-                        ))
-                      ],
-                    )
-                  : null, // Show nothing if segment is too small
-              ),
-            ),
+            child: shouldShowIcon 
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4),
+                    child: shouldShowTextContent 
+                        // Show icon + text in a row
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                icon.icon,
+                                color: onColor,
+                                size: 16
+                              ),
+                              Flexible(child: Padding(
+                                padding: const EdgeInsets.only(left: 4.0),
+                                child: Text(text, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onColor, fontWeight: FontWeight.bold) , overflow: TextOverflow.ellipsis,),
+                              ))
+                            ],
+                          )
+                        // Show only icon, centered
+                        : Icon(
+                            icon.icon,
+                            color: onColor,
+                            size: 16
+                          ),
+                  ),
+                )
+              : Container(), // Empty container if segment is too small
           ),
         );
       }),
@@ -1175,15 +1213,121 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   }));
 }
 
+
+  int? getShortestInterchange(Journey journey) {
+  if (journey.legs.isEmpty) {
+    return null;
+  }
+
+
+
+  List<int> interchangeTimes = [];
+  List<int> transitLegIndices = [];
+
+  // First, identify which legs are actual transit (not walking, not same-station)
+  for (int index = 0; index < journey.legs.length; index++) {
+    final leg = journey.legs[index];
+
+    // Skip walking legs
+    if (leg.isWalking == true) continue;
+
+    // Skip legs that are same-station interchanges (same origin and destination)
+    bool isSameStationInterchange =
+        leg.origin.id == leg.destination.id &&
+        leg.origin.name == leg.destination.name;
+
+    if (!isSameStationInterchange) {
+      transitLegIndices.add(index);
+    }
+  }
+
+  // Check for interchanges between consecutive transit legs
+  for (int i = 1; i < transitLegIndices.length; i++) {
+    final currentLegIndex = transitLegIndices[i];
+    final currentLeg = journey.legs[currentLegIndex];
+    final previousLegIndex = transitLegIndices[i - 1];
+    final previousLeg = journey.legs[previousLegIndex];
+
+    bool shouldCalculateInterchange = false;
+    Leg arrivingLeg = previousLeg;
+    Leg departingLeg = currentLeg;
+
+    // Case 1: Different lines at the same station
+    if (previousLeg.destination.id == currentLeg.origin.id &&
+        previousLeg.destination.name == currentLeg.origin.name &&
+        previousLeg.lineName != currentLeg.lineName) {
+      shouldCalculateInterchange = true;
+    }
+    
+    // Case 2: Same station complex (using RIL100 IDs) but different lines
+    else if (previousLeg.destination.ril100Ids.isNotEmpty &&
+             currentLeg.origin.ril100Ids.isNotEmpty &&
+             _haveSameRil100ID(
+               previousLeg.destination.ril100Ids,
+               currentLeg.origin.ril100Ids,
+             ) &&
+             previousLeg.lineName != currentLeg.lineName) {
+      shouldCalculateInterchange = true;
+    }
+    
+    // Case 3: There are intermediate legs (like same-station interchanges) between transit legs
+    else if (currentLegIndex - previousLegIndex > 1) {
+      // Check if there's a same-station interchange or walking connection between them
+      for (int interchangeIndex = previousLegIndex + 1;
+           interchangeIndex < currentLegIndex;
+           interchangeIndex++) {
+        final interchangeLeg = journey.legs[interchangeIndex];
+
+        // If this is a same-station interchange or connects the two transit legs
+        if ((interchangeLeg.origin.id == interchangeLeg.destination.id &&
+             interchangeLeg.origin.name == interchangeLeg.destination.name) ||
+            (interchangeLeg.origin.id == previousLeg.destination.id &&
+             interchangeLeg.destination.id == currentLeg.origin.id)) {
+          shouldCalculateInterchange = true;
+          break;
+        }
+      }
+    }
+
+    // Calculate interchange time if we should
+    if (shouldCalculateInterchange) {
+      try {
+        final arrivalTime = arrivingLeg.arrivalDateTime;
+        final departureTime = departingLeg.departureDateTime;
+        final interchangeMinutes = departureTime.difference(arrivalTime).inMinutes;
+        
+        // Only consider positive interchange times (sanity check)
+        if (interchangeMinutes > 0) {
+          interchangeTimes.add(interchangeMinutes);
+        }
+      } catch (e) {
+        // Skip this interchange if we can't parse the times
+        print('Error calculating interchange time: $e');
+        continue;
+      }
+    }
+  }
+
+  // Return the shortest interchange time, or null if no interchanges found
+  if (interchangeTimes.isEmpty) {
+    return null;
+  }
+
+  return interchangeTimes.reduce((a, b) => a < b ? a : b);
+}
+
+  
+  
+
   int calculateTotalInterchanges(Journey journey) {
   if (journey.legs.isEmpty) {
     return 0;
   }
 
   int interchangeCount = 0;
-  List<int> actualLegIndices = [];
+  List<int> transitLegIndices = [];
 
-  // First, identify which legs are actual travel vs same-station interchanges
+  // First, identify which legs are actual transit (non-walking) vs same-station interchanges
   for (int index = 0; index < journey.legs.length; index++) {
     final leg = journey.legs[index];
 
@@ -1192,89 +1336,52 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         leg.origin.id == leg.destination.id &&
         leg.origin.name == leg.destination.name;
 
-    if (!isSameStationInterchange) {
-      actualLegIndices.add(index);
+    // Skip walking legs and only include actual transit modes
+    bool isTransitLeg = !isSameStationInterchange && leg.isWalking != true;
+
+    if (isTransitLeg) {
+      transitLegIndices.add(index);
     }
   }
 
-  // Count interchanges between actual legs
-  for (int i = 1; i < actualLegIndices.length; i++) {
-    final legIndex = actualLegIndices[i];
+  // Count interchanges between transit legs only
+  for (int i = 1; i < transitLegIndices.length; i++) {
+    final legIndex = transitLegIndices[i];
     final leg = journey.legs[legIndex];
-    final previousLegIndex = actualLegIndices[i - 1];
+    final previousLegIndex = transitLegIndices[i - 1];
     final previousLeg = journey.legs[previousLegIndex];
 
-    // Check if there's an interchange between this leg and the previous actual leg
+    // Since we're only looking at transit legs, any transition between them
+    // represents a real interchange between different transport modes
     bool shouldCountInterchange = false;
 
     // Case 1: There are legs between previous and current that represent interchanges
     if (legIndex - previousLegIndex > 1) {
-      // Find the interchange leg(s) between them
-      for (int interchangeIndex = previousLegIndex + 1;
-           interchangeIndex < legIndex;
-           interchangeIndex++) {
-        final interchangeLeg = journey.legs[interchangeIndex];
-
-        // If this is a same-station interchange
-        if (interchangeLeg.origin.id == interchangeLeg.destination.id &&
-            interchangeLeg.origin.name == interchangeLeg.destination.name) {
-          shouldCountInterchange = true;
-          break;
-        }
-      }
-    }
-    // Case 2: Direct connection between different modes (e.g., walking to transit)
-    else if (previousLeg.destination.id == leg.origin.id &&
-        previousLeg.destination.name == leg.origin.name &&
-        ((previousLeg.isWalking == true && leg.isWalking != true) ||
-            (previousLeg.isWalking != true && leg.isWalking == true) ||
-            (previousLeg.isWalking != true &&
-                leg.isWalking != true &&
-                previousLeg.lineName != leg.lineName))) {
+      // There are intermediate legs (likely walking or same-station transfers)
+      // This indicates an interchange between different transit modes
       shouldCountInterchange = true;
     }
-
-    // Check if we're in the same station complex - this affects interchange logic
-    bool isWithinStationComplex =
-        previousLeg.destination.ril100Ids.isNotEmpty &&
+    // Case 2: Direct connection between different transit modes
+    else if (previousLeg.destination.id == leg.origin.id &&
+        previousLeg.destination.name == leg.origin.name &&
+        previousLeg.lineName != leg.lineName) {
+      // Different lines at the same station = interchange
+      shouldCountInterchange = true;
+    }
+    // Case 3: Different stations but within same station complex
+    else if (previousLeg.destination.ril100Ids.isNotEmpty &&
         leg.origin.ril100Ids.isNotEmpty &&
         _haveSameRil100ID(
           previousLeg.destination.ril100Ids,
           leg.origin.ril100Ids,
-        );
-
-    // Special handling: If we're in the same station complex, consolidate the interchange
-    if (isWithinStationComplex) {
-      // Look backwards to find the last non-walking leg that brought us to this station complex
-      for (int searchIndex = previousLegIndex;
-           searchIndex >= 0;
-           searchIndex--) {
-        final searchLeg = journey.legs[searchIndex];
-
-        // If this leg's destination is in the same station complex and it's not a walking leg
-        if (searchLeg.isWalking != true &&
-            _haveSameRil100ID(
-              searchLeg.destination.ril100Ids,
-              leg.origin.ril100Ids,
-            )) {
-          // Only count interchange if the current leg is not walking (i.e., we're exiting the station complex)
-          if (leg.isWalking != true) {
-            shouldCountInterchange = true;
-          } else {
-            // This is a walking leg within the station complex, don't count interchange yet
-            shouldCountInterchange = false;
-          }
-          break;
-        }
-      }
+        )) {
+      // Within same station complex but different transit modes = interchange
+      shouldCountInterchange = true;
     }
-
-    // Special case for walking legs leaving a station complex
-    if (!shouldCountInterchange &&
-        leg.isWalking == true &&
-        leg.origin.ril100Ids.isNotEmpty &&
-        (leg.destination.ril100Ids.isEmpty ||
-         !_haveSameRil100ID(leg.origin.ril100Ids, leg.destination.ril100Ids))) {
+    // Case 4: Completely different stations
+    else if (previousLeg.destination.id != leg.origin.id ||
+        previousLeg.destination.name != leg.origin.name) {
+      // Different stations = interchange (with walking in between)
       shouldCountInterchange = true;
     }
 
