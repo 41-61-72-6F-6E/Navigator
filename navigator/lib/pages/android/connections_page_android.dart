@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:navigator/models/journey.dart';
+import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
@@ -612,12 +613,215 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         itemCount: _currentJourneys!.length,
         itemBuilder: (context, i) {
           final r = _currentJourneys![i];
-          return Card(
-            clipBehavior: Clip.hardEdge,
-            shadowColor: Colors.transparent,
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            child: InkWell(
-              onTap: () async {
+          return _buildJourneyCard(context, r);
+          // return Card(
+          //   clipBehavior: Clip.hardEdge,
+          //   shadowColor: Colors.transparent,
+          //   color: Theme.of(context).colorScheme.secondaryContainer,
+          //   child: InkWell(
+          //     onTap: () async {
+          //       // Show loading indicator
+          //       showDialog(
+          //         context: context,
+          //         barrierDismissible: false,
+          //         builder: (context) => AlertDialog(
+          //           content: Column(
+          //             mainAxisSize: MainAxisSize.min,
+          //             children: [
+          //               CircularProgressIndicator(),
+          //               SizedBox(height: 16),
+          //               Text(
+          //                 'Refreshing journey information...',
+          //                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          //               ),
+          //             ],
+          //           ),
+          //         ),
+          //       );
+
+          //       try {
+          //         // Refresh the journey using the service
+          //         final refreshedJourney = await widget.page.services
+          //             .refreshJourney(r);
+
+          //         // Close the loading dialog
+          //         Navigator.pop(context);
+
+          //         // Navigate to journey page with the refreshed journey
+          //         Navigator.push(
+          //           context,
+          //           MaterialPageRoute(
+          //             builder: (context) => JourneyPageAndroid(
+          //               JourneyPage(journey: refreshedJourney),
+          //               journey: refreshedJourney,
+          //             ),
+          //           ),
+          //         );
+          //       } catch (e) {
+          //         // Close the loading dialog
+          //         Navigator.pop(context);
+
+          //         // Show error message
+          //         ScaffoldMessenger.of(context).showSnackBar(
+          //           SnackBar(
+          //             content: Text(
+          //               'Could not refresh journey: ${e.toString()}',
+          //             ),
+          //             backgroundColor: Theme.of(context).colorScheme.error,
+          //           ),
+          //         );
+
+          //         // Navigate with the original journey as fallback
+          //         Navigator.push(
+          //           context,
+          //           MaterialPageRoute(
+          //             builder: (context) => JourneyPageAndroid(
+          //               JourneyPage(journey: r),
+          //               journey: r,
+          //             ),
+          //           ),
+          //         );
+          //       }
+          //     },
+          //     child: Padding(
+          //       padding: EdgeInsets.all(16),
+          //       child: Column(
+          //         children: [
+          //           Row(
+          //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //             children: [
+          //               Column(
+          //                 crossAxisAlignment: CrossAxisAlignment.start,
+          //                 children: [
+          //                   // Planned Departure Time
+          //                   Text(
+          //                     '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
+          //                     style: Theme.of(context).textTheme.titleMedium,
+          //                   ),
+          //                   // Actual Departure Time
+          //                   Text(
+          //                     '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
+          //                     style: Theme.of(context).textTheme.labelSmall!
+          //                         .copyWith(
+          //                           color:
+          //                               r.legs[0].departureDateTime !=
+          //                                   r.legs[0].plannedDepartureDateTime
+          //                               ? Theme.of(context).colorScheme.error
+          //                               : Theme.of(
+          //                                   context,
+          //                                 ).textTheme.labelSmall!.color,
+          //                         ),
+          //                   ),
+          //                 ],
+          //               ),
+          //               Icon(Icons.arrow_forward),
+          //               Column(
+          //                 crossAxisAlignment: CrossAxisAlignment.end,
+          //                 children: [
+          //                   // Planned Arrival Time
+          //                   Text(
+          //                     '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
+          //                     style: Theme.of(context).textTheme.titleMedium,
+          //                   ),
+          //                   // Actual Arrival Time
+          //                   Text(
+          //                     r.legs.last.arrivalDateTime != null
+          //                         ? '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}'
+          //                         : '--:--',
+          //                     style: TextStyle(
+          //                       fontSize: 12,
+          //                       color:
+          //                           r.legs.last.arrivalDateTime !=
+          //                               r.legs.last.plannedArrivalDateTime
+          //                           ? Theme.of(context).colorScheme.error
+          //                           : Theme.of(
+          //                               context,
+          //                             ).textTheme.labelSmall!.color,
+          //                     ),
+          //                   ),
+          //                 ],
+          //               ),
+          //               Column(
+          //                 children: [
+          //                   // Planned Duration
+          //                   Text(
+          //                     r.legs.last.plannedArrivalDateTime
+          //                         .difference(
+          //                           r.legs[0].plannedDepartureDateTime,
+          //                         )
+          //                         .inMinutes
+          //                         .toString(),
+          //                     style: Theme.of(context).textTheme.titleMedium,
+          //                   ),
+          //                   // Actual Duration
+          //                   Text(
+          //                     r.legs.last.arrivalDateTime
+          //                         .difference(r.legs[0].departureDateTime)
+          //                         .inMinutes
+          //                         .toString(),
+          //                   ),
+          //                 ],
+          //               ),
+          //             ],
+          //           ),
+
+          //           Row(
+          //             children: [
+          //               Expanded(child: _buildModeLine(context, r)),
+          //               Row(
+          //                 children: [
+          //                   Text((r.legs.length - 2).toString()),
+          //                   Icon(Icons.transfer_within_a_station),
+          //                 ],
+          //               ),
+          //             ],
+          //           ),
+          //           Row(
+          //             children: [
+          //               Text(
+          //                 'Leave in: ${r.legs[0].departureDateTime.difference(DateTime.now()).inMinutes}',
+          //               ),
+          //             ],
+          //           ),
+          //         ],
+          //       ),
+          //     ),
+          //   ),
+          // );
+        },
+      ),
+    );
+  }
+
+  Widget _buildJourneyCard(BuildContext context, Journey j)
+  {
+    String tripDuration = '';
+    Duration tripD = j.legs.last.plannedArrivalDateTime.difference(j.legs.first.plannedDepartureDateTime);
+    if(tripD.inMinutes < 60)
+    {
+      tripDuration = '${tripD.inMinutes} m';
+    }
+    else if(tripD.inHours < 24)
+    {
+      int minutes = tripD.inMinutes % 60;
+      int hours = ((tripD.inMinutes - minutes) / 60).round();
+      tripDuration = '${hours}h${minutes}m';
+    }
+    else
+    {
+      int minutes = tripD.inMinutes % 60;
+      int hours = ((tripD.inMinutes - minutes) / 60).round() % 24;
+      int days = (((tripD.inMinutes - (hours * 60))-minutes) /24).round();
+      tripDuration = '${days}d${hours}h${minutes}m';
+    }
+    String plannedDepartureTimeHour = '${j.legs.first.plannedDepartureDateTime.toLocal().hour}'.padLeft(2, '0');
+    String plannedDepartureTimeMinute = '${j.legs.first.plannedDepartureDateTime.toLocal().minute}'.padLeft(2,'0');
+    String plannedArrivalTimeHour = '${j.legs.last.plannedArrivalDateTime.toLocal().hour}'.padLeft(2, '0');
+    String plannedArrivalTimeMinute ='${j.legs.last.plannedArrivalDateTime.toLocal().hour}'.padLeft(2, '0');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: InkWell(
+        onTap: () async {
                 // Show loading indicator
                 showDialog(
                   context: context,
@@ -640,7 +844,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                 try {
                   // Refresh the journey using the service
                   final refreshedJourney = await widget.page.services
-                      .refreshJourney(r);
+                      .refreshJourney(j);
 
                   // Close the loading dialog
                   Navigator.pop(context);
@@ -674,125 +878,433 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => JourneyPageAndroid(
-                        JourneyPage(journey: r),
-                        journey: r,
+                        JourneyPage(journey: j),
+                        journey: j,
                       ),
                     ),
                   );
                 }
               },
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Planned Departure Time
-                            Text(
-                              '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            // Actual Departure Time
-                            Text(
-                              '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
-                              style: Theme.of(context).textTheme.labelSmall!
-                                  .copyWith(
-                                    color:
-                                        r.legs[0].departureDateTime !=
-                                            r.legs[0].plannedDepartureDateTime
-                                        ? Theme.of(context).colorScheme.error
-                                        : Theme.of(
-                                            context,
-                                          ).textTheme.labelSmall!.color,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        Icon(Icons.arrow_forward),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            // Planned Arrival Time
-                            Text(
-                              '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            // Actual Arrival Time
-                            Text(
-                              r.legs.last.arrivalDateTime != null
-                                  ? '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}'
-                                  : '--:--',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    r.legs.last.arrivalDateTime !=
-                                        r.legs.last.plannedArrivalDateTime
-                                    ? Theme.of(context).colorScheme.error
-                                    : Theme.of(
-                                        context,
-                                      ).textTheme.labelSmall!.color,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            // Planned Duration
-                            Text(
-                              r.legs.last.plannedArrivalDateTime
-                                  .difference(
-                                    r.legs[0].plannedDepartureDateTime,
-                                  )
-                                  .inMinutes
-                                  .toString(),
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            // Actual Duration
-                            Text(
-                              r.legs.last.arrivalDateTime
-                                  .difference(r.legs[0].departureDateTime)
-                                  .inMinutes
-                                  .toString(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-
-                    Row(
-                      children: [
-                        Expanded(child: _buildModeLine(context, r)),
-                        Row(
-                          children: [
-                            Text((r.legs.length - 2).toString()),
-                            Icon(Icons.transfer_within_a_station),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          'Leave in: ${r.legs[0].departureDateTime.difference(DateTime.now()).inMinutes}',
-                        ),
-                      ],
-                    ),
-                  ],
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(16)
+          ),
+          padding: EdgeInsets.all(8),
+          child: 
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(16)
                 ),
+                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                child: Row(
+                  children: [
+                    Text('$plannedDepartureTimeHour:$plannedDepartureTimeMinute to $plannedArrivalTimeHour:$plannedArrivalTimeMinute', 
+                      style: Theme.of(context).textTheme.headlineSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary),),
+                    Spacer(),
+                    Text(tripDuration, style: Theme.of(context).textTheme.headlineSmall!.copyWith(color: Theme.of(context).colorScheme.onPrimary))
+                  ],
+                )
               ),
-            ),
-          );
-        },
+              Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 8),child: _buildModeLine(context, j),),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    spacing: 8,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(16)
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4),
+                          child: Row(
+                            spacing: 4,
+                            children: [
+                              Icon(Icons.transfer_within_a_station, color: Theme.of(context).colorScheme.onTertiaryContainer, size: 16,),
+                              SizedBox(width: 24,),
+                              Text('${calculateTotalInterchanges(j)}', style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer),)
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                ),
+              )
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildModeLine(BuildContext context, Journey j) {
-    return Text('test');
+  int totalTripDuration = j.legs.last.plannedArrivalDateTime
+      .difference(j.legs.first.plannedDepartureDateTime).inSeconds;
+  List<String> legNames = [];
+  List<double> legPercentages = [];
+  List<String> legLineNames = [];
+  
+  // First, identify which legs are actual travel vs same-station interchanges (similar to _buildJourneyContent)
+  List<int> actualLegIndices = [];
+  
+  for (int index = 0; index < j.legs.length; index++) {
+    final leg = j.legs[index];
+    
+    // Skip legs that are same-station interchanges (same origin and destination)
+    bool isSameStationInterchange =
+        leg.origin.id == leg.destination.id &&
+        leg.origin.name == leg.destination.name;
+    
+    // Also skip walking legs within the same station complex
+    bool isWalkingWithinStationComplex = leg.isWalking == true &&
+        leg.origin.ril100Ids.isNotEmpty &&
+        leg.destination.ril100Ids.isNotEmpty &&
+        _haveSameRil100ID(leg.origin.ril100Ids, leg.destination.ril100Ids);
+    
+    if (!isSameStationInterchange && !isWalkingWithinStationComplex) {
+      actualLegIndices.add(index);
+    }
+  }
+  
+  // Process only actual legs for the mode line
+  for (int i = 0; i < actualLegIndices.length; i++) {
+    int legIndex = actualLegIndices[i];
+    Leg l = j.legs[legIndex];
+    
+    if (l.product == null || l.product!.isEmpty) {
+      // Walking or transfer leg
+      int legDuration = l.plannedArrivalDateTime.difference(l.plannedDepartureDateTime).inSeconds;
+      double percentage = (legDuration / totalTripDuration) * 100;
+      
+      if (_haveSameRil100ID(l.origin.ril100Ids, l.destination.ril100Ids)) {
+        legNames.add('transfer');
+        legLineNames.add('');
+      } else {
+        legNames.add('walk');
+        legLineNames.add('');
+      }
+      legPercentages.add(percentage);
+    } else {
+      // Regular transport leg
+      int legDuration = l.plannedArrivalDateTime.difference(l.plannedDepartureDateTime).inSeconds;
+      double percentage = (legDuration / totalTripDuration) * 100;
+      
+      legNames.add(l.product!);
+      legLineNames.add(l.lineName!);
+      legPercentages.add(percentage);
+    }
+    
+    // Add transfer time between actual legs if there's a gap and an interchange is needed
+    if (i < actualLegIndices.length - 1) {
+      int nextLegIndex = actualLegIndices[i + 1];
+      Leg nextLeg = j.legs[nextLegIndex];
+      
+      // Check if there's an interchange between this leg and the next actual leg
+      bool shouldShowTransfer = false;
+      
+      // Case 1: There are legs between current and next that represent interchanges
+      if (nextLegIndex - legIndex > 1) {
+        // Check for same-station interchanges between them
+        for (int interchangeIndex = legIndex + 1; interchangeIndex < nextLegIndex; interchangeIndex++) {
+          final interchangeLeg = j.legs[interchangeIndex];
+          
+          if (interchangeLeg.origin.id == interchangeLeg.destination.id &&
+              interchangeLeg.origin.name == interchangeLeg.destination.name) {
+            shouldShowTransfer = true;
+            break;
+          }
+        }
+      }
+      // Case 2: Direct connection between different modes
+      else if (l.destination.id == nextLeg.origin.id &&
+          l.destination.name == nextLeg.origin.name &&
+          ((l.isWalking == true && nextLeg.isWalking != true) ||
+              (l.isWalking != true && nextLeg.isWalking == true) ||
+              (l.isWalking != true &&
+                  nextLeg.isWalking != true &&
+                  l.lineName != nextLeg.lineName))) {
+        shouldShowTransfer = true;
+      }
+      
+      // Check if we're in the same station complex
+      bool isWithinStationComplex =
+          l.destination.ril100Ids.isNotEmpty &&
+          nextLeg.origin.ril100Ids.isNotEmpty &&
+          _haveSameRil100ID(l.destination.ril100Ids, nextLeg.origin.ril100Ids);
+      
+      if (isWithinStationComplex || shouldShowTransfer) {
+        int transferTime = nextLeg.plannedDepartureDateTime
+            .difference(l.plannedArrivalDateTime).inSeconds;
+        if (transferTime > 0) {
+          double transferPercentage = (transferTime / totalTripDuration) * 100;
+          legNames.add('transfer');
+          legLineNames.add('');
+          legPercentages.add(transferPercentage);
+        }
+      }
+    }
+  }
+  
+  for (int i = 0; i < legNames.length; i++) {
+    print(legNames[i] + legPercentages[i].toString());
+  }
+  
+  return Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16)
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: List.generate(legNames.length, (index) {
+            // Calculate actual width for this segment
+            double segmentWidth = constraints.maxWidth * (legPercentages[index] / 100);
+        Icon icon = Icon(Icons.directions_walk);
+        bool light = Theme.of(context).brightness == Brightness.light;
+        Color color = Colors.grey;
+        Color onColor = light ? Colors.white : Colors.black;
+        bool showText = true;
+        String text = legLineNames[index];
+        
+        // Define minimum widths for showing content
+        const double minWidthForIcon = 32.0; // Need at least 24px for icon
+        const double minWidthForText = 60.0; // Need at least 60px for icon + text
+        
+        bool shouldShowIcon = segmentWidth >= minWidthForIcon;
+        bool shouldShowTextContent = segmentWidth >= minWidthForText && showText;
+        
+        switch(legNames[index]) {
+          case 'transfer':
+            icon = Icon(Icons.transfer_within_a_station);
+            showText = false;
+            break;
+          case 'walk':
+            icon = Icon(Icons.directions_walk);
+            showText = false;
+            break;
+          case 'bus':
+            icon = Icon(Icons.directions_bus);
+            color = light ? Colors.deepPurple : Colors.purpleAccent;
+            break;
+          case 'nationalExpress':
+            icon = Icon(Icons.train);
+            color = light ? Colors.black : Colors.white;
+            break;
+          case 'national':
+            icon = Icon(Icons.train);
+            color = light ? Colors.teal.shade900 : Colors.teal.shade300;
+            break;
+          case 'regional':
+            icon = Icon(Icons.directions_railway);
+            color = light ? Colors.yellow.shade900 : Colors.yellow.shade300;
+            break;
+          case 'regionalExpress':
+            icon = Icon(Icons.directions_railway);
+            color = light ? Colors.deepOrange.shade900 : Colors.deepOrange.shade300;
+            break;
+          case 'suburban':
+            icon = Icon(Icons.directions_subway);
+            color = light ? Colors.green.shade900 : Colors.green.shade300;
+            break;
+          case 'subway':
+            icon = Icon(Icons.subway_outlined);
+            color = light ? Colors.blue.shade900 : Colors.blue.shade300;
+            break;
+          case 'tram':
+            icon = Icon(Icons.tram);
+            color = light ? Colors.pink.shade900 : Colors.pink.shade300;
+            break;
+          case 'taxi':
+            icon = Icon(Icons.local_taxi);
+            color = light ? Colors.amber.shade300 : Colors.amber.shade700;
+            break;
+          case 'ferry':
+            icon = Icon(Icons.directions_boat);
+            color = light ? Colors.cyan.shade300 : Colors.cyan.shade800;
+            break;
+          default:
+            icon = Icon(Icons.directions_walk);
+            showText = false;
+        }
+        
+        return Flexible(
+          flex: legPercentages[index].round(),
+          child: Container(
+            height: 32,
+            decoration: BoxDecoration(color: color),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: shouldShowIcon 
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          icon.icon,
+                          color: onColor,
+                          size: 16
+                        ),
+                        if(shouldShowTextContent)
+                        Flexible(child: Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: Text(text, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onColor, fontWeight: FontWeight.bold) , overflow: TextOverflow.ellipsis,),
+                        ))
+                      ],
+                    )
+                  : null, // Show nothing if segment is too small
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  
+  }));
+}
+
+  int calculateTotalInterchanges(Journey journey) {
+  if (journey.legs.isEmpty) {
+    return 0;
+  }
+
+  int interchangeCount = 0;
+  List<int> actualLegIndices = [];
+
+  // First, identify which legs are actual travel vs same-station interchanges
+  for (int index = 0; index < journey.legs.length; index++) {
+    final leg = journey.legs[index];
+
+    // Skip legs that are same-station interchanges (same origin and destination)
+    bool isSameStationInterchange =
+        leg.origin.id == leg.destination.id &&
+        leg.origin.name == leg.destination.name;
+
+    if (!isSameStationInterchange) {
+      actualLegIndices.add(index);
+    }
+  }
+
+  // Count interchanges between actual legs
+  for (int i = 1; i < actualLegIndices.length; i++) {
+    final legIndex = actualLegIndices[i];
+    final leg = journey.legs[legIndex];
+    final previousLegIndex = actualLegIndices[i - 1];
+    final previousLeg = journey.legs[previousLegIndex];
+
+    // Check if there's an interchange between this leg and the previous actual leg
+    bool shouldCountInterchange = false;
+
+    // Case 1: There are legs between previous and current that represent interchanges
+    if (legIndex - previousLegIndex > 1) {
+      // Find the interchange leg(s) between them
+      for (int interchangeIndex = previousLegIndex + 1;
+           interchangeIndex < legIndex;
+           interchangeIndex++) {
+        final interchangeLeg = journey.legs[interchangeIndex];
+
+        // If this is a same-station interchange
+        if (interchangeLeg.origin.id == interchangeLeg.destination.id &&
+            interchangeLeg.origin.name == interchangeLeg.destination.name) {
+          shouldCountInterchange = true;
+          break;
+        }
+      }
+    }
+    // Case 2: Direct connection between different modes (e.g., walking to transit)
+    else if (previousLeg.destination.id == leg.origin.id &&
+        previousLeg.destination.name == leg.origin.name &&
+        ((previousLeg.isWalking == true && leg.isWalking != true) ||
+            (previousLeg.isWalking != true && leg.isWalking == true) ||
+            (previousLeg.isWalking != true &&
+                leg.isWalking != true &&
+                previousLeg.lineName != leg.lineName))) {
+      shouldCountInterchange = true;
+    }
+
+    // Check if we're in the same station complex - this affects interchange logic
+    bool isWithinStationComplex =
+        previousLeg.destination.ril100Ids.isNotEmpty &&
+        leg.origin.ril100Ids.isNotEmpty &&
+        _haveSameRil100ID(
+          previousLeg.destination.ril100Ids,
+          leg.origin.ril100Ids,
+        );
+
+    // Special handling: If we're in the same station complex, consolidate the interchange
+    if (isWithinStationComplex) {
+      // Look backwards to find the last non-walking leg that brought us to this station complex
+      for (int searchIndex = previousLegIndex;
+           searchIndex >= 0;
+           searchIndex--) {
+        final searchLeg = journey.legs[searchIndex];
+
+        // If this leg's destination is in the same station complex and it's not a walking leg
+        if (searchLeg.isWalking != true &&
+            _haveSameRil100ID(
+              searchLeg.destination.ril100Ids,
+              leg.origin.ril100Ids,
+            )) {
+          // Only count interchange if the current leg is not walking (i.e., we're exiting the station complex)
+          if (leg.isWalking != true) {
+            shouldCountInterchange = true;
+          } else {
+            // This is a walking leg within the station complex, don't count interchange yet
+            shouldCountInterchange = false;
+          }
+          break;
+        }
+      }
+    }
+
+    // Special case for walking legs leaving a station complex
+    if (!shouldCountInterchange &&
+        leg.isWalking == true &&
+        leg.origin.ril100Ids.isNotEmpty &&
+        (leg.destination.ril100Ids.isEmpty ||
+         !_haveSameRil100ID(leg.origin.ril100Ids, leg.destination.ril100Ids))) {
+      shouldCountInterchange = true;
+    }
+
+    // Increment counter if interchange should be counted
+    if (shouldCountInterchange) {
+      interchangeCount++;
+    }
+  }
+
+  return interchangeCount;
+}
+
+  bool _haveSameRil100ID(
+    List<String> ril100Ids1,
+    List<String> ril100Ids2,
+  ) {
+    if (ril100Ids1.isEmpty || ril100Ids2.isEmpty) {
+      return false;
+    }
+
+    // Check if any RIL100 ID from the first list matches any from the second list
+    for (String id1 in ril100Ids1) {
+      for (String id2 in ril100Ids2) {
+        if (id1 == id2) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   Widget _buildButtons(BuildContext context) {
