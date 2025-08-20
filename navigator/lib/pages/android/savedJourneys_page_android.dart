@@ -552,11 +552,11 @@ Future<void> getSavedJourneyRefreshTokens() async {
       case 'regional':
         return Icon(Icons.directions_railway);
       case 'regionalExpress':
-        return Icon(Icons.directions);
+        return Icon(Icons.directions_railway);
       case 'suburban':
         return Icon(Icons.directions_subway);
       case 'subway':
-        return Icon(Icons.subway);
+        return Icon(Icons.subway_outlined);
       case 'tram':
         return Icon(Icons.tram);
       case 'taxi':
