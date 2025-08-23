@@ -83,6 +83,14 @@ jobs:
         else
           echo "✅ Keine echten Fehler – Lints ignoriert"
         fi
+    # Update Version
+    - name: Set Flutter Version
+      run: |
+        cd navigator
+        VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+        VERSION_CODE=${GITHUB_RUN_NUMBER}
+        echo "Updating pubspec.yaml to version $VERSION_NAME+$VERSION_CODE"
+        sed -i "s/^version: .*/version: $VERSION_NAME+$VERSION_CODE/" pubspec.yaml
 
 
     

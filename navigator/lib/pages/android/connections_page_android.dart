@@ -390,109 +390,111 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
       color: colors.surfaceContainerHighest,
       elevation: 1,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            if (searchingFrom) {
-              widget.page.from = station;
-              _fromController.text = station.name;
-              _fromFocusNode.unfocus();
-            } else {
-              widget.page.to = station;
-              _toController.text = station.name;
-              _toFocusNode.unfocus();
-            }
-            
-          });
-          _search();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Tonal avatar for the station icon
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: colors.tertiaryContainer,
-                child: SvgPicture.asset(
-                  "assets/Icon/Train_Station_Icon.svg",
-                  width: 24,
-                  height: 24,
-                  colorFilter: ColorFilter.mode(
-                    colors.onTertiaryContainer,
-                    BlendMode.srcIn,
+      child: GestureDetector(
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              if (searchingFrom) {
+                widget.page.from = station;
+                _fromController.text = station.name;
+                _fromFocusNode.unfocus();
+              } else {
+                widget.page.to = station;
+                _toController.text = station.name;
+                _toFocusNode.unfocus();
+              }
+              
+            });
+            _search();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Tonal avatar for the station icon
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: colors.tertiaryContainer,
+                  child: SvgPicture.asset(
+                    "assets/Icon/Train_Station_Icon.svg",
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(
+                      colors.onTertiaryContainer,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-
-              // Station name + service icons
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      station.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
+                const SizedBox(width: 16),
+        
+                // Station name + service icons
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        station.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        if (station.national || station.nationalExpress)
-                          Icon(Icons.train, size: 20, color: colors.tertiary),
-                        if (station.regionalExpress)
-                          Icon(
-                            Icons.directions_railway,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                        if (station.regional)
-                          Icon(
-                            Icons.directions_transit,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                        if (station.suburban)
-                          Icon(
-                            Icons.directions_subway,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                        if (station.bus)
-                          Icon(
-                            Icons.directions_bus,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                        if (station.ferry)
-                          Icon(
-                            Icons.directions_ferry,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                        if (station.subway)
-                          Icon(Icons.subway, size: 20, color: colors.tertiary),
-                        if (station.tram)
-                          Icon(Icons.tram, size: 20, color: colors.tertiary),
-                        if (station.taxi)
-                          Icon(
-                            Icons.local_taxi,
-                            size: 20,
-                            color: colors.tertiary,
-                          ),
-                      ],
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          if (station.national || station.nationalExpress)
+                            Icon(Icons.train, size: 20, color: colors.tertiary),
+                          if (station.regionalExpress)
+                            Icon(
+                              Icons.directions_railway,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                          if (station.regional)
+                            Icon(
+                              Icons.directions_transit,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                          if (station.suburban)
+                            Icon(
+                              Icons.directions_subway,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                          if (station.bus)
+                            Icon(
+                              Icons.directions_bus,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                          if (station.ferry)
+                            Icon(
+                              Icons.directions_ferry,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                          if (station.subway)
+                            Icon(Icons.subway, size: 20, color: colors.tertiary),
+                          if (station.tram)
+                            Icon(Icons.tram, size: 20, color: colors.tertiary),
+                          if (station.taxi)
+                            Icon(
+                              Icons.local_taxi,
+                              size: 20,
+                              color: colors.tertiary,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-
-              // Trailing chevron
-              Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
-            ],
+        
+                // Trailing chevron
+                Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
+              ],
+            ),
           ),
         ),
       ),

@@ -22,8 +22,11 @@ class SavedjourneysPageAndroid extends StatefulWidget {
 class _SavedjourneysPageAndroidState extends State<SavedjourneysPageAndroid> {
   List<String> savedJourneyrefreshTokens = [];
   List<Journey> savedJourneys = [];
+  List<Journey> pastJourneys = [];
+  List<Journey> futureJourneys = [];
   bool isLoading = false;
   bool isRefreshing = false;
+  bool showingPastJourneys = false;
   bool cardView = true;
   Color successColor = Color.fromARGB(255, 195, 230, 183);
   Color onSuccessColor = Color.fromARGB(255, 50, 70, 42);
@@ -89,11 +92,29 @@ Future<void> getSavedJourneyRefreshTokens() async {
   if (!mounted) return;
   
   newJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+  DateTime now = DateTime.now();
+  List<Journey> newFutureJourneys = [];
+  List<Journey> newPastJourneys = [];
+
+  for(Journey j in newJourneys)
+  {
+    if(j.arrivalTime.isAfter(now))
+    {
+      newFutureJourneys.add(j);
+    }
+    else
+    {
+      newPastJourneys.add(j);
+    }
+  }
+
   
   // Now update everything at once
   setState(() {
     savedJourneyrefreshTokens = s;
     savedJourneys = newJourneys;
+    pastJourneys = newPastJourneys;
+    futureJourneys = newFutureJourneys;
     isLoading = false;
     isRefreshing = false;
     print('Saved journeys reloaded: ${savedJourneys.length}');
@@ -125,9 +146,15 @@ Future<void> getSavedJourneyRefreshTokens() async {
       spacing: 16,
       children: [
         _buildSearchBar(context),
-        if(savedJourneys.isNotEmpty)
+        if(futureJourneys.isNotEmpty && !showingPastJourneys)
         _buildNextJourney(context),
-        _buildJourneysList(context),
+        if(showingPastJourneys && pastJourneys.isNotEmpty)
+        Center(child: Text('Past Journeys', style: Theme.of(context).textTheme.headlineLarge!.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),)),
+
+        if(showingPastJourneys)
+        _buildJourneysList(context, pastJourneys),
+        if(!showingPastJourneys)
+        _buildJourneysList(context, futureJourneys),
         SizedBox(height: 8),
       ],
     );
@@ -172,6 +199,41 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 }, 
                 icon: Icon(Icons.view_agenda_outlined))
             ),
+            MenuAnchor(
+  builder: (BuildContext context, MenuController controller, Widget? child) {
+    return Tooltip(
+      message: 'More Options',
+      child: IconButton(
+        icon: Icon(Icons.more_vert),
+        onPressed: () {
+          controller.open(); // this opens the menu
+        },
+      ),
+    );
+  },
+  menuChildren: [
+    MenuItemButton(
+      onPressed: () {
+        setState(() {
+          if(showingPastJourneys){
+            showingPastJourneys = false;
+          }
+          else
+          {
+            showingPastJourneys = true;
+          }
+        });
+      },
+      child: showingPastJourneys ? Text('Show Future Journeys') : Text('Show Past Journeys'),
+    ),
+    MenuItemButton(
+      onPressed: () {},
+      child: Text('Settings')
+    )
+  ],
+),
+
+
           ],
         );
       },
@@ -195,13 +257,13 @@ Future<void> getSavedJourneyRefreshTokens() async {
     bool delayed = false;
     String delayText = 'no delays';
     String timeText = '';
-    if(savedJourneys.isNotEmpty){
-      timeText = generateJourneyTimeText(savedJourneys.first);
-      if(savedJourneys.first.legs.first.departureDelayMinutes != null){
+    if(futureJourneys.isNotEmpty){
+      timeText = generateJourneyTimeText(futureJourneys.first);
+      if(futureJourneys.first.legs.first.departureDelayMinutes != null){
         delayed = true;
         delayText = 'Departure delayed';
       }
-      if(savedJourneys.first.legs.last.arrivalDelayMinutes != null){
+      if(futureJourneys.first.legs.last.arrivalDelayMinutes != null){
         if(delayed)
         {
           delayText = 'Delayed';
@@ -247,7 +309,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
             try {
               // Refresh the journey using the service
               final refreshedJourney = await widget.page.services
-                  .refreshJourneyByToken(savedJourneys.first.refreshToken);
+                  .refreshJourneyByToken(futureJourneys.first.refreshToken);
 
               // Close the loading dialog
               Navigator.pop(context);
@@ -308,7 +370,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                     padding: const EdgeInsets.all(16.0),
                     child: IntrinsicHeight(
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Flexible(
@@ -322,11 +384,11 @@ Future<void> getSavedJourneyRefreshTokens() async {
                                       color: Theme.of(context).colorScheme.onPrimary,
                                     ),
                                     SizedBox(width: 8),
-                                    savedJourneys.isNotEmpty
+                                    futureJourneys.isNotEmpty
                                         ? Flexible(
                                           child: Text(
                                             maxLines: 2,
-                                              savedJourneys.first.legs.first.origin.name,
+                                              futureJourneys.first.legs.first.origin.name,
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleMedium!
@@ -377,11 +439,11 @@ Future<void> getSavedJourneyRefreshTokens() async {
                       ),
                                 ),
                                     SizedBox(width: 8),
-                                    savedJourneys.isNotEmpty
+                                    futureJourneys.isNotEmpty
                                         ? Flexible(
                                           child: Text(
                                             maxLines: 2,
-                                              savedJourneys
+                                              futureJourneys
                                                   .first
                                                   .legs
                                                   .last
@@ -428,7 +490,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                       ),
                                 ),
                                     SizedBox(width: 8),
-                                    savedJourneys.isNotEmpty
+                                    futureJourneys.isNotEmpty
                                         ? Text(
                                             timeText,
                                             style: Theme.of(context)
@@ -462,7 +524,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              _buildModes(context, savedJourneys.first, Theme.of(context).colorScheme.onPrimary),
+                              _buildModes(context, futureJourneys.first, Theme.of(context).colorScheme.onPrimary),
                               Spacer(),
                               FilledButton.tonalIcon(
                                 style: FilledButton.styleFrom(
@@ -487,7 +549,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                                 ),
                                 ),
                               
-                              FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, savedJourneys.first), 
+                              FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, futureJourneys.first), 
                                 label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
                                 iconAlignment: IconAlignment.end,
                                 icon: Icon(Icons.more_time, color: onDelayColor,),
@@ -568,18 +630,20 @@ Future<void> getSavedJourneyRefreshTokens() async {
     }
   }
 
-  Widget _buildJourneysList(BuildContext context) {
-    if(savedJourneys.isEmpty) {
+  Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
+    if(journeysList.isEmpty) {
       return Center(
-        child: Text(
+        child: showingPastJourneys ? 
+          Text('No past journeys', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))
+        : Text(
           'No saved journeys',
-          style: Theme.of(context).textTheme.headlineMedium,
+          style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant,)
         ),
       );
     }
-    List<Journey> journeys = List.from(savedJourneys);
-    journeys.removeAt(0);
-    if (journeys.isEmpty) {
+    List<Journey> journeys = List.from(journeysList);
+    if(!showingPastJourneys){journeys.removeAt(0);}
+    if (journeys.isEmpty && !showingPastJourneys) {
       return Center(
         child: Text(
           'No more saved journeys',
@@ -715,6 +779,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                             Flexible(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
                                   Row(
                                     children: [
@@ -1103,5 +1168,13 @@ Future<void> getSavedJourneyRefreshTokens() async {
 
   void sortJourneysbyDepartureTime() {
     savedJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+  }
+
+  void sortFutureJourneysbyDepartureTime() {
+    futureJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+  }
+
+  void sortPastJourneysbyDepartureTime() {
+    pastJourneys.sort((a, b) => b.departureTime.compareTo(a.departureTime));
   }
 }
