@@ -980,7 +980,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
             break;
           case 'regionalExpress':
             icon = Icon(Icons.directions_railway);
-            color = light ? Colors.deepOrange.shade900 : Colors.deepOrange.shade300;
+            color = light ? Colors.pink.shade900 : Colors.pink.shade300;
             break;
           case 'suburban':
             icon = Icon(Icons.directions_subway);
@@ -992,7 +992,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
             break;
           case 'tram':
             icon = Icon(Icons.tram);
-            color = light ? Colors.pink.shade900 : Colors.pink.shade300;
+            color = light ? Colors.deepOrange.shade900 : Colors.deepOrange.shade300;
             break;
           case 'taxi':
             icon = Icon(Icons.local_taxi);
