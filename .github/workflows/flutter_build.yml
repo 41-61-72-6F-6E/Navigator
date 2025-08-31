@@ -121,9 +121,9 @@ jobs:
 
     - name: Verify APK Signature
       run: |
-        echo "🔍 Checking APK signature..."
-        $ANDROID_HOME/build-tools/*/apksigner verify --print-certs \
-          navigator/build/app/outputs/flutter-apk/app-release.apk
+        echo "Checking APK signature..."
+        apksigner verify --print-certs navigator/build/app/outputs/flutter-apk/app-release.apk
+
     
     # Build App Bundle for Android (recommended for Play Store)
     - name: Build App Bundle
