@@ -41,6 +41,16 @@ jobs:
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> key.properties
         echo "storeFile=app/my-release-key.jks" >> key.properties
       working-directory: navigator/android
+
+    - name: Verify Keystore Alias
+      run: |
+        echo "🔍 Checking keystore alias and cert fingerprints..."
+        keytool -list -v \
+          -keystore app/my-release-key.jks \
+          -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+          | grep -E "Alias name:|SHA1:|SHA256:"
+      working-directory: navigator/android
+
     
     # Get Flutter dependencies
     - name: Get dependencies
@@ -114,6 +124,13 @@ jobs:
       run: |
         cd navigator
         flutter build appbundle --release
+    
+    - name: Verify APK Signature
+      run: |
+        echo "🔍 Checking APK signature..."
+        $ANDROID_HOME/build-tools/*/apksigner verify --print-certs \
+          navigator/build/app/outputs/flutter-apk/app-release.apk
+
     
     # Upload build artifacts
     - name: Upload APK
