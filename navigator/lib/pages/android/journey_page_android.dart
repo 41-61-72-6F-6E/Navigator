@@ -64,6 +64,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     _alignPositionStreamController = StreamController<double?>();
     _initializeLocationTracking();
     updateIsSaved();
+    _centerMapOnJourney();
   }
 
   @override
@@ -88,6 +89,58 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
         _isSaved = false;
       });
     }
+  }
+
+  void _centerMapOnJourney() {
+    final journey = widget.journey;
+    if (journey.legs.isEmpty) return;
+
+    // Get start and end points of the journey
+    final firstLeg = journey.legs.first;
+    final lastLeg = journey.legs.last;
+
+    final startLat = firstLeg.origin.latitude;
+    final startLng = firstLeg.origin.longitude;
+    final endLat = lastLeg.destination.latitude;
+    final endLng = lastLeg.destination.longitude;
+
+    // Calculate center point between start and end
+    final centerLat = (startLat + endLat) / 2;
+    final centerLng = (startLng + endLng) / 2;
+
+    _currentCenter = LatLng(centerLat, centerLng);
+
+    // Calculate appropriate zoom level based on distance
+    final distance = _calculateDistance(startLat, startLng, endLat, endLng);
+    _currentZoom = _calculateZoomLevel(distance);
+  }
+
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
+
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLng = _degreesToRadians(lng2 - lng1);
+
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) * math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLng / 2) * math.sin(dLng / 2);
+
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * math.pi / 180;
+  }
+
+  double _calculateZoomLevel(double distanceKm) {
+    if (distanceKm < 1) return 17.0;
+    if (distanceKm < 5) return 14.0;
+    if (distanceKm < 20) return 12.0;
+    if (distanceKm < 50) return 10.0;
+    if (distanceKm < 200) return 8.0;
+    return 6.0;
   }
 
   void animatedMapMove(LatLng destLocation, double destZoom) {
@@ -173,16 +226,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 
   void _handleLocationUpdate(LocationMarkerPosition position) {
     setState(() {
-      // First location update - center map on user
-      if (_currentUserLocation == null) {
-        _currentUserLocation = position.latLng;
-        // Use animatedMapMove instead of direct move for smoother experience
-        animatedMapMove(_currentUserLocation!, 15.0);
-        _currentCenter = _currentUserLocation!;
-        _currentZoom = 15.0;
-      } else {
-        _currentUserLocation = position.latLng;
-      }
+      _currentUserLocation = position.latLng;
     });
   }
 
@@ -1643,7 +1687,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: _currentUserLocation ?? _currentCenter,
+            initialCenter: _currentCenter,
             initialZoom: _currentZoom,
             minZoom: 3.0,
             maxZoom: 18.0,
@@ -1693,6 +1737,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       ],
     );
   }
+
 
   Widget _buildPolylineLayer() {
     // Get the colored polylines by leg
