@@ -118,19 +118,18 @@ jobs:
       run: |
         cd navigator
         flutter build apk --release
+
+    - name: Verify APK Signature
+      run: |
+        echo "🔍 Checking APK signature..."
+        $ANDROID_HOME/build-tools/*/apksigner verify --print-certs \
+          navigator/build/app/outputs/flutter-apk/app-release.apk
     
     # Build App Bundle for Android (recommended for Play Store)
     - name: Build App Bundle
       run: |
         cd navigator
         flutter build appbundle --release
-    
-    - name: Verify APK Signature
-      run: |
-        echo "🔍 Checking APK signature..."
-        $ANDROID_HOME/build-tools/*/apksigner verify --print-certs \
-          navigator/build/app/outputs/flutter-apk/app-release.apk
-
     
     # Upload build artifacts
     - name: Upload APK
