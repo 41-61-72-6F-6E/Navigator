@@ -36,11 +36,11 @@ jobs:
     - name: Setup signing
       run: |
        mkdir -p navigator/android
-    echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > navigator/android/my-release-key.jks
-    echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > navigator/android/key.properties
-    echo "keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> navigator/android/key.properties
-    echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> navigator/android/key.properties
-    echo "storeFile=my-release-key.jks" >> navigator/android/key.properties
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > navigator/android/my-release-key.jks
+        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > navigator/android/key.properties
+        echo "keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> navigator/android/key.properties
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> navigator/android/key.properties
+        echo "storeFile=my-release-key.jks" >> navigator/android/key.properties
 
     - name: Verify Keystore Alias
       run: |
