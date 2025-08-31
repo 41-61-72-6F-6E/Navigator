@@ -42,6 +42,9 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   bool searching = false;
   bool searchingFrom = true;
 
+  //Animations
+  bool rotateSwitchButton = false;
+
   JourneySettings journeySettings = JourneySettings(
     nationalExpress: true,
     national: true,
@@ -348,30 +351,36 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
             Positioned.fill(
               child: Align(
                 alignment: Alignment.centerRight,
-                child: IconButton.filled(
-                  style: IconButton.styleFrom(
-                    backgroundColor: colors.surface,
-                    foregroundColor: colors.primary,
-                    iconSize: 32,
-                    side: BorderSide(
-                      color: colors.outline,
-                      width: 1,
+                child: AnimatedRotation(
+                  turns: rotateSwitchButton ? 0.5 : 0.0,
+                  duration: Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: IconButton.filled(
+                    style: IconButton.styleFrom(
+                      backgroundColor: colors.surface,
+                      foregroundColor: colors.primary,
+                      iconSize: 32,
+                      side: BorderSide(
+                        color: colors.outline,
+                        width: 1,
+                      ),
                     ),
+                    onPressed: () {
+                      setState(() {
+                        rotateSwitchButton = !rotateSwitchButton;
+                      });
+                      // Swap the controllers' text
+                      String temp = _fromController.text;
+                      _fromController.text = _toController.text;
+                      _toController.text = temp;
+                  
+                      // Also swap the page data
+                      var tempLocation = widget.page.from;
+                      widget.page.from = widget.page.to;
+                      widget.page.to = tempLocation;
+                    },
+                    icon: Icon(Icons.swap_vert),
                   ),
-                  onPressed: () {
-                    print(widget.page.from.name);
-                    print(widget.page.to.name);
-                    // Swap the controllers' text
-                    String temp = _fromController.text;
-                    _fromController.text = _toController.text;
-                    _toController.text = temp;
-
-                    // Also swap the page data
-                    var tempLocation = widget.page.from;
-                    widget.page.from = widget.page.to;
-                    widget.page.to = tempLocation;
-                  },
-                  icon: Icon(Icons.swap_vert),
                 ),
               ),
             ),
@@ -617,180 +626,6 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
         itemBuilder: (context, i) {
           final r = _currentJourneys![i];
           return _buildJourneyCard(context, r);
-          // return Card(
-          //   clipBehavior: Clip.hardEdge,
-          //   shadowColor: Colors.transparent,
-          //   color: Theme.of(context).colorScheme.secondaryContainer,
-          //   child: InkWell(
-          //     onTap: () async {
-          //       // Show loading indicator
-          //       showDialog(
-          //         context: context,
-          //         barrierDismissible: false,
-          //         builder: (context) => AlertDialog(
-          //           content: Column(
-          //             mainAxisSize: MainAxisSize.min,
-          //             children: [
-          //               CircularProgressIndicator(),
-          //               SizedBox(height: 16),
-          //               Text(
-          //                 'Refreshing journey information...',
-          //                 style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-          //               ),
-          //             ],
-          //           ),
-          //         ),
-          //       );
-
-          //       try {
-          //         // Refresh the journey using the service
-          //         final refreshedJourney = await widget.page.services
-          //             .refreshJourney(r);
-
-          //         // Close the loading dialog
-          //         Navigator.pop(context);
-
-          //         // Navigate to journey page with the refreshed journey
-          //         Navigator.push(
-          //           context,
-          //           MaterialPageRoute(
-          //             builder: (context) => JourneyPageAndroid(
-          //               JourneyPage(journey: refreshedJourney),
-          //               journey: refreshedJourney,
-          //             ),
-          //           ),
-          //         );
-          //       } catch (e) {
-          //         // Close the loading dialog
-          //         Navigator.pop(context);
-
-          //         // Show error message
-          //         ScaffoldMessenger.of(context).showSnackBar(
-          //           SnackBar(
-          //             content: Text(
-          //               'Could not refresh journey: ${e.toString()}',
-          //             ),
-          //             backgroundColor: Theme.of(context).colorScheme.error,
-          //           ),
-          //         );
-
-          //         // Navigate with the original journey as fallback
-          //         Navigator.push(
-          //           context,
-          //           MaterialPageRoute(
-          //             builder: (context) => JourneyPageAndroid(
-          //               JourneyPage(journey: r),
-          //               journey: r,
-          //             ),
-          //           ),
-          //         );
-          //       }
-          //     },
-          //     child: Padding(
-          //       padding: EdgeInsets.all(16),
-          //       child: Column(
-          //         children: [
-          //           Row(
-          //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //             children: [
-          //               Column(
-          //                 crossAxisAlignment: CrossAxisAlignment.start,
-          //                 children: [
-          //                   // Planned Departure Time
-          //                   Text(
-          //                     '${r.legs[0].plannedDepartureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].plannedDepartureDateTime?.minute.toString().padLeft(2, '0')}',
-          //                     style: Theme.of(context).textTheme.titleMedium,
-          //                   ),
-          //                   // Actual Departure Time
-          //                   Text(
-          //                     '${r.legs[0].departureDateTime?.hour.toString().padLeft(2, '0')}:${r.legs[0].departureDateTime?.minute.toString().padLeft(2, '0')}',
-          //                     style: Theme.of(context).textTheme.labelSmall!
-          //                         .copyWith(
-          //                           color:
-          //                               r.legs[0].departureDateTime !=
-          //                                   r.legs[0].plannedDepartureDateTime
-          //                               ? Theme.of(context).colorScheme.error
-          //                               : Theme.of(
-          //                                   context,
-          //                                 ).textTheme.labelSmall!.color,
-          //                         ),
-          //                   ),
-          //                 ],
-          //               ),
-          //               Icon(Icons.arrow_forward),
-          //               Column(
-          //                 crossAxisAlignment: CrossAxisAlignment.end,
-          //                 children: [
-          //                   // Planned Arrival Time
-          //                   Text(
-          //                     '${r.legs.last.plannedArrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.plannedArrivalDateTime.minute.toString().padLeft(2, '0')}',
-          //                     style: Theme.of(context).textTheme.titleMedium,
-          //                   ),
-          //                   // Actual Arrival Time
-          //                   Text(
-          //                     r.legs.last.arrivalDateTime != null
-          //                         ? '${r.legs.last.arrivalDateTime.hour.toString().padLeft(2, '0')}:${r.legs.last.arrivalDateTime.minute.toString().padLeft(2, '0')}'
-          //                         : '--:--',
-          //                     style: TextStyle(
-          //                       fontSize: 12,
-          //                       color:
-          //                           r.legs.last.arrivalDateTime !=
-          //                               r.legs.last.plannedArrivalDateTime
-          //                           ? Theme.of(context).colorScheme.error
-          //                           : Theme.of(
-          //                               context,
-          //                             ).textTheme.labelSmall!.color,
-          //                     ),
-          //                   ),
-          //                 ],
-          //               ),
-          //               Column(
-          //                 children: [
-          //                   // Planned Duration
-          //                   Text(
-          //                     r.legs.last.plannedArrivalDateTime
-          //                         .difference(
-          //                           r.legs[0].plannedDepartureDateTime,
-          //                         )
-          //                         .inMinutes
-          //                         .toString(),
-          //                     style: Theme.of(context).textTheme.titleMedium,
-          //                   ),
-          //                   // Actual Duration
-          //                   Text(
-          //                     r.legs.last.arrivalDateTime
-          //                         .difference(r.legs[0].departureDateTime)
-          //                         .inMinutes
-          //                         .toString(),
-          //                   ),
-          //                 ],
-          //               ),
-          //             ],
-          //           ),
-
-          //           Row(
-          //             children: [
-          //               Expanded(child: _buildModeLine(context, r)),
-          //               Row(
-          //                 children: [
-          //                   Text((r.legs.length - 2).toString()),
-          //                   Icon(Icons.transfer_within_a_station),
-          //                 ],
-          //               ),
-          //             ],
-          //           ),
-          //           Row(
-          //             children: [
-          //               Text(
-          //                 'Leave in: ${r.legs[0].departureDateTime.difference(DateTime.now()).inMinutes}',
-          //               ),
-          //             ],
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //   ),
-          // );
         },
       ),
     );

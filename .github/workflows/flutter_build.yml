@@ -33,18 +33,14 @@ jobs:
         channel: 'stable'  # Use latest stable version (includes Dart 3.8.1+)
         cache: true  # Enable caching for faster builds
 
-    - name: Decode keystore
+    - name: Setup signing
       run: |
-        cd navigator/android/app
-        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > my-release-key.jks
-
-    - name: Create key.properties
-      run: |
-        cd navigator/android
-        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> key.properties
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > app/my-release-key.jks
+        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > key.properties
         echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> key.properties
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> key.properties
         echo "storeFile=app/my-release-key.jks" >> key.properties
+      working-directory: navigator/android
     
     # Get Flutter dependencies
     - name: Get dependencies
