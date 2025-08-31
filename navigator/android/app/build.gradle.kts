@@ -52,7 +52,20 @@ android {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            isMinifyEnabled = false // Optional, enable R8/ProGuard if needed
+            // Enable both minification and resource shrinking (recommended for production)
+            isMinifyEnabled = true
+            isShrinkResources = true
+            
+            // Optional: Add ProGuard rules if needed
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            // Keep debug builds fast
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
