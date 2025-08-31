@@ -24,6 +24,7 @@ class _SavedjourneysPageAndroidState extends State<SavedjourneysPageAndroid> {
   List<Journey> savedJourneys = [];
   List<Journey> pastJourneys = [];
   List<Journey> futureJourneys = [];
+  List<bool> isExpandedList = [];
   bool isLoading = false;
   bool isRefreshing = false;
   bool showingPastJourneys = false;
@@ -31,6 +32,7 @@ class _SavedjourneysPageAndroidState extends State<SavedjourneysPageAndroid> {
   Color successColor = Color.fromARGB(255, 195, 230, 183);
   Color onSuccessColor = Color.fromARGB(255, 50, 70, 42);
   Color successIconColor = Color.fromARGB(255, 91, 128, 77);
+
 
   @override
 void didUpdateWidget(SavedjourneysPageAndroid oldWidget) {
@@ -152,9 +154,9 @@ Future<void> getSavedJourneyRefreshTokens() async {
         Center(child: Text('Past Journeys', style: Theme.of(context).textTheme.headlineLarge!.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),)),
 
         if(showingPastJourneys)
-        _buildJourneysList(context, pastJourneys),
+        Expanded(child: _buildJourneysList(context, pastJourneys)),
         if(!showingPastJourneys)
-        _buildJourneysList(context, futureJourneys),
+        Expanded(child: _buildJourneysList(context, futureJourneys)),
         SizedBox(height: 8),
       ],
     );
@@ -258,7 +260,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
     String delayText = 'no delays';
     String timeText = '';
     if(futureJourneys.isNotEmpty){
-      timeText = generateJourneyTimeText(futureJourneys.first);
+      timeText = generateJourneyTimeText(futureJourneys.first, false, false);
       if(futureJourneys.first.legs.first.departureDelayMinutes != null){
         delayed = true;
         delayText = 'Departure delayed';
@@ -344,7 +346,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Padding(
           padding: EdgeInsetsGeometry.all(8),
@@ -359,210 +361,14 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 ),
               ),
               Material(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 elevation: 10,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.trip_origin,
-                                      color: Theme.of(context).colorScheme.onPrimary,
-                                    ),
-                                    SizedBox(width: 8),
-                                    futureJourneys.isNotEmpty
-                                        ? Flexible(
-                                          child: Text(
-                                            maxLines: 2,
-                                              futureJourneys.first.legs.first.origin.name,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium!
-                                                  .copyWith(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.onPrimary,
-                                                    fontWeight: FontWeight.bold
-                                                  ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        )
-                                        : Flexible(
-                                          child: Text(
-                                              'No saved journeys',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium!
-                                                  .copyWith(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.onPrimary,
-                                                    fontWeight: FontWeight.bold
-                                                  ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        ),
-                                  ],
-                                ),
-                                
-                                SvgPicture.asset("assets/Icon/go_to_line.svg",
-                                width: 24,
-                                height: 24,
-                                colorFilter: ColorFilter.mode(
-                        Theme.of(context).colorScheme.onPrimary,
-                        BlendMode.srcIn,
-                      ),
-                                ),
-                                
-                                Row(
-                                  children: [
-                                    SvgPicture.asset("assets/Icon/distance.svg",
-                                width: 24,
-                                height: 24,
-                                colorFilter: ColorFilter.mode(
-                        Theme.of(context).colorScheme.onPrimary,
-                        BlendMode.srcIn,
-                      ),
-                                ),
-                                    SizedBox(width: 8),
-                                    futureJourneys.isNotEmpty
-                                        ? Flexible(
-                                          child: Text(
-                                            maxLines: 2,
-                                              futureJourneys
-                                                  .first
-                                                  .legs
-                                                  .last
-                                                  .destination
-                                                  .name,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium!
-                                                  .copyWith(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.onPrimary,
-                                                    fontWeight: FontWeight.bold
-                                                  ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        )
-                                        : Flexible(
-                                          child: Text(
-                                              'No saved journeys',
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium!
-                                                  .copyWith(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.onPrimary,
-                                                    fontWeight: FontWeight.bold
-                                                  ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        ),
-                                  ],
-                                ),
-                                SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    SvgPicture.asset("assets/Icon/calendar_clock.svg",
-                                width: 24,
-                                height: 24,
-                                colorFilter: ColorFilter.mode(
-                        Theme.of(context).colorScheme.onPrimary,
-                        BlendMode.srcIn,
-                      ),
-                                ),
-                                    SizedBox(width: 8),
-                                    futureJourneys.isNotEmpty
-                                        ? Text(
-                                            timeText,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                  fontWeight: FontWeight.bold
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          )
-                                        : Text(
-                                            'No saved journeys',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium!
-                                                .copyWith(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary,
-                                                ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _buildModes(context, futureJourneys.first, Theme.of(context).colorScheme.onPrimary),
-                              Spacer(),
-                              FilledButton.tonalIcon(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .errorContainer,
-                                ),
-                                onPressed: () => {},
-                                label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onErrorContainer,
-                                    )),
-                                iconAlignment: IconAlignment.end,
-                                icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
-                                width: 24,
-                                height: 24,
-                                colorFilter: ColorFilter.mode(
-                                              Theme.of(context).colorScheme.onErrorContainer,
-                                              BlendMode.srcIn,
-                                            ),
-                                ),
-                                ),
-                              
-                              FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, futureJourneys.first), 
-                                label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
-                                iconAlignment: IconAlignment.end,
-                                icon: Icon(Icons.more_time, color: onDelayColor,),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: delayColor,
-                                ),
-                              )
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: _buildCardView(context, futureJourneys.first, true),
                 ),
               ),
             ],
@@ -630,82 +436,322 @@ Future<void> getSavedJourneyRefreshTokens() async {
     }
   }
 
-  Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
-    if(journeysList.isEmpty) {
-      return Center(
-        child: showingPastJourneys ? 
-          Text('No past journeys', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))
-        : Text(
-          'No saved journeys',
-          style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant,)
-        ),
-      );
-    }
-    List<Journey> journeys = List.from(journeysList);
-    if(!showingPastJourneys){journeys.removeAt(0);}
-    if (journeys.isEmpty && !showingPastJourneys) {
-      return Center(
-        child: Text(
-          'No more saved journeys',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-      );
-    }
-
-    return Expanded(
-      child: Container(
-        padding: cardView ? EdgeInsets.all(0) : EdgeInsets.only(top: 8),
-        
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: ListView.builder(
-          itemCount: journeys.length,
-          itemBuilder: (context, index)
-          {
-            final journey = journeys[index];
-            return cardView ?
-              _buildCardView(context, journey) :
-              _buildListView(context, journey);
-          }
-              )),
+Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
+  if(journeysList.isEmpty) {
+    return Center(
+      child: showingPastJourneys ?
+        Text('No past journeys', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))
+        : Text('No saved journeys', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
     );
-
-
   }
 
-  Widget _buildCardView(BuildContext context, Journey  journey)
+  List<Journey> journeys = List.from(journeysList);
+  if(!showingPastJourneys) {
+    journeys.removeAt(0);
+  }
+  
+  if (journeys.isEmpty && !showingPastJourneys) {
+    return Center(
+      child: Text('No more saved journeys', style: Theme.of(context).textTheme.headlineMedium),
+    );
+  }
+
+  // Group journeys by date
+  List<List<Journey>> journeysByDate = [];
+  for(int i = 0; i < journeys.length; i++) {
+    if(i == 0) {
+      journeysByDate.add([journeys[i]]);
+    } else {
+      DateTime previous = journeys[i-1].plannedDepartureTime;
+      if(journeys[i].plannedDepartureTime.day == previous.day &&
+         journeys[i].plannedDepartureTime.month == previous.month &&
+         journeys[i].plannedDepartureTime.year == previous.year) {
+        journeysByDate.last.add(journeys[i]);
+      } else {
+        journeysByDate.add([journeys[i]]);
+      }
+    }
+  }
+
+  // Ensure isExpandedList matches journeysByDate length
+  if (isExpandedList.length != journeysByDate.length) {
+    isExpandedList = List<bool>.filled(journeysByDate.length, false);
+  }
+
+  return ListView.separated(
+    padding: EdgeInsets.symmetric(vertical: 16.0),
+    itemCount: journeysByDate.length,
+    separatorBuilder: (context, index) => SizedBox(height: 12.0),
+    itemBuilder: (context, index) {
+      List<Journey> journeyGroup = journeysByDate[index];
+      bool isExpanded = isExpandedList[index];
+      
+      return AnimatedContainer(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: isExpanded ? Theme.of(context).colorScheme.tertiaryContainer : Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        child: Column(
+          children: [
+            // Animated Header
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  isExpandedList[index] = !isExpandedList[index];
+                });
+              },
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                decoration: BoxDecoration(
+                  borderRadius: isExpanded 
+                    ? BorderRadius.only(
+                        topLeft: Radius.circular(24.0),
+                        topRight: Radius.circular(24.0),
+                      )
+                    : BorderRadius.circular(24.0),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: AnimatedDefaultTextStyle(
+                        duration: Duration(milliseconds: 300),
+                        style: Theme.of(context).textTheme.titleMedium!.copyWith(color: isExpanded ? Theme.of(context).colorScheme.onTertiaryContainer : Theme.of(context).colorScheme.onSurface ),
+                        child: Text(generateJourneyTimeText(journeyGroup.first, true, false)),
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                      decoration: BoxDecoration(
+                        color: isExpanded ? Theme.of(context).colorScheme.tertiary:Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 4.0),
+                          AnimatedDefaultTextStyle(
+                            duration: Duration(milliseconds: 300),
+                            style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                              color: isExpanded ? Theme.of(context).colorScheme.onTertiary : Theme.of(context).colorScheme.onSurface,
+                            ),
+                            child: Text('${journeyGroup.length}'),
+                          ),
+                          SizedBox(width: 4.0),
+                          AnimatedRotation(
+                            turns: isExpanded ? 0.5 : 0,
+                            duration: Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: isExpanded ? Theme.of(context).colorScheme.onTertiary : Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Animated Expandable Body
+            AnimatedSize(
+              duration: Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                height: isExpanded ? null : 0,
+                child: AnimatedOpacity(
+                  duration: Duration(milliseconds: isExpanded ? 400 : 200),
+                  opacity: isExpanded ? 1.0 : 0.0,
+                  curve: isExpanded ? Curves.easeIn : Curves.easeOut,
+                  child: isExpanded ? Column(
+                    children: journeyGroup.asMap().entries.map<Widget>((entry) {
+                      int idx = entry.key;
+                      Journey journey = entry.value;
+                      bool isLast = idx == journeyGroup.length - 1;
+                      
+                      return TweenAnimationBuilder<double>(
+                        duration: Duration(milliseconds: 600 + (idx * 100)),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        curve: Curves.easeOutBack,
+                        builder: (context, value, child) {
+                          return Transform.translate(
+                            offset: Offset(0, 20 * (1 - value)),
+                            child: Opacity(
+                              opacity: value,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Column(
+                          children: [
+                              Container(
+                                height: 1,
+                                color: Theme.of(context).colorScheme.surface,
+                              ),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.tertiaryContainer,
+                                borderRadius: isLast ? BorderRadius.only(
+                                  bottomLeft: Radius.circular(24.0),
+                                  bottomRight: Radius.circular(24.0),
+                                ) : null,
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: isLast ? BorderRadius.only(
+                                    bottomLeft: Radius.circular(24.0),
+                                    bottomRight: Radius.circular(24.0),
+                                  ) : null,
+                                  onTap: () async {
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Refreshing journey information...',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+      
+              try {
+                // Refresh the journey using the service
+                final refreshedJourney = await widget.page.services
+                    .refreshJourneyByToken(journey.refreshToken);
+      
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Navigate to journey page with the refreshed journey
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => JourneyPageAndroid(
+                      JourneyPage(journey: refreshedJourney),
+                      journey: refreshedJourney,
+                    ),
+                  ),
+                ).then((_) {
+                  getSavedJourneyRefreshTokens();
+                });
+              } catch (e) {
+                // Close the loading dialog
+                Navigator.pop(context);
+      
+                // Show error message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Could not refresh journey: ${e.toString()}'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+      
+                // Navigate with the original journey as fallback
+              }
+            },
+                                  child: cardView ? _buildCardView(context, journey, false) : _buildListView(context, journey),
+                                ),
+                              ),
+                            ),
+                            // Add separator line between items (except for last item)
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ) : SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+  Widget _buildCardView(BuildContext context, Journey  journey, bool isFirst)
   {
     bool delayed = false;
-    String delayText = 'no delays';
     String timeText = '';
-    timeText = generateJourneyTimeText(journey);
+    Text liveTimeTextP1 = Text('');
+    Text liveTimeTextP2 = Text('');
+    timeText = generateJourneyTimeText(journey, false, true);
+    Color yLight = Color.fromARGB(255, 229, 241, 116);
+    Color yDark = Color.fromARGB(255, 166, 175, 34);
+    Color y = yLight;
+    Color g = onSuccessColor;
+    if(Theme.of(context).brightness == Brightness.dark)
+    {
+      if(isFirst)
+      {
+        y = yDark;
+      }
+      else
+      {
+        y = yLight;
+      }
+    }
+    else
+    {
+      if(isFirst)
+      {
+        y = yLight;
+      }
+      else
+      {
+        y = yDark;
+      }
+    }
+    if(isFirst)
+    {
+      g = successColor;
+    }
+
     if(journey.legs.first.departureDelayMinutes != null){
       delayed = true;
-      delayText = 'Departure delayed';
+      Color c = journey.legs.first.departureDelayMinutes! <= 0 ? g : y;
+      c = journey.legs.first.departureDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : c;
+      liveTimeTextP1 = Text(generateLiveTimeText(journey, true, false), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),);
+      liveTimeTextP2 = Text('');
     }
     if(journey.legs.last.arrivalDelayMinutes != null){
       if(delayed)
       {
-        delayText = 'Delayed';
+        Color cD = journey.legs.last.departureDelayMinutes! <= 0 ? g : y;
+        cD = journey.legs.last.departureDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : cD;
+        Color cA = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+        cA = journey.legs.last.arrivalDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : cA;
+        liveTimeTextP1 = Text(generateLiveTimeText(journey, true, false), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cD),);
+        liveTimeTextP2 = Text(generateLiveTimeText(journey, false, true), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cA),);
       }
       else{
         delayed = true;
-        delayText = 'Arrival delayed';
+        Color c = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+        c = journey.legs.last.arrivalDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : c;
+        liveTimeTextP2 = Text(generateLiveTimeText(journey, false, true), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),);
+        liveTimeTextP1 = Text('          ', style: Theme.of(context).textTheme.bodyMedium,);
       }
     }
-    
-    Color delayColor = delayed
-        ? Theme.of(context).colorScheme.errorContainer
-        : successColor;
-    
-    Color onDelayColor = delayed
-        ? Theme.of(context).colorScheme.onErrorContainer
-        : onSuccessColor;
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: isFirst ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
       child: GestureDetector(
         onTap: () async {
               // Show loading indicator
@@ -764,166 +810,171 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 // Navigate with the original journey as fallback
               }
             },
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: IntrinsicHeight(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.trip_origin,
-                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Flexible(
-                                            child: Text(
-                                              maxLines: 2,
-                                                journey.legs.first.origin.name,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium!
-                                                    .copyWith(
-                                                      color: Theme.of(
-                                                        context,
-                                                      ).colorScheme.onPrimaryContainer,
-                                                      fontWeight: FontWeight.bold
-                                                    ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          )
-                                    ],
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: isFirst ? 16 : 16.0, horizontal:16),
+          child: IntrinsicHeight(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.trip_origin,
+                            color: isFirst ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                          SizedBox(width: 8),
+                          Flexible(
+                                child: Text(
+                                  maxLines: 2,
+                                    journey.legs.first.origin.name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium!
+                                        .copyWith(
+                                          color: isFirst ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                                          fontWeight: FontWeight.bold
+                                        ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  
-                                  SvgPicture.asset("assets/Icon/go_to_line.svg",
-                                  width: 24,
-                                  height: 24,
-                                  colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.onPrimaryContainer,
-                          BlendMode.srcIn,
-                        ),
+                              )
+                        ],
+                      ),
+                      
+                      SvgPicture.asset("assets/Icon/go_to_line.svg",
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+              isFirst ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+              BlendMode.srcIn,
+            ),
+                      ),
+                      
+                      Row(
+                        children: [
+                          SvgPicture.asset("assets/Icon/distance.svg",
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+              isFirst ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+              BlendMode.srcIn,
+            ),
+                      ),
+                          SizedBox(width: 8),
+                          Flexible(
+                                child: Text(
+                                  maxLines: 2,
+                                    journey
+                                        .legs
+                                        .last
+                                        .destination
+                                        .name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium!
+                                        .copyWith(
+                                          color: isFirst ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                                          fontWeight: FontWeight.bold
+                                        ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  
-                                  Row(
-                                    children: [
-                                      SvgPicture.asset("assets/Icon/distance.svg",
-                                  width: 24,
-                                  height: 24,
-                                  colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.onPrimaryContainer,
-                          BlendMode.srcIn,
-                        ),
-                                  ),
-                                      SizedBox(width: 8),
-                                      Flexible(
-                                            child: Text(
-                                              maxLines: 2,
-                                                journey
-                                                    .legs
-                                                    .last
-                                                    .destination
-                                                    .name,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium!
-                                                    .copyWith(
-                                                      color: Theme.of(
-                                                        context,
-                                                      ).colorScheme.onPrimaryContainer,
-                                                      fontWeight: FontWeight.bold
-                                                    ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          )
-                                    ],
-                                  ),
-                                  SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      SvgPicture.asset("assets/Icon/calendar_clock.svg",
-                                  width: 24,
-                                  height: 24,
-                                  colorFilter: ColorFilter.mode(
-                          Theme.of(context).colorScheme.onPrimaryContainer,
-                          BlendMode.srcIn,
-                        ),
-                                  ),
-                                      SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                                timeText,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium!
-                                                    .copyWith(
-                                                      color: Theme.of(
-                                                        context,
-                                                      ).colorScheme.onPrimaryContainer,
-                                                      fontWeight: FontWeight.bold
-                                                    ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                      )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                              )
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule, color: isFirst ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Column(
                               children: [
-                                _buildModes(context, journey, Theme.of(context).colorScheme.onPrimaryContainer),
-                                Spacer(),
-                                FilledButton.tonalIcon(
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .errorContainer,
-                                  ),
-                                  onPressed: () => {},
-                                  label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onErrorContainer,
-                                      )),
-                                  iconAlignment: IconAlignment.end,
-                                  icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
-                                  width: 24,
-                                  height: 24,
-                                  colorFilter: ColorFilter.mode(
-                                                Theme.of(context).colorScheme.onErrorContainer,
-                                                BlendMode.srcIn,
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                          timeText,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium!
+                                              .copyWith(
+                                                color: isFirst ? Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                                                fontWeight: FontWeight.bold
                                               ),
-                                  ),
-                                  ),
-                                
-                                FilledButton.tonalIcon(onPressed: ()=>showDelayInfo(context, journey), 
-                                  label: Text(delayText, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onDelayColor),),
-                                  iconAlignment: IconAlignment.end,
-                                  icon: Icon(Icons.more_time, color: onDelayColor,),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: delayColor,
-                                  ),
-                                )
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                ),
+                                      if(delayed)
+                                      Row(
+                                        children: [
+                                          liveTimeTextP1,
+                                          Text(
+                                            ' - ',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium!
+                                                .copyWith(
+                                                  color: isFirst ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                                                  fontWeight: FontWeight.bold
+                                                ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          liveTimeTextP2,
+                                        ],
+                                      ),
                               ],
                             ),
-                          ],
-                        ),
+                          )
+                        ],
                       ),
-                    ),
+                      Row(
+                        children: [
+                          _buildModes(context, journey, isFirst ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer),
+                          Spacer(),
+                          FilledButton.tonalIcon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(context)
+                            .colorScheme
+                            .errorContainer,
+                      ),
+                      onPressed: () => {},
+                      label: Text('no Ticket', style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onErrorContainer,
+                          )),
+                      iconAlignment: IconAlignment.end,
+                      icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+                                    Theme.of(context).colorScheme.onErrorContainer,
+                                    BlendMode.srcIn,
+                                  ),
+                      
+                          ),
+                                    ),
+                        ],
+                      ),
+                    ],
                   ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -956,17 +1007,43 @@ Future<void> getSavedJourneyRefreshTokens() async {
   {
     bool delayed = false;
     String timeText = '';
-    timeText = generateJourneyTimeText(journey);
+    timeText = generateJourneyTimeText(journey, false, true);
+    Text liveTimeTextP1 = Text('');
+    Text liveTimeTextP2 = Text('');
     Icon modeIcon = Icon(Icons.train, color: Theme.of(context).colorScheme.tertiary);
     String highestMode = _findHighestMode(journey);
     modeIcon = Icon(getModeIcon(highestMode).icon, color: Theme.of(context).colorScheme.tertiary,);
     if(journey.legs.first.departureDelayMinutes != null || journey.legs.last.arrivalDelayMinutes != null){
       delayed = true;
     }
-    
-    Color onDelayColor = delayed
-        ? Theme.of(context).colorScheme.onErrorContainer
-        : successIconColor;
+    Color y = Theme.of(context).brightness == Brightness.dark ? Color.fromARGB(255, 229, 241, 116) : Color.fromARGB(255, 166, 175, 34);
+    Color g = onSuccessColor;
+
+    if(journey.legs.first.departureDelayMinutes != null){
+      delayed = true;
+      Color c = journey.legs.first.departureDelayMinutes! <= 0 ? g : y;
+      c = journey.legs.first.departureDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : c;
+      liveTimeTextP1 = Text(generateLiveTimeText(journey, true, false), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),);
+      liveTimeTextP2 = Text('');
+    }
+    if(journey.legs.last.arrivalDelayMinutes != null){
+      if(delayed)
+      {
+        Color cD = journey.legs.last.departureDelayMinutes! <= 0 ? g : y;
+        cD = journey.legs.last.departureDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : cD;
+        Color cA = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+        cA = journey.legs.last.arrivalDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : cA;
+        liveTimeTextP1 = Text(generateLiveTimeText(journey, true, false), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cD),);
+        liveTimeTextP2 = Text(generateLiveTimeText(journey, false, true), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cA),);
+      }
+      else{
+        delayed = true;
+        Color c = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+        c = journey.legs.last.arrivalDelayMinutes! >= 15 ? Theme.of(context).colorScheme.error : c;
+        liveTimeTextP2 = Text(generateLiveTimeText(journey, false, true), style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),);
+        liveTimeTextP1 = Text('        ', style: Theme.of(context).textTheme.bodyMedium,);
+      }
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1036,91 +1113,96 @@ Future<void> getSavedJourneyRefreshTokens() async {
                   fontWeight: FontWeight.bold
                 ),
           ),
-          subtitle: Text(
-            timeText,
-            style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+          subtitle: Row(
             children: [
-            IconButton(onPressed: ()=>showDelayInfo(context, journey), icon: Icon(Icons.more_time), color: onDelayColor,),
-            IconButton(onPressed: ()=>{}, icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
-                                      width: 24,
-                                      height: 24,
-                                      colorFilter: ColorFilter.mode(
-                                                    Theme.of(context).colorScheme.onErrorContainer,
-                                                    BlendMode.srcIn,
-                                                  ),
-                                      ),)
-          ],),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Divider(
-            color: Theme.of(context).colorScheme.outline,
-            thickness: 1,
+              Text(
+                timeText,
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),         
+              ),
+              SizedBox(width: 8),
+              if(delayed)
+                  liveTimeTextP1,
+                  if(delayed)
+                  Text(
+                    ' - ',
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  if(delayed)
+                  liveTimeTextP2, 
+              
+            ],
           ),
+          trailing: IconButton(onPressed: ()=>{}, icon: SvgPicture.asset("assets/Icon/transit_ticket.svg",
+                                    width: 24,
+                                    height: 24,
+                                    colorFilter: ColorFilter.mode(
+                                                  Theme.of(context).colorScheme.onErrorContainer,
+                                                  BlendMode.srcIn,
+                                                ),
+                                    ),),
         ),
       ],
     );
   }
 
-  void showDelayInfo(BuildContext context, Journey journey)
+  String generateLiveTimeText(Journey journey, bool onlyDeparture, bool onlyArrival)
   {
-    Color arrivalColor = journey.legs.last.arrivalDelayMinutes != null
-        ? Theme.of(context).colorScheme.error
-        : successIconColor;
-
-    Color departureColor = journey.legs.first.departureDelayMinutes != null
-        ? Theme.of(context).colorScheme.error
-        : successIconColor;
-
-    showDialog(context: context, builder: (BuildContext context)
-    {
-      return AlertDialog(
-        title: Text('Delay Information', style: Theme.of(context).textTheme.titleLarge!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Departure Delay: ', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
-            Text(journey.legs.first.departureDelayMinutes != null ? '${journey.legs.first.departureDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: departureColor),),
-            SizedBox(height: 8),
-            Text('Arrival Delay: ', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
-            Text(journey.legs.last.arrivalDelayMinutes != null ? '${journey.legs.last.arrivalDelayMinutes} minutes' : 'No delay', style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: arrivalColor),),
-          ],
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: Text('Close', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.primary)),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      );
-    });
-  }
-
-  String generateJourneyTimeText(Journey journey)
-  {
-    DateTime currentTime = DateTime.now();
     DateTime departureTime = journey.departureTime.toLocal();
     DateTime arrivalTime = journey.arrivalTime.toLocal();
     String departureHour = departureTime.hour.toString().padLeft(2, '0');
     String departureMinute = departureTime.minute.toString().padLeft(2, '0');
     String arrivalHour = arrivalTime.hour.toString().padLeft(2, '0');
     String arrivalMinute = arrivalTime.minute.toString().padLeft(2, '0');
+    if(onlyDeparture)
+    {
+      return ('$departureHour:$departureMinute');
+    }
+    if(onlyArrival)
+    {
+      return ('$arrivalHour:$arrivalMinute');
+    }
+    return ('$departureHour:$departureMinute - $arrivalHour:$arrivalMinute'); 
+  }
+
+  String generateJourneyTimeText(Journey journey, bool onlyDate, bool onlyTime)
+  {
+    DateTime currentTime = DateTime.now();
+    DateTime departureTime = journey.plannedDepartureTime.toLocal();
+    DateTime arrivalTime = journey.plannedArrivalTime.toLocal();
+    String departureHour = departureTime.hour.toString().padLeft(2, '0');
+    String departureMinute = departureTime.minute.toString().padLeft(2, '0');
+    String arrivalHour = arrivalTime.hour.toString().padLeft(2, '0');
+    String arrivalMinute = arrivalTime.minute.toString().padLeft(2, '0');
+    if(onlyTime)
+    {
+      return ('$departureHour:$departureMinute - $arrivalHour:$arrivalMinute');
+    }
     if(departureTime.difference(currentTime).inDays < 3)
     {
+      if(onlyDate && onlyTime)
+      {
+        onlyDate = false;
+        onlyTime = false;
+      }
+      
       if(departureTime.day == currentTime.day)
       {
+        if(onlyDate)
+        {
+          return 'Today';
+        }
         return 'Today $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
       }
       else if(departureTime.day == currentTime.day + 1)
       {
+        if(onlyDate)
+        {
+          return 'Tomorrow';
+        }
         return 'Tomorrow $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
       }
     }
@@ -1150,11 +1232,19 @@ Future<void> getSavedJourneyRefreshTokens() async {
           weekdayName = 'Sunday';
           break;
       }
+      if(onlyDate)
+      {
+        return 'next $weekdayName';
+      }
       return 'next $weekdayName $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
     }
     else
     {
-      return '${departureTime.day}.${departureTime.month}.${departureTime.year} ${departureTime.hour}:${departureTime.minute} - ${arrivalTime.hour}:${arrivalTime.minute}';
+      if(onlyDate)
+      {
+        return '${departureTime.day}.${departureTime.month}.${departureTime.year}';
+      }
+      return '${departureTime.day}.${departureTime.month}.${departureTime.year} $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
     }
   }
 
