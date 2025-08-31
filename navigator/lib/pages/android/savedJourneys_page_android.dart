@@ -541,6 +541,7 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
                             ),
                             child: Text('${journeyGroup.length}'),
                           ),
+                          
                           SizedBox(width: 4.0),
                           AnimatedRotation(
                             turns: isExpanded ? 0.5 : 0,
