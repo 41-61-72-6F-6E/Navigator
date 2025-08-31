@@ -33,23 +33,23 @@ jobs:
         channel: 'stable'  # Use latest stable version (includes Dart 3.8.1+)
         cache: true  # Enable caching for faster builds
 
-    - name: Setup signing
-      run: |
-       mkdir -p navigator/android
-        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > navigator/android/my-release-key.jks
-        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > navigator/android/key.properties
-        echo "keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> navigator/android/key.properties
-        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> navigator/android/key.properties
-        echo "storeFile=my-release-key.jks" >> navigator/android/key.properties
+- name: Setup signing
+  run: |
+    mkdir -p navigator/android
+    echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > navigator/android/my-release-key.jks
+    echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > navigator/android/key.properties
+    echo "keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> navigator/android/key.properties
+    echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> navigator/android/key.properties
+    echo "storeFile=my-release-key.jks" >> navigator/android/key.properties
 
-    - name: Verify Keystore Alias
-      run: |
-        echo "🔍 Checking keystore alias and cert fingerprints..."
-        keytool -list -v \
-          -keystore app/my-release-key.jks \
-          -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-          | grep -E "Alias name:|SHA1:|SHA256:"
-      working-directory: navigator/android
+- name: Verify Keystore Alias
+  run: |
+    echo "🔍 Checking keystore alias and cert fingerprints..."
+    keytool -list -v \
+      -keystore my-release-key.jks \
+      -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+      | grep -E "Alias name:|SHA1:|SHA256:"
+  working-directory: navigator/android
 
     
     # Get Flutter dependencies
