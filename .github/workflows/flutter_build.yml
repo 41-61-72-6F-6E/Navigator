@@ -34,8 +34,8 @@ jobs:
         cache: true  # Enable caching for faster builds
 
     - name: Setup signing
-  run: |
-    mkdir -p navigator/android
+      run: |
+       mkdir -p navigator/android
     echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > navigator/android/my-release-key.jks
     echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > navigator/android/key.properties
     echo "keyPassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> navigator/android/key.properties
