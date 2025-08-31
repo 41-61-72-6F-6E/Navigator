@@ -1086,7 +1086,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('Give the location a name so you can better remember it', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
-                        TextField(controller: c),
+                        TextField(controller: c, style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                       ],
                       
                     ),
