@@ -2,30 +2,29 @@ name: Flutter Build
 
 on:
   push:
-    
   pull_request:
     branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     # Set environment variables for the job
     env:
       API_URL: ${{ secrets.API_URL }}
-    
+
     steps:
     # Checkout the repository code
     - name: Checkout repository
       uses: actions/checkout@v4
-    
+
     # Setup Java (required for Android builds)
     - name: Setup Java
       uses: actions/setup-java@v3
       with:
         distribution: 'zulu'
         java-version: '17'
-    
+
     # Setup Flutter
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -42,28 +41,30 @@ jobs:
         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> navigator/android/key.properties
         echo "storeFile=my-release-key.jks" >> navigator/android/key.properties
 
+    - name: Debug signing setup
+      run: |
+        cd navigator/android
+        echo "=== Contents of key.properties ==="
+        cat key.properties
+        echo "=== Checking if keystore file exists ==="
+        ls -la my-release-key.jks
+        echo "=== Current directory structure ==="
+        find . -name "*.jks" -o -name "key.properties"
+
     - name: Verify Keystore Alias
       run: |
         echo "🔍 Checking keystore alias and cert fingerprints..."
-    keytool -list -v \
-      -keystore my-release-key.jks \
-      -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-      | grep -E "Alias name:|SHA1:|SHA256:"
-  working-directory: navigator/android
+        keytool -list -v \
+          -keystore my-release-key.jks \
+          -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+          | grep -E "Alias name:|SHA1:|SHA256:"
+      working-directory: navigator/android
 
-    
     # Get Flutter dependencies
     - name: Get dependencies
       run: |
         cd navigator
         flutter pub get
-    
-    - name: Generate code
-      run: |
-        cd navigator
-        dart run build_runner build --delete-conflicting-outputs
-      env:
-        API_URL: ${{ secrets.API_URL }}
     
     # Generate code (for env.g.dart and other generated files)
     - name: Generate code
@@ -72,7 +73,7 @@ jobs:
         dart run build_runner build --delete-conflicting-outputs
       env:
         API_URL: ${{ secrets.API_URL }}
-    
+
     # Run tests (only if test directory exists)
     - name: Check if tests exist
       id: check_tests
@@ -102,6 +103,7 @@ jobs:
         else
           echo "✅ Keine echten Fehler – Lints ignoriert"
         fi
+
     # Update Version
     - name: Set Flutter Version
       run: |
@@ -111,8 +113,6 @@ jobs:
         echo "Updating pubspec.yaml to version $VERSION_NAME+$VERSION_CODE"
         sed -i "s/^version: .*/version: $VERSION_NAME+$VERSION_CODE/" pubspec.yaml
 
-
-    
     # Build APK for Android
     - name: Build APK
       run: |
@@ -125,7 +125,6 @@ jobs:
         $ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -n 1)/apksigner verify --print-certs \
           navigator/build/app/outputs/flutter-apk/app-release.apk
 
-    
     # Build App Bundle for Android (recommended for Play Store)
     - name: Build App Bundle
       run: |
@@ -138,7 +137,7 @@ jobs:
       with:
         name: release-apk
         path: navigator/build/app/outputs/flutter-apk/app-release.apk
-    
+
     - name: Upload App Bundle
       uses: actions/upload-artifact@v4
       with:
@@ -182,7 +181,5 @@ jobs:
           name: release-ipa
           path: navigator/build/ios/ipa/*.ipa
 
-
-    
     # Note: For signed iOS builds, you'll need to configure code signing
     # which requires additional setup with certificates and provisioning profiles
