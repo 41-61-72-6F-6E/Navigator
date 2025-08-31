@@ -811,7 +811,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       if(faves.isEmpty)
       SizedBox(width: 16,),
       if(faves.isEmpty)
-        Text('No saved Locations so far'),
+        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith!(color: Theme.of(context).colorScheme.onSurfaceVariant),),
       if(faves.isNotEmpty)
         Expanded(
           child: SingleChildScrollView(
@@ -1080,12 +1080,12 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                 {
                   TextEditingController c = new TextEditingController();
                   return AlertDialog(
-                    title: Text('Save Location'),
+                    title: Text('Save Location', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                     content: 
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Give the location a name so you can better remember it'),
+                        Text('Give the location a name so you can better remember it', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
                         TextField(controller: c),
                       ],
                       
