@@ -354,10 +354,15 @@ Future<void> getSavedJourneyRefreshTokens() async {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  'Next Journey',
-                  style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
-                  
+                child: Column(
+                  children: [
+                    Text(
+                      'Next Journey',
+                      style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+                      
+                    ),
+                    Text(generateJourneyTimeText(futureJourneys.first, false, false), style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer)),
+                  ],
                 ),
               ),
               Material(
