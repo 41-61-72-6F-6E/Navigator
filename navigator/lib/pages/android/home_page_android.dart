@@ -13,6 +13,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
+import 'package:navigator/customWidgets/parent_child_checkboxes.dart';
 
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
@@ -37,22 +38,27 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   final MapController _mapController = MapController();
   List<Polyline> _lines = [];
   List<Station> _stations = [];
-  bool showStationLabels = true;
 
   //Map Options
   bool showLightRail = true;
+  bool showStationLabelsLightRail = true;
   List<Polyline> _lightRailLines = [];
   bool showSubway = true;
+  bool showStationLabelsSubway = true;
   List<Polyline> _subwayLines = [];
   bool showTram = false;
+  bool showStationLabelsTram = false;
   List<Polyline> _tramLines = [];
   // bool showBus = false;
+  // bool showStationLabelsBus = false;
   // List<Polyline> _busLines = [];
   // bool showTrolleybus = false;
   // List<Polyline> _trolleyBusLines = [];
   bool showFerry = false;
+  bool showStationLabelsFerry = true;
   List<Polyline> _ferryLines = [];
   bool showFunicular = false;
+  bool showStationLabelsFunicular = false;
   List<Polyline> _funicularLines = [];
   late AlignOnUpdate _alignPositionOnUpdate;
   late final StreamController<double?> _alignPositionStreamController;
@@ -82,6 +88,200 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       faves = f;
     });
   }
+
+  // Helper function to get minimum zoom level for different station types
+double _getMinZoomForStation(Station station) {
+  // National and national express stations - show earliest (lowest zoom)
+  if (station.national || station.nationalExpress) {
+    return 9.5;
+  }
+  
+  // Regional stations - show at medium zoom
+  if (station.regional || station.regionalExpress) {
+    return 10.5;
+  }
+  
+  // Local transport - show at higher zoom levels
+  if (station.suburban || station.subway) {
+    return 12.5;
+  }
+  
+  // Tram, ferry, etc. - show at highest zoom
+  if (station.tram || station.ferry || station.bus || station.taxi) {
+    return 14.5;
+  }
+  
+  // Default fallback
+  return 16.5;
+}
+
+  // Helper function to get the appropriate show labels boolean
+bool _getShowLabels(String transportType) {
+  switch (transportType) {
+    case 'lightRail':
+      return showStationLabelsLightRail;
+    case 'subway':
+      return showStationLabelsSubway;
+    case 'tram':
+      return showStationLabelsTram;
+    case 'ferry':
+      return showStationLabelsFerry;
+    case 'funicular':
+      return showStationLabelsFunicular;
+    default:
+      return false;
+  }
+}
+
+// Helper function to filter stations by transport type
+bool _shouldShowStation(Station station, String transportType) {
+  // Always show stations of these types regardless of transport type
+  if (station.national || station.nationalExpress || station.regional || station.regionalExpress) {
+    return true;
+  }
+  
+  switch (transportType) {
+    case 'lightRail':
+      return station.suburban;
+    case 'subway':
+      return station.subway;
+    case 'tram':
+      return station.tram;
+    case 'ferry':
+      return station.ferry;
+    case 'funicular':
+      return false; // No funicular property in Station class
+    default:
+      return false;
+  }
+}
+
+// Function to create marker layer for a specific transport type
+MarkerLayer? _createMarkerLayer(String transportType) {
+  if (!_getShowLabels(transportType) || _currentZoom <= 12) return null;
+  ColorScheme colors = Theme.of(context).colorScheme;
+
+  return MarkerLayer(
+    markers: _stations
+        .where((station) {
+      // Filter by transportation type settings first
+      if (!_shouldShowStation(station, transportType)) {
+        return false;
+      }
+
+      // Filter stations based on zoom level and station importance
+      final minZoom = _getMinZoomForStation(station);
+      if (_currentZoom < minZoom) return false;
+
+      // At higher zoom levels, show all stations
+      return true;
+    })
+    // Group by name and take only the first station of each name when zoomed out
+        .fold<Map<String, Station>>({}, (map, station) {
+      if (_currentZoom <= 15.5 && !map.containsKey(station.name)) {
+        map[station.name] = station;
+      } else if (_currentZoom > 15.5) {
+        // When zoomed in, show all stations individually
+        map["${station.name}_${station.latitude}_${station.longitude}"] = station;
+      }
+      return map;
+    })
+        .values
+    // Apply collision detection for labels when zoomed in, but not at extreme zoom
+        .fold<Map<String, List<Station>>>({}, (collisionMap, station) {
+      if (_currentZoom > 16.5) {
+        // At very high zoom levels, bypass collision detection completely
+        // Each station gets its own unique key to ensure all are shown
+        final uniqueKey = "${station.name}_${station.latitude}_${station.longitude}";
+        collisionMap[uniqueKey] = [station];
+      } else {
+        // Normal collision detection at moderate zoom levels
+        final key = _getLabelCollisionKey(station, _currentZoom);
+        if (!collisionMap.containsKey(key)) {
+          collisionMap[key] = [];
+        }
+        collisionMap[key]!.add(station);
+      }
+      return collisionMap;
+    })
+        .entries
+        .expand((entry) {
+      final stations = entry.value;
+      // If multiple stations share the same collision key, only keep one instance of each name
+      // but only apply this logic at lower zoom levels
+      if (stations.length > 1 && _currentZoom <= 17) {
+        final uniqueByName = <String, Station>{};
+        for (final station in stations) {
+          uniqueByName[station.name] = station;
+        }
+        return uniqueByName.values;
+      }
+      return stations;
+    })
+        .map((station) {
+      return Marker(
+        point: LatLng(station.latitude, station.longitude),
+        width: 150,
+        height: 60,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Only show the label text when zoomed in close enough
+            if (_currentZoom > 15.5)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainer,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  station.name,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            if (_currentZoom > 14.5)
+              const SizedBox(height: 2),
+            Container(
+              decoration: BoxDecoration(
+                // Scale marker size based on zoom level
+                color: colors.primary,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.all(_currentZoom > 14 ? 4 : 3),
+              child: Icon(
+                _getTransportIcon(station),
+                color: colors.onPrimary,
+                size: _currentZoom > 14 ? 14 : 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList(),
+  );
+}
+
+  
 
   Future<void> initiateLines() async {
     await widget.page.service.refreshPolylines();
@@ -348,6 +548,37 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     super.dispose();
   }
 
+  List<MarkerLayer> _buildMarkerLayers() {
+  final layers = <MarkerLayer>[];
+  
+  if (showLightRail) {
+    final layer = _createMarkerLayer('lightRail');
+    if (layer != null) layers.add(layer);
+  }
+  
+  if (showSubway) {
+    final layer = _createMarkerLayer('subway');
+    if (layer != null) layers.add(layer);
+  }
+  
+  if (showTram) {
+    final layer = _createMarkerLayer('tram');
+    if (layer != null) layers.add(layer);
+  }
+  
+  if (showFerry) {
+    final layer = _createMarkerLayer('ferry');
+    if (layer != null) layers.add(layer);
+  }
+  
+  if (showFunicular) {
+    final layer = _createMarkerLayer('funicular');
+    if (layer != null) layers.add(layer);
+  }
+  
+  return layers;
+}
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -458,133 +689,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                         headingSectorRadius: 60,
                       ),
                     ),
-                    if (showStationLabels && _currentZoom > 14) // Only show labels when zoomed in enough
-                      MarkerLayer(
-                        markers: _stations
-                            .where((station) {
-                          // Filter stations based on zoom level and type
-                          if (_currentZoom < 11.5) return false; // Don't show any stations when zoomed far out
-
-                          // Filter by transportation type settings
-                          if ((station.subway && !showSubway) ||
-                              (station.suburban && !showLightRail) ||
-                              (station.tram && !showTram) ||
-                              (station.ferry && !showFerry)) {
-                            return false;
-                          }
-
-                          // At medium zoom (11.5-14), only show important stations
-                          if (_currentZoom < 14) {
-                            return station.subway || station.national ||
-                                station.nationalExpress || station.suburban;
-                          }
-
-                          // At higher zoom levels, show all stations
-                          return true;
-                        })
-                        // Group by name and take only the first station of each name when zoomed out
-                            .fold<Map<String, Station>>({}, (map, station) {
-                          if (_currentZoom <= 15.5 && !map.containsKey(station.name)) {
-                            map[station.name] = station;
-                          } else if (_currentZoom > 15.5) {
-                            // When zoomed in, show all stations individually
-                            map["${station.name}_${station.latitude}_${station.longitude}"] = station;
-                          }
-                          return map;
-                        })
-                            .values
-                        // Apply collision detection for labels when zoomed in, but not at extreme zoom
-                            .fold<Map<String, List<Station>>>({}, (collisionMap, station) {
-                          if (_currentZoom > 16.5) {
-                            // At very high zoom levels, bypass collision detection completely
-                            // Each station gets its own unique key to ensure all are shown
-                            final uniqueKey = "${station.name}_${station.latitude}_${station.longitude}";
-                            collisionMap[uniqueKey] = [station];
-                          } else {
-                            // Normal collision detection at moderate zoom levels
-                            final key = _getLabelCollisionKey(station, _currentZoom);
-                            if (!collisionMap.containsKey(key)) {
-                              collisionMap[key] = [];
-                            }
-                            collisionMap[key]!.add(station);
-                          }
-                          return collisionMap;
-                        })
-                            .entries
-                            .expand((entry) {
-                          final stations = entry.value;
-                          // If multiple stations share the same collision key, only keep one instance of each name
-                          // but only apply this logic at lower zoom levels
-                          if (stations.length > 1 && _currentZoom <= 17) {
-                            final uniqueByName = <String, Station>{};
-                            for (final station in stations) {
-                              uniqueByName[station.name] = station;
-                            }
-                            return uniqueByName.values;
-                          }
-                          return stations;
-                        })
-                            .map((station) {
-                          return Marker(
-                            point: LatLng(station.latitude, station.longitude),
-                            width: 150,
-                            height: 60,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // Only show the label text when zoomed in close enough
-                                if (_currentZoom > 15.5)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: colors.surfaceContainer,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      station.name,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: colors.onSurfaceVariant,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                if (_currentZoom > 14.5)
-                                  const SizedBox(height: 2),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    // Scale marker size based on zoom level
-                                    color: colors.primary,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: colors.primary.withOpacity(0.3),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  padding: EdgeInsets.all(_currentZoom > 14 ? 4 : 3),
-                                  child: Icon(
-                                    _getTransportIcon(station),
-                                    color: colors.onPrimary,
-                                    size: _currentZoom > 14 ? 14 : 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    ..._buildMarkerLayers(),
                     Align(
                       alignment: Alignment.bottomRight,
                       child: Padding(
@@ -651,13 +756,13 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                         return StatefulBuilder(
                           builder: (BuildContext context, StateSetter setModalState) {
                 return Container(
-                  height: MediaQuery.of(context).size.height * 0.4, // 40% of screen
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   ),
                   child: SafeArea(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         // Handle bar
                         Container(
@@ -665,7 +770,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                           height: 4,
                           margin: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.grey[300],
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -676,107 +781,131 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                         ),
-                        Expanded(
+                        Flexible(
                           child: ListView(
+                            shrinkWrap: true,
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             children: [
-                              CheckboxListTile(
-                                title: const Text('Show Station Labels'),
-                                value: showStationLabels,
-                                onChanged: (bool? value) {
+
+                              ParentChildCheckboxes(
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                parentLabel: 'S-Bahn',
+                                initialParentValue: showLightRail && showStationLabelsLightRail,
+                                childrenLabels: [
+                                  'Lines(S-Bahn)',
+                                  'Station Labels(S-Bahn)'
+                                ],
+                                initialChildrenValues: [
+                                  showLightRail,
+                                  showStationLabelsLightRail
+                                ],
+                                onSelectionChanged: (p0, p1) {
                                   setModalState(() {
-                                    showStationLabels = value!;
+                                    showLightRail = p1[0];
+                                    showStationLabelsLightRail = p1[1];
                                   });
                                   setState(() {
-                                    showStationLabels = value!;
+                                    showLightRail = p1[0];
+                                    showStationLabelsLightRail = p1[1];
                                   });
                                 },
                               ),
-                              CheckboxListTile(
-                                    title: const Text('Show S-Bahn'),
-                                    value: showLightRail,
-                                    onChanged: (bool? value) {
-                                      setModalState(() {
-                                        showLightRail = value!;
-                                      });
-                                      setState(() {
-                                        showLightRail = value!;
-                                      });
-                                    },
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Show U-Bahn'),
-                                    value: showSubway,
-                                    onChanged: (bool? value) {
-                                      setModalState(() {
-                                        showSubway = value!;
-                                      });
-                                      setState(() {
-                                        showSubway = value!;
-                                      });
-                                    },
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Show Tram'),
-                                    value: showTram,
-                                    onChanged: (bool? value) {
-                                      setModalState(() {
-                                        showTram = value!;
-                                      });
-                                      setState(() {
-                                        showTram = value!;
-                                      });
-                                    },
-                                  ),
-                                  // CheckboxListTile(
-                                  //   title: const Text('Show Bus'),
-                                  //   value: showBus,
-                                  //   onChanged: (bool? value) {
-                                  //     setModalState(() {
-                                  //       showBus = value!;
-                                  //     });
-                                  //     setState(() {
-                                  //       showBus = value!;
-                                  //     });
-                                  //   },
-                                  // ),
-                                  // CheckboxListTile(
-                                  //   title: const Text('Show Trolleybus'),
-                                  //   value: showTrolleybus,
-                                  //   onChanged: (bool? value) {
-                                  //     setModalState(() {
-                                  //       showTrolleybus = value!;
-                                  //     });
-                                  //     setState(() {
-                                  //       showTrolleybus = value!;
-                                  //     });
-                                  //   },
-                                  // ),
-                                  CheckboxListTile(
-                                    title: const Text('Show Ferry'),
-                                    value: showFerry,
-                                    onChanged: (bool? value) {
-                                      setModalState(() {
-                                        showFerry = value!;
-                                      });
-                                      setState(() {
-                                        showFerry = value!;
-                                      });
-                                    },
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Show Funicular'),
-                                    value: showFunicular,
-                                    onChanged: (bool? value) {
-                                      setModalState(() {
-                                        showFunicular = value!;
-                                      });
-                                      setState(() {
-                                        showFunicular = value!;
-                                      });
-                                    },
-                                  ),
-                
+
+                              ParentChildCheckboxes(
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                parentLabel: 'U-Bahn',
+                                initialParentValue: showSubway && showStationLabelsSubway,
+                                childrenLabels: [
+                                  'Lines(U-Bahn)',
+                                  'Station Labels(U-Bahn)'
+                                ],
+                                initialChildrenValues: [
+                                  showSubway,
+                                  showStationLabelsSubway
+                                ],
+                                onSelectionChanged: (p0, p1) {
+                                  setModalState(() {
+                                    showSubway = p1[0];
+                                    showStationLabelsSubway = p1[1];
+                                  });
+                                  setState(() {
+                                    showSubway = p1[0];
+                                    showStationLabelsSubway = p1[1];
+                                  });
+                                },
+                              ),
+
+                              ParentChildCheckboxes(
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                parentLabel: 'Tram',
+                                initialParentValue: showTram && showStationLabelsTram,
+                                childrenLabels: [
+                                  'Lines(Tram)',
+                                  'Station Labels(Tram)'
+                                ],
+                                initialChildrenValues: [
+                                  showTram,
+                                  showStationLabelsTram
+                                ],
+                                onSelectionChanged: (p0, p1) {
+                                  setModalState(() {
+                                    showTram = p1[0];
+                                    showStationLabelsTram = p1[1];
+                                  });
+                                  setState(() {
+                                    showTram = p1[0];
+                                    showStationLabelsTram = p1[1];
+                                  });
+                                },
+                              ),
+
+                              ParentChildCheckboxes(
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                parentLabel: 'Ferry',
+                                initialParentValue: showFerry && showStationLabelsFerry,
+                                childrenLabels: [
+                                  'Lines(Ferry)',
+                                  'Station Labels(Ferry)'
+                                ],
+                                initialChildrenValues: [
+                                  showFerry,
+                                  showStationLabelsFerry
+                                ],
+                                onSelectionChanged: (p0, p1) {
+                                  setModalState(() {
+                                    showFerry = p1[0];
+                                    showStationLabelsFerry = p1[1];
+                                  });
+                                  setState(() {
+                                    showFerry = p1[0];
+                                    showStationLabelsFerry = p1[1];
+                                  });
+                                },
+                              ),
+
+                              ParentChildCheckboxes(
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                parentLabel: 'Funicular',
+                                initialParentValue: showFunicular && showStationLabelsFunicular,
+                                childrenLabels: [
+                                  'Lines(Funicular)',
+                                  'Station Labels(Funicular)'
+                                ],
+                                initialChildrenValues: [
+                                  showFunicular,
+                                  showStationLabelsFunicular
+                                ],
+                                onSelectionChanged: (p0, p1) {
+                                  setModalState(() {
+                                    showFunicular = p1[0];
+                                    showStationLabelsFunicular = p1[1];
+                                  });
+                                  setState(() {
+                                    showFunicular = p1[0];
+                                    showStationLabelsFunicular = p1[1];
+                                  });
+                                },
+                              ),
                             ],
                           ),
                         ),
