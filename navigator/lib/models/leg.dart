@@ -21,7 +21,6 @@ class Leg {
   final dynamic polyline;
   final String? product;
 
-
   // Additional fields
   final bool? isWalking;
   final int? distance;
@@ -51,7 +50,7 @@ class Leg {
     this.productName,
     this.polyline,
     this.remarks,
-    this.product
+    this.product,
   });
 
   factory Leg.fromJson(Map<String, dynamic> json) {
@@ -104,7 +103,7 @@ class Leg {
       productName: safeGetNestedString(json['line'], 'productName'),
       polyline: json['polyline'], // Optional, can be null
       remarks: remarks,
-      product: safeGetNestedString(json['line'], 'product')
+      product: safeGetNestedString(json['line'], 'product'),
     );
   }
 

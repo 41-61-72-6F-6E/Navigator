@@ -854,7 +854,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
     int legIndex = actualLegIndices[i];
     Leg l = j.legs[legIndex];
     
-    if (l.product == null || l.product!.isEmpty) {
+    if ((l.product == null || l.product!.isEmpty) && l.productName == null) {
       // Walking or transfer leg
       int legDuration = l.plannedArrivalDateTime.difference(l.plannedDepartureDateTime).inSeconds;
       double percentage = (legDuration / totalTripDuration) * 100;
@@ -872,7 +872,14 @@ Widget _buildModeLine(BuildContext context, Journey j) {
       int legDuration = l.plannedArrivalDateTime.difference(l.plannedDepartureDateTime).inSeconds;
       double percentage = (legDuration / totalTripDuration) * 100;
       
-      legNames.add(l.product!);
+      if(l.product == null && l.productName != null)
+      {
+        legNames.add(l.productName!.toLowerCase());
+      }
+      else
+      {
+        legNames.add(l.product!);
+      }
       legLineNames.add(l.lineName!);
       legPercentages.add(percentage);
     }
