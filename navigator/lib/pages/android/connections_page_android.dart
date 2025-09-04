@@ -65,7 +65,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   void initState() {
     super.initState();
     //Initializers
-    updateLocationWithCurrentPosition(true);
+    updateLocationWithCurrentPosition(true, true);
     _fromFocusNode = FocusNode();
     _toFocusNode = FocusNode();
     _toController = TextEditingController(text: widget.page.to.name);
@@ -133,7 +133,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   }
 
   //async to Sync functions
-  Future<void> updateLocationWithCurrentPosition(bool from) async {
+  Future<void> updateLocationWithCurrentPosition(bool from, bool startSearchWhenFinished) async {
     try {
       // Update the from location if needed
       Location l = await widget.page.services.getCurrentLocation();
@@ -146,6 +146,10 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
           widget.page.to = l;
         }
       });
+      if(startSearchWhenFinished)
+      {
+        _search();
+      }
     } catch (e) {
       print('Error getting location: $e');
     }
@@ -287,7 +291,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           _fromFocusNode.unfocus();
 
                           // Get current location and update the from field
-                          await updateLocationWithCurrentPosition(true);
+                          await updateLocationWithCurrentPosition(true, false);
 
                           // Update the controller and state
                           _fromController.text =
@@ -325,7 +329,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                           _toFocusNode.unfocus();
 
                           // Get current location and update the to field
-                          await updateLocationWithCurrentPosition(false);
+                          await updateLocationWithCurrentPosition(false, false);
 
                           // Update the controller and state - FIX: use correct field
                           _toController.text =
@@ -613,10 +617,10 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
   Widget _buildJourneys(BuildContext context) {
     if (_currentJourneys == null) {
-      return Center(child: CircularProgressIndicator());
+      return Expanded(child: Center(child: CircularProgressIndicator()));
     }
     if (_currentJourneys!.isEmpty) {
-      return Center(child: Text('No journeys found'));
+      return Expanded(child: Center(child: Text('No journeys found')));
     }
     return Expanded(
       child: ListView.builder(
