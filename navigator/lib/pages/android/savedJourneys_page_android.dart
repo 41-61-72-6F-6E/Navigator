@@ -361,7 +361,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                       style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
                       
                     ),
-                    Text(generateJourneyTimeText(futureJourneys.first, false, false), style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer)),
+                    Text(generateJourneyTimeText(futureJourneys.first, true, false), style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer)),
                   ],
                 ),
               ),

@@ -976,7 +976,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
             ),
           ),
         ),
-
+        Spacer(),
         IconButton(onPressed: (){}, icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary,))
     ],
   );
@@ -1215,7 +1215,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('Give the location a name so you can better remember it', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
-                        TextField(controller: c, style: Theme.of(context).textTheme.bodySmall!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
+                        TextField(controller: c, style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                       ],
                       
                     ),
