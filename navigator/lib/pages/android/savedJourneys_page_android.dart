@@ -284,6 +284,12 @@ Future<void> getSavedJourneyRefreshTokens() async {
         ? Theme.of(context).colorScheme.onErrorContainer
         : onSuccessColor;
 
+    bool ongoing = false;
+    if(DateTime.now().isAfter(futureJourneys.first.plannedDepartureTime) && DateTime.now().isBefore(futureJourneys.first.arrivalTime))
+    {
+      ongoing = true;
+    }
+
 
     return GestureDetector(
       onTap: () async {
@@ -357,7 +363,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                 child: Column(
                   children: [
                     Text(
-                      'Next Journey',
+                      ongoing ?'Ongoing Journey' : 'Next Journey',
                       style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
                       
                     ),
