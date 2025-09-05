@@ -297,7 +297,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                             children: [
                               Align(
                                 alignment: Alignment.centerLeft,
-                                child: Text('Journey Details', style: Theme.of(context).textTheme.headlineSmall,),
+                                child: Text('Journey Details', style: Theme.of(context).textTheme.headlineSmall!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                               ),
                               if(!_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
@@ -870,64 +870,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                       ],
                                     ),
                                   ),
-                                ),
-                                if (departingLeg.lineName != null &&
-                                    departingLeg.direction != null)
-                                  Container(
-                                    alignment: Alignment.centerLeft,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.all(
-                                        Radius.circular(16),
-                                      ),
-                                      border: Border.all(
-                                        color: colorScheme.primary,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(
-                                        8.0,
-                                      ), // Reduced from 8.0
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        spacing: 2,
-                                        children: [
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.all(
-                                                Radius.circular(8),
-                                              ),
-                                              color: colorScheme
-                                                  .tertiaryContainer,
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    4,
-                                                    1,
-                                                    4,
-                                                    1,
-                                                  ),
-                                              child: Text(
-                                                departingLeg.lineName!,
-                                                style: textTheme.titleSmall!.copyWith(
-                                      color: colorScheme.onSurface,
-                                    ),
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            departingLeg.direction!,
-                                            style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurface),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                
+                                ),    
                               ],
                             ),
                           ),
@@ -1173,7 +1116,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     SizedBox(width: (constraints.maxWidth / 100)* 12,),
                     Icon(Icons.directions_walk),
                     SizedBox(width: 8,),
-                    Text('Walk ' + leg.distance.toString() + 'm' + ' (' + _formatLegDuration(leg.departureDateTime, leg.arrivalDateTime) + ')'),
+                    Text('Walk ' + leg.distance.toString() + 'm' + ' (' + _formatLegDuration(leg.departureDateTime, leg.arrivalDateTime) + ')', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                     Spacer(),
                     IconButton.filled(
                       onPressed: () => {},
@@ -1203,120 +1146,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     );
   }
 
-  Widget _buildWalkingLegCard(
-    BuildContext context,
-    Leg leg,
-    int index,
-    List<Leg> legs,
-  ) {
-    if (leg.distance == null || leg.distance == 0) {
-      return const SizedBox.shrink();
-    }
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.directions_walk,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.onSecondaryContainer,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _buildDurationChip(context, leg),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_right,
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    leg.destination.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: () => {},
-                  icon: Icon(Icons.map),
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                leg.effectiveDepartureFormatted,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                leg.effectiveArrivalFormatted,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  
-  Widget _buildLegCard(
-    BuildContext context,
-    Leg leg,
-    int index,
-    List<Leg> legs,
-  ) {
-    // Skip walking legs with zero or null distance
-    if (leg.isWalking == true && (leg.distance == null || leg.distance == 0)) {
-      return const SizedBox.shrink();
-    }
-
-    final platformChangeText = _getPlatformChangeText(leg, index, legs);
-    final hasDelay = leg.hasDelays;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-      ),
-      child: Column(
-        children: [
-          _buildLegHeader(context, leg, platformChangeText, hasDelay),
-          const SizedBox(height: 16),
-          _buildLegDetails(context, leg),
-        ],
-      ),
-    );
-  }
-
   String? _getPlatformChangeText(Leg leg, int index, List<Leg> legs) {
     if (leg.isWalking != true || index <= 0 || index >= legs.length - 1) {
       return null;
@@ -1332,77 +1161,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       return 'Platform change: ${prevLeg.arrivalPlatformEffective} to ${nextLeg.departurePlatformEffective}';
     }
     return null;
-  }
-
-  Widget _buildLegHeader(
-    BuildContext context,
-    Leg leg,
-    String? platformChangeText,
-    bool hasDelay,
-  ) {
-    return Row(
-      children: [
-        _buildLegIcon(context, leg),
-        const SizedBox(width: 12),
-        Expanded(child: _buildLegTitle(context, leg, platformChangeText)),
-        if (hasDelay && leg.isWalking != true) _buildDelayChip(context, leg),
-      ],
-    );
-  }
-
-  Widget _buildLegIcon(BuildContext context, Leg leg) {
-    if (leg.isWalking == true) {
-      return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          Icons.directions_walk,
-          size: 20,
-          color: Theme.of(context).colorScheme.onSecondaryContainer,
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        leg.lineName ?? 'Transit',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLegTitle(
-    BuildContext context,
-    Leg leg,
-    String? platformChangeText,
-  ) {
-    if (leg.isWalking == true && platformChangeText != null) {
-      return _buildPlatformChangeText(context, platformChangeText);
-    }
-
-    if (leg.direction != null && leg.direction!.isNotEmpty) {
-      return Text(
-        leg.direction!,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-          fontSize: 13,
-        ),
-        overflow: TextOverflow.ellipsis,
-      );
-    }
-
-    return const SizedBox.shrink();
   }
 
   Widget _buildPlatformChangeText(
@@ -1442,213 +1200,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
             ),
           ),
       ],
-    );
-  }
-
-  Widget _buildDelayChip(BuildContext context, Leg leg) {
-    // Use the most relevant delay (departure or arrival)
-    final delayMinutes = leg.departureDelayMinutes ?? leg.arrivalDelayMinutes ?? 0;
-
-    if (delayMinutes <= 0) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: delayMinutes > 10
-            ? Theme.of(context).colorScheme.errorContainer
-            : Theme.of(context).colorScheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.access_time,
-            size: 12,
-            color: delayMinutes > 10
-                ? Theme.of(context).colorScheme.onErrorContainer
-                : Theme.of(context).colorScheme.onTertiaryContainer,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '+${delayMinutes}min',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: delayMinutes > 10
-                  ? Theme.of(context).colorScheme.onErrorContainer
-                  : Theme.of(context).colorScheme.onTertiaryContainer,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegDetails(BuildContext context, Leg leg) {
-    return Row(
-      children: [
-        Expanded(child: _buildDepartureInfo(context, leg)),
-        const SizedBox(width: 12),
-        _buildDurationChip(context, leg),
-        const SizedBox(width: 12),
-        Expanded(child: _buildArrivalInfo(context, leg)),
-      ],
-    );
-  }
-
-  Widget _buildDepartureInfo(BuildContext context, Leg leg) {
-    // Determine color based on delay
-    Color timeColor = Theme.of(context).colorScheme.onSurface;
-    if (leg.departureDelayMinutes != null) {
-      if (leg.departureDelayMinutes! > 10) {
-        timeColor = Theme.of(context).colorScheme.error;
-      } else if (leg.departureDelayMinutes! > 0) {
-        timeColor = Theme.of(context).colorScheme.tertiary;
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              leg.effectiveDepartureFormatted,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: timeColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                leg.origin.name,
-                style: Theme.of(context).textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (leg.departurePlatformEffective.isNotEmpty)
-                Text(
-                  'Platform ${leg.departurePlatformEffective}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: leg.departurePlatform != leg.departurePlatformEffective
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildArrivalInfo(BuildContext context, Leg leg) {
-    // Determine color based on delay
-    Color timeColor = Theme.of(context).colorScheme.onSurface;
-    if (leg.arrivalDelayMinutes != null) {
-      if (leg.arrivalDelayMinutes! > 10) {
-        timeColor = Theme.of(context).colorScheme.error;
-      } else if (leg.arrivalDelayMinutes! > 0) {
-        timeColor = Theme.of(context).colorScheme.tertiary;
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Text(
-              leg.effectiveArrivalFormatted,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: timeColor,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                leg.destination.name,
-                style: Theme.of(context).textTheme.bodyMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (leg.arrivalPlatformEffective.isNotEmpty)
-                Text(
-                  'Platform ${leg.arrivalPlatformEffective}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: leg.arrivalPlatform != leg.arrivalPlatformEffective
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDurationChip(BuildContext context, Leg leg) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        leg.isWalking == true
-            ? (leg.distance != null && leg.distance! > 0
-                  ? '${leg.distance}m'
-                  : 'Same platform')
-            : _formatLegDuration(leg.departureDateTime, leg.arrivalDateTime),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: Theme.of(context).colorScheme.onTertiaryContainer,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionLine(BuildContext context) {
-    return Container(
-      height: 24,
-      width: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(1),
-      ),
     );
   }
 
@@ -2096,7 +1647,7 @@ class _LegWidgetState extends State<LegWidget> {
                               child: Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8), 
                               child: Text(widget.leg.lineName!, style: TextStyle(color: onLineColor)))
                               ,),
-                              Expanded(child: Text(widget.leg.direction ?? '', style: Theme.of(context).textTheme.bodyMedium)),
+                              Expanded(child: Text(widget.leg.direction ?? '', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onLineColor))),
                           ],
                         ),
                         //Features
@@ -2205,7 +1756,7 @@ class _LegWidgetState extends State<LegWidget> {
           child: Row(children: [
             icon,
             SizedBox(width: 4),
-            Text(remark.summary!, style: Theme.of(context).textTheme.labelSmall,),
+            Text(remark.summary!, style: Theme.of(context).textTheme.labelSmall!.copyWith(color: onLineColor),),
           ],)
         ),
       ),
