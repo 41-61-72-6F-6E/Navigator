@@ -778,7 +778,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
                             'Map Options',
-                            style: Theme.of(context).textTheme.headlineMedium,
+                            style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),
                           ),
                         ),
                         Flexible(
@@ -788,6 +788,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                             children: [
 
                               ParentChildCheckboxes(
+                                textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
                                 parentLabel: 'S-Bahn',
                                 initialParentValue: showLightRail && showStationLabelsLightRail,
@@ -812,6 +813,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                               ),
 
                               ParentChildCheckboxes(
+                                textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
                                 parentLabel: 'U-Bahn',
                                 initialParentValue: showSubway && showStationLabelsSubway,
@@ -836,6 +838,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                               ),
 
                               ParentChildCheckboxes(
+                                textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
                                 parentLabel: 'Tram',
                                 initialParentValue: showTram && showStationLabelsTram,
@@ -860,6 +863,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                               ),
 
                               ParentChildCheckboxes(
+                                textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
                                 parentLabel: 'Ferry',
                                 initialParentValue: showFerry && showStationLabelsFerry,
@@ -884,6 +888,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                               ),
 
                               ParentChildCheckboxes(
+                                textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
                                 parentLabel: 'Funicular',
                                 initialParentValue: showFunicular && showStationLabelsFunicular,

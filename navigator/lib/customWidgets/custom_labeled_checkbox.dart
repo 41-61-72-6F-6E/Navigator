@@ -13,6 +13,7 @@ class CustomLabeledCheckbox extends StatelessWidget {
     required this.onChanged,
     this.checkboxType = CheckboxType.Child,
     required this.activeColor,
+    required this.textColor
   })  : assert(label != null),
         assert(checkboxType != null),
         assert(
@@ -27,6 +28,7 @@ class CustomLabeledCheckbox extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final CheckboxType checkboxType;
   final Color activeColor;
+  final Color textColor;
 
   void _onChanged() {
     if (value != null) {
@@ -58,7 +60,7 @@ class CustomLabeledCheckbox extends StatelessWidget {
           SizedBox(width: 8),
           Text(
             label,
-            style: themeData.textTheme.bodyMedium,
+            style: themeData.textTheme.bodyMedium!.copyWith(color: textColor),
           )
         ],
       ),

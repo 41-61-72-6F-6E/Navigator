@@ -10,6 +10,7 @@ class ParentChildCheckboxes extends StatefulWidget {
   final EdgeInsets? padding;
   final bool? initialParentValue;
   final List<bool>? initialChildrenValues;
+  final Color textColor;
 
   const ParentChildCheckboxes({
     Key? key,
@@ -21,6 +22,7 @@ class ParentChildCheckboxes extends StatefulWidget {
     this.padding,
     this.initialParentValue,
     this.initialChildrenValues,
+    this.textColor = Colors.black
   }) : assert(
          initialChildrenValues == null || 
          initialChildrenValues.length == childrenLabels.length,
@@ -154,12 +156,14 @@ class _ParentChildCheckboxesState extends State<ParentChildCheckboxes> {
             },
             checkboxType: CheckboxType.Parent,
             activeColor: widget.activeColor,
+            textColor: widget.textColor,
           ),
           
           // Children checkboxes
           ...List.generate(
             _children.length,
             (index) => CustomLabeledCheckbox(
+              textColor: widget.textColor,
               label: _children[index],
               value: _childrenValue[index],
               onChanged: (value) {
