@@ -44,6 +44,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
   //Animations
   bool rotateSwitchButton = false;
+  bool inJourneySearchAnimation = false;
+  double rotatingSearchIconTurns = 0;
 
   JourneySettings journeySettings = JourneySettings(
     nationalExpress: true,
@@ -214,11 +216,13 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
 
       setState(() {
         _currentJourneys = journeys;
+        inJourneySearchAnimation = false;
       });
     } catch (e) {
       print('Error getting journeys: $e');
       setState(() {
-        _currentJourneys = []; // Empty list to show "no results"
+        _currentJourneys = [];
+        inJourneySearchAnimation = false; // Empty list to show "no results"
       });
     }
   }
@@ -1370,281 +1374,283 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                         'Journey Preferences',
                         style: TextStyle(color: colors.onSurface),
                       ),
-                      content: StatefulBuilder(
-                        builder: (context, setState) {
-                          return SingleChildScrollView(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
-                                  ),
-                                  child: Text(
-                                    'Modes of Transport',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.primary,
+                      content: Flexible(
+                        child: StatefulBuilder(
+                          builder: (context, setState) {
+                            return SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0,
+                                    ),
+                                    child: Text(
+                                      'Modes of Transport',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: colors.primary,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include ICE',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include ICE',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.national ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.national = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.national ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.national = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include IC/EC',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include IC/EC',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.nationalExpress ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.nationalExpress = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.nationalExpress ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.nationalExpress = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include RE/RB',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include RE/RB',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.regional ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.regional = value;
+                                        tempSettings.regionalExpress = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.regional ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.regional = value;
-                                      tempSettings.regionalExpress = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include S-Bahn',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include S-Bahn',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.suburban ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.suburban = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.suburban ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.suburban = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include U-Bahn',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include U-Bahn',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.subway ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.subway = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.subway ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.subway = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include Tram',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include Tram',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.tram ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.tram = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.tram ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.tram = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include Bus',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include Bus',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.bus ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.bus = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.bus ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.bus = value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Include Ferry',
-                                    style: TextStyle(color: colors.onSurface),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Include Ferry',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.ferry ?? true,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.ferry = value;
+                                      });
+                                    },
                                   ),
-                                  value: tempSettings.ferry ?? true,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.ferry = value;
-                                    });
-                                  },
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8.0,
-                                  ),
-                                  child: Text(
-                                    'Journey Settings',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.primary,
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0,
+                                    ),
+                                    child: Text(
+                                      'Journey Settings',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: colors.primary,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Deutschlandticket only',
-                                    style: TextStyle(color: colors.onSurface),
-                                  ),
-                                  value:
-                                      tempSettings
-                                          .deutschlandTicketConnectionsOnly ??
-                                      false,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings
-                                              .deutschlandTicketConnectionsOnly =
-                                          value;
-                                    });
-                                  },
-                                ),
-                                CheckboxListTile(
-                                  title: Text(
-                                    'Accessibility',
-                                    style: TextStyle(color: colors.onSurface),
-                                  ),
-                                  value: tempSettings.accessibility ?? false,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      tempSettings.accessibility = value;
-                                    });
-                                  },
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Walking Speed',
-                                          style: TextStyle(
-                                            color: colors.onSurface,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        SizedBox(width: 16),
-                                        Expanded(
-                                          child:
-                                              DropdownButtonFormField<String>(
-                                                value:
-                                                    tempSettings.walkingSpeed ??
-                                                    'normal',
-                                                decoration: InputDecoration(
-                                                  border: OutlineInputBorder(),
-                                                  contentPadding:
-                                                      EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 10,
-                                                      ),
-                                                ),
-                                                style: TextStyle(
-                                                  color: colors.onSurface,
-                                                ),
-                                                iconEnabledColor:
-                                                    colors.primary,
-                                                items: [
-                                                  DropdownMenuItem(
-                                                    value: 'slow',
-                                                    child: Text('Slow'),
-                                                  ),
-                                                  DropdownMenuItem(
-                                                    value: 'normal',
-                                                    child: Text('Normal'),
-                                                  ),
-                                                  DropdownMenuItem(
-                                                    value: 'fast',
-                                                    child: Text('Fast'),
-                                                  ),
-                                                ],
-                                                onChanged: (value) {
-                                                  setState(() {
-                                                    tempSettings.walkingSpeed =
-                                                        value;
-                                                  });
-                                                },
-                                              ),
-                                        ),
-                                      ],
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Deutschlandticket only',
+                                      style: TextStyle(color: colors.onSurface),
                                     ),
-                                    SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Text(
-                                          'Transfer Time',
-                                          style: TextStyle(
-                                            color: colors.onSurface,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        SizedBox(width: 16),
-                                        Expanded(
-                                          child: DropdownButtonFormField<int?>(
-                                            value: tempSettings.transferTime,
-                                            decoration: InputDecoration(
-                                              border: OutlineInputBorder(),
-                                              contentPadding:
-                                                  EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 10,
-                                                  ),
-                                            ),
+                                    value:
+                                        tempSettings
+                                            .deutschlandTicketConnectionsOnly ??
+                                        false,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings
+                                                .deutschlandTicketConnectionsOnly =
+                                            value;
+                                      });
+                                    },
+                                  ),
+                                  CheckboxListTile(
+                                    title: Text(
+                                      'Accessibility',
+                                      style: TextStyle(color: colors.onSurface),
+                                    ),
+                                    value: tempSettings.accessibility ?? false,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        tempSettings.accessibility = value;
+                                      });
+                                    },
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Walking Speed',
                                             style: TextStyle(
                                               color: colors.onSurface,
+                                              fontSize: 16,
                                             ),
-                                            iconEnabledColor: colors.primary,
-                                            items: [
-                                              DropdownMenuItem(
-                                                value: null,
-                                                child: Text('Default (None)'),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 5,
-                                                child: Text('Min. 5 Minutes'),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 15,
-                                                child: Text('Min. 15 Minutes'),
-                                              ),
-                                              DropdownMenuItem(
-                                                value: 30,
-                                                child: Text('Min. 30 Minutes'),
-                                              ),
-                                            ],
-                                            onChanged: (value) {
-                                              setState(() {
-                                                tempSettings.transferTime =
-                                                    value;
-                                              });
-                                            },
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                                          SizedBox(width: 16),
+                                          Expanded(
+                                            child:
+                                                DropdownButtonFormField<String>(
+                                                  value:
+                                                      tempSettings.walkingSpeed ??
+                                                      'normal',
+                                                  decoration: InputDecoration(
+                                                    border: OutlineInputBorder(),
+                                                    contentPadding:
+                                                        EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 10,
+                                                        ),
+                                                  ),
+                                                  style: TextStyle(
+                                                    color: colors.onSurface,
+                                                  ),
+                                                  iconEnabledColor:
+                                                      colors.primary,
+                                                  items: [
+                                                    DropdownMenuItem(
+                                                      value: 'slow',
+                                                      child: Text('Slow'),
+                                                    ),
+                                                    DropdownMenuItem(
+                                                      value: 'normal',
+                                                      child: Text('Normal'),
+                                                    ),
+                                                    DropdownMenuItem(
+                                                      value: 'fast',
+                                                      child: Text('Fast'),
+                                                    ),
+                                                  ],
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      tempSettings.walkingSpeed =
+                                                          value;
+                                                    });
+                                                  },
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Transfer Time',
+                                            style: TextStyle(
+                                              color: colors.onSurface,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          SizedBox(width: 16),
+                                          Expanded(
+                                            child: DropdownButtonFormField<int?>(
+                                              value: tempSettings.transferTime,
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(),
+                                                contentPadding:
+                                                    EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 10,
+                                                    ),
+                                              ),
+                                              style: TextStyle(
+                                                color: colors.onSurface,
+                                              ),
+                                              iconEnabledColor: colors.primary,
+                                              items: [
+                                                DropdownMenuItem(
+                                                  value: null,
+                                                  child: Text('Default (None)'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 5,
+                                                  child: Text('Min. 5 Minutes'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 15,
+                                                  child: Text('Min. 15 Minutes'),
+                                                ),
+                                                DropdownMenuItem(
+                                                  value: 30,
+                                                  child: Text('Min. 30 Minutes'),
+                                                ),
+                                              ],
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  tempSettings.transferTime =
+                                                      value;
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
                       actions: [
                         TextButton(
@@ -1698,12 +1704,42 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                 },
               ),
             ),
-            FilledButton.tonalIcon(
-              onPressed: () => _search(),
-
-              label: Text('Search'),
-              icon: Icon(Icons.search),
-            ),
+            GestureDetector(
+              onTap: _search,
+              child: AnimatedContainer(
+                curve: Curves.easeInOut,
+                duration: Duration(milliseconds: 400),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(inJourneySearchAnimation ? 8 : 24),
+                  color: inJourneySearchAnimation ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AnimatedRotation(
+                        curve: Curves.easeInOut,
+                        turns: rotatingSearchIconTurns, 
+                        duration: Duration(milliseconds: 600),
+                        onEnd: () {
+                          setState(() {
+                            if(inJourneySearchAnimation)
+                            {
+                                rotatingSearchIconTurns++;
+                            }
+                          });
+                        },
+                        child: Icon(Icons.search, color: inJourneySearchAnimation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer, size: 16)
+                        ),
+                        SizedBox(width: 8),
+                        Text('Search', style: Theme.of(context).textTheme.titleSmall!.copyWith(color: inJourneySearchAnimation ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer))
+                        
+                    ],
+                  ),
+                ),
+              ),
+            )
           ],
         ),
       ],
@@ -1711,6 +1747,10 @@ Widget _buildModeLine(BuildContext context, Journey j) {
   }
 
   void _search() async {
+    setState(() {
+      inJourneySearchAnimation = true;
+      rotatingSearchIconTurns++;
+    });
     try {
       // Debug prints
       print('From: ${widget.page.from}');
@@ -1730,7 +1770,9 @@ Widget _buildModeLine(BuildContext context, Journey j) {
     } catch (e) {
       print('Error in search: $e');
       setState(() {
-        _currentJourneys = []; // Set to empty list to show "no results"
+        _currentJourneys = [];
+        inJourneySearchAnimation = false;
+         // Set to empty list to show "no results"
       });
     }
   }
