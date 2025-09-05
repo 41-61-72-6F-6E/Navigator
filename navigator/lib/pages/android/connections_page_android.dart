@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
@@ -12,6 +13,7 @@ import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
+import 'package:navigator/services/localDataSaver.dart';
 import 'dart:math' as math;
 
 import '../../models/journeySettings.dart';
@@ -41,6 +43,8 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   bool departure = true;
   bool searching = false;
   bool searchingFrom = true;
+  List<FavoriteLocation> faves = [];
+
 
   //Animations
   bool rotateSwitchButton = false;
@@ -120,6 +124,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     _fromController.addListener(() {
       _onSearchChanged(_fromController.text.trim(), true);
     });
+    _getFaves();
   }
 
   //Helper Functions
@@ -244,7 +249,15 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
               SizedBox(height: 16),
 
               //Search related Buttons
-              _buildButtons(context),
+
+              AnimatedSwitcher(
+                duration: Duration(milliseconds: 500),
+                transitionBuilder: (child, anim)
+                  {
+                     return FadeTransition(opacity:anim, child: child);
+                  },
+                child: searching ? _buildFaves(context, searchingFrom) : _buildButtons(context)
+              ),
 
               //Results
               if (searching)
@@ -507,6 +520,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                     ],
                   ),
                 ),
+                buildFavouriteButton(context, station),
         
                 // Trailing chevron
                 Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
@@ -569,6 +583,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
                   ),
                 ),
               ),
+              buildFavouriteButton(context, location),
 
               // Chevron affordance
               Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
@@ -579,6 +594,67 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     );
   }
 
+  Future<void> _getFaves() async
+  {
+    List<FavoriteLocation> f = await Localdatasaver.getFavouriteLocations();
+    setState(() {
+      faves = f;
+    });
+  }
+
+  Widget _buildFaves(BuildContext context, bool searchingFrom)
+  {
+    return Row(
+    children: [
+      if(faves.isEmpty)
+      Icon(Icons.favorite),
+      if(faves.isEmpty)
+      SizedBox(width: 16,),
+      if(faves.isEmpty)
+        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith!(color: Theme.of(context).colorScheme.onSurfaceVariant),),
+      if(faves.isNotEmpty)
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: faves.map((f) => Padding(
+                padding: EdgeInsets.only(right: 8.0),
+                child: IntrinsicWidth(
+                  child: ActionChip(
+                    label: Text(f.name, style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onTertiaryContainer),),
+                    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+                    onPressed: () => {
+                      if(searchingFrom)
+                      {
+                        setState(() {
+                          _fromController.text = f.name;
+                          widget.page.from = f.location;
+                          _fromFocusNode.unfocus();
+                        }),
+                        _search()
+                      }
+                      else
+                      {
+                        setState(() {
+                          _toController.text = f.name;
+                          widget.page.to = f.location;
+                          _toFocusNode.unfocus();
+                        }),
+                        _search()
+                      }
+                    },
+                  ),
+                ),
+              )).toList(),
+            ),
+          ),
+        ),
+        Spacer(),
+        IconButton(onPressed: (){}, icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary,))
+    ],
+  );
+  }
+
   Widget _buildSearchResults(BuildContext context, bool searchingFrom) {
     if (searchingFrom) {
       if (_searchResultsFrom.isEmpty) {
@@ -586,7 +662,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
       }
       return ListView.builder(
         key: const ValueKey('list'),
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: _searchResultsFrom.length,
         itemBuilder: (context, i) {
           final r = _searchResultsFrom[i];
@@ -604,7 +680,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
       }
       return ListView.builder(
         key: const ValueKey('list'),
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: _searchResultsTo.length,
         itemBuilder: (context, i) {
           final r = _searchResultsTo[i];
@@ -629,7 +705,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     return Expanded(
       child: ListView.builder(
         key: const ValueKey('list'),
-        padding: EdgeInsets.all(8),
+        padding: EdgeInsets.symmetric(vertical: 8),
         itemCount: _currentJourneys!.length,
         itemBuilder: (context, i) {
           final r = _currentJourneys![i];
@@ -1744,6 +1820,68 @@ Widget _buildModeLine(BuildContext context, Journey j) {
         ),
       ],
     );
+  }
+
+  Widget buildFavouriteButton(BuildContext context, Location location){
+
+    bool alreadyFave = false;
+    FavoriteLocation? thatFave;
+    for(int i = 0; i < faves.length; i++)
+    {
+      if(faves[i].location.id == location.id)
+      {
+        print(location.id);
+        print(faves[i].location.id);
+        alreadyFave = true;
+        thatFave = faves[i];
+      }
+    }
+
+    if(alreadyFave)
+    {
+      return IconButton(
+                icon: Icon(Icons.favorite),
+                onPressed: () => 
+                {
+                  setState(() {
+                    faves.remove(thatFave);
+                    Localdatasaver.removeFavouriteLocation(thatFave!);
+                  })
+                });
+    }
+
+    
+    return IconButton(
+                icon: Icon(Icons.favorite_border),
+                onPressed: () => showDialog(context: context, builder: (BuildContext context)
+                {
+                  TextEditingController c = new TextEditingController();
+                  return AlertDialog(
+                    title: Text('Save Location', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
+                    content: 
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Give the location a name so you can better remember it', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface)),
+                        TextField(controller: c, style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
+                      ],
+                      
+                    ),
+                    actions: [
+                      TextButton(onPressed: () {Navigator.of(context).pop();}, child: Text('Cancel')),
+                      TextButton(onPressed: () async {
+                        Localdatasaver.addLocationToFavourites(location, c.text); 
+                        List<FavoriteLocation> updatedFaves = await Localdatasaver.getFavouriteLocations();
+                        setState(() {
+                          faves = updatedFaves;
+                        });
+                        Navigator.of(context).pop();
+                        }, 
+                        child: Text('Save'))
+                    ],
+                  );
+                })
+              );
   }
 
   void _search() async {
