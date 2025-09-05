@@ -10,6 +10,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/remark.dart';
+import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
@@ -79,16 +80,10 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 
   Future<void> updateIsSaved() async
   {
-    List<String> refreshTokens = await Localdatasaver.getSavedJourneyRefreshTokens();
-    if (refreshTokens.contains(widget.journey.refreshToken)) {
-      setState(() {
-        _isSaved = true;
-      });
-    } else {
-      setState(() {
-        _isSaved = false;
-      });
-    }
+    bool s = await Localdatasaver.journeyIsSaved(widget.journey);
+    setState(() {
+      _isSaved = s;
+    });
   }
 
   void _centerMapOnJourney() {
@@ -301,12 +296,12 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                               ),
                               if(!_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.saveJourney(widget.journey.refreshToken),
+                                Localdatasaver.saveJourney(widget.journey),
                                 updateIsSaved()
                               }, label: Text('Save Journey'), icon: const Icon(Icons.bookmark_outline)),
                               if(_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.removeSavedJourney(widget.journey.refreshToken),
+                                Localdatasaver.removeSavedJourney(widget.journey),
                                 updateIsSaved()
                               }, label: Text('Journey Saved'), icon: const Icon(Icons.bookmark)),
                             ],

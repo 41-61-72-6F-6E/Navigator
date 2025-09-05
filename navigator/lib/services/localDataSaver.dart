@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/journey.dart';
+import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Localdatasaver {
   static const String favesListKey = 'favesList';
-  static const String savedJourneysKey = 'savedJourneys';
+  static const String savedJourneysKeyDeprecated = 'savedJourneys';
+  static const String savedJourneysKeyNew = 'savedJourneysKeyNew';
 
   static Future<void> addLocationToFavourites(Location location, String name) async {
     try {
@@ -62,28 +64,82 @@ class Localdatasaver {
     }
   }
 
-  static Future<void> saveJourney(String refreshToken) async {
+  static Future<void> saveJourney(Journey journey) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      List<String> savedJourneys = prefs.getStringList(savedJourneysKey) ?? [];
-      savedJourneys.add(refreshToken);
-      await prefs.setStringList(savedJourneysKey, savedJourneys);
+      List<Savedjourney> journeys = await getSavedJourneys(); 
+      Savedjourney j = Savedjourney(journey: journey, id: calculateJourneyID(journey));
+      journeys.add(j);
+      List<String> savedJourneysJson = [];
+      for(Savedjourney sj in journeys)
+      {
+        savedJourneysJson.add(jsonEncode(sj));
+      }
+      await prefs.setStringList(savedJourneysKeyNew, savedJourneysJson);
     }
     catch (e) {
       print('Error saving journey: $e');
     }
   }
 
-  static Future<void> removeSavedJourney(String refreshToken) async {
+  static Future<void> removeSavedJourney(Journey journey) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> savedJourneys = prefs.getStringList(savedJourneysKey) ?? [];
-    savedJourneys.remove(refreshToken);
-    prefs.setStringList(savedJourneysKey, savedJourneys);
+    List<String> savedJourneysJson = prefs.getStringList(savedJourneysKeyNew) ?? [];
+    List<Savedjourney> savedJourneys = [];
+    for(String s in savedJourneysJson)
+    {
+      savedJourneys.add(jsonDecode(s));
+    }
+    String id = calculateJourneyID(journey);
+    savedJourneys.removeWhere((sj) => sj.id == id);
+    List<String> savedJourneysJsonNew = [];
+    for(Savedjourney sj in savedJourneys)
+    {
+      savedJourneysJsonNew.add(jsonEncode(sj));
+    }
+    prefs.setStringList(savedJourneysKeyNew, savedJourneysJsonNew);
   }
 
-  static Future<List<String>> getSavedJourneyRefreshTokens() async {
+  static Future<List<Savedjourney>> getSavedJourneys() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(savedJourneysKey) ?? [];
+    List<String> savedJourneysJson = prefs.getStringList(savedJourneysKeyNew) ?? [];
+    List<Savedjourney> journeys = [];
+    for(String s in savedJourneysJson)
+    {
+      journeys.add(Savedjourney.fromJson(jsonDecode(s)));
+    }
+    return journeys;
+  }
+
+  static Future<bool> journeyIsSaved(Journey journey) async
+  {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> savedJourneysJson = prefs.getStringList(savedJourneysKeyNew) ?? [];
+    List<Savedjourney> journeys = [];
+    for(String s in savedJourneysJson)
+    {
+      journeys.add(Savedjourney.fromJson(jsonDecode(s)));
+    }
+    Savedjourney check = Savedjourney(journey: journey, id: calculateJourneyID(journey));
+    for(Savedjourney sj in journeys)
+    {
+      if(sj.id == check.id)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static String calculateJourneyID(Journey j)
+  {
+    String id = '';
+    for(Leg l in j.legs)
+    {
+      String newId = '${id}${l.origin.name}${l.plannedDeparture}${l.destination.name}${l.plannedArrival.toString()}';
+      id = newId; 
+    }
+    return id;
   }
 
 }

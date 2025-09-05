@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
+import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
@@ -10,9 +11,9 @@ import 'package:navigator/services/localDataSaver.dart';
 
 class SavedjourneysPageAndroid extends StatefulWidget {
   final SavedjourneysPage page;
-  List<String> savedJourneyrefreshTokens = [];
+  List<Savedjourney> savedJourneys = [];
 
-  SavedjourneysPageAndroid(this.page, this.savedJourneyrefreshTokens, {Key? key}) : super(key: key);
+  SavedjourneysPageAndroid(this.page, this.savedJourneys, {Key? key}) : super(key: key);
 
   @override
   State<SavedjourneysPageAndroid> createState() =>
@@ -20,10 +21,9 @@ class SavedjourneysPageAndroid extends StatefulWidget {
 }
 
 class _SavedjourneysPageAndroidState extends State<SavedjourneysPageAndroid> {
-  List<String> savedJourneyrefreshTokens = [];
-  List<Journey> savedJourneys = [];
-  List<Journey> pastJourneys = [];
-  List<Journey> futureJourneys = [];
+  List<Savedjourney> savedJourneys = [];
+  List<Savedjourney> pastJourneys = [];
+  List<Savedjourney> futureJourneys = [];
   List<bool> isExpandedList = [];
   bool isLoading = false;
   bool isRefreshing = false;
@@ -39,7 +39,9 @@ void didUpdateWidget(SavedjourneysPageAndroid oldWidget) {
   super.didUpdateWidget(oldWidget);
   // Force reload when widget updates
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    getSavedJourneyRefreshTokens();
+    getSavedJourneys().then((_) {
+                updateJourneys(true);
+              });
     Brightness brightness = Theme.of(context).brightness;
     if(brightness == Brightness.dark)
     {
@@ -57,11 +59,13 @@ void didUpdateWidget(SavedjourneysPageAndroid oldWidget) {
   @override
   void initState() {
     super.initState();
-    getSavedJourneyRefreshTokens();
+    getSavedJourneys().then((_) {
+                updateJourneys(false);
+              });
   }
 
   
-Future<void> getSavedJourneyRefreshTokens() async {
+Future<void> getSavedJourneys() async {
   if (!mounted) return;
   
   print('RELOADING DATA - getSavedJourneyRefreshTokens called');
@@ -71,36 +75,36 @@ Future<void> getSavedJourneyRefreshTokens() async {
     isRefreshing = true;
   });
   
-  List<String> s = await Localdatasaver.getSavedJourneyRefreshTokens();
+  List<Savedjourney> sj = await Localdatasaver.getSavedJourneys();
   
   if (!mounted) return;
   
   // Load new journeys without clearing old ones yet
-  List<Journey> newJourneys = [];
+  List<Savedjourney> newJourneys = [];
   
-  for (String token in s) {
+  for (Savedjourney j in sj) {
     if (!mounted) return;
     
     try {
-      Journey journey = await widget.page.services.refreshJourneyByToken(token);
+      Savedjourney journey = j;
       if (!mounted) return;
       
       newJourneys.add(journey);
     } catch (e) {
-      print('Failed to load journey for token $token: $e');
+      print('Failed to load journey for Journey with Id ${j.id}: $e');
     }
   }
   
   if (!mounted) return;
   
-  newJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+  newJourneys.sort((a, b) => a.journey.departureTime.compareTo(b.journey.departureTime));
   DateTime now = DateTime.now();
-  List<Journey> newFutureJourneys = [];
-  List<Journey> newPastJourneys = [];
+  List<Savedjourney> newFutureJourneys = [];
+  List<Savedjourney> newPastJourneys = [];
 
-  for(Journey j in newJourneys)
+  for(Savedjourney j in newJourneys)
   {
-    if(j.arrivalTime.isAfter(now))
+    if(j.journey.arrivalTime.isAfter(now))
     {
       newFutureJourneys.add(j);
     }
@@ -113,7 +117,6 @@ Future<void> getSavedJourneyRefreshTokens() async {
   
   // Now update everything at once
   setState(() {
-    savedJourneyrefreshTokens = s;
     savedJourneys = newJourneys;
     pastJourneys = newPastJourneys;
     futureJourneys = newFutureJourneys;
@@ -122,6 +125,17 @@ Future<void> getSavedJourneyRefreshTokens() async {
     print('Saved journeys reloaded: ${savedJourneys.length}');
   });
 }
+
+  Future<void> updateJourneys(bool onlyFutureJourneys) async
+  {
+    List<Savedjourney> updatedJourneys = [];
+    for(Savedjourney sj in onlyFutureJourneys ? futureJourneys : savedJourneys)
+    {
+      Journey j = await widget.page.services.refreshJourneyByToken(sj.journey.refreshToken);
+      Savedjourney updatedJourney = Savedjourney(journey: j, id: Localdatasaver.calculateJourneyID(j));
+      updatedJourneys.add(updatedJourney);
+    }
+  }
 
   @override
   void dispose() {
@@ -260,12 +274,12 @@ Future<void> getSavedJourneyRefreshTokens() async {
     String delayText = 'no delays';
     String timeText = '';
     if(futureJourneys.isNotEmpty){
-      timeText = generateJourneyTimeText(futureJourneys.first, false, false);
-      if(futureJourneys.first.legs.first.departureDelayMinutes != null){
+      timeText = generateJourneyTimeText(futureJourneys.first.journey, false, false);
+      if(futureJourneys.first.journey.legs.first.departureDelayMinutes != null){
         delayed = true;
         delayText = 'Departure delayed';
       }
-      if(futureJourneys.first.legs.last.arrivalDelayMinutes != null){
+      if(futureJourneys.first.journey.legs.last.arrivalDelayMinutes != null){
         if(delayed)
         {
           delayText = 'Delayed';
@@ -285,7 +299,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
         : onSuccessColor;
 
     bool ongoing = false;
-    if(DateTime.now().isAfter(futureJourneys.first.plannedDepartureTime) && DateTime.now().isBefore(futureJourneys.first.arrivalTime))
+    if(DateTime.now().isAfter(futureJourneys.first.journey.plannedDepartureTime) && DateTime.now().isBefore(futureJourneys.first.journey.arrivalTime))
     {
       ongoing = true;
     }
@@ -317,7 +331,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
             try {
               // Refresh the journey using the service
               final refreshedJourney = await widget.page.services
-                  .refreshJourneyByToken(futureJourneys.first.refreshToken);
+                  .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
 
               // Close the loading dialog
               Navigator.pop(context);
@@ -332,7 +346,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                   ),
                 ),
               ).then((_) {
-                getSavedJourneyRefreshTokens();
+                getSavedJourneys().then((_) {updateJourneys(true);});
               });
             } catch (e) {
               // Close the loading dialog
@@ -367,7 +381,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                       style: Theme.of(context).textTheme.headlineLarge!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
                       
                     ),
-                    Text(generateJourneyTimeText(futureJourneys.first, true, false), style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer)),
+                    Text(generateJourneyTimeText(futureJourneys.first.journey, true, false), style: Theme.of(context).textTheme.titleMedium!.copyWith(color: Theme.of( context).colorScheme.onPrimaryContainer)),
                   ],
                 ),
               ),
@@ -379,7 +393,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
                     color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: _buildCardView(context, futureJourneys.first, true),
+                  child: _buildCardView(context, futureJourneys.first.journey, true),
                 ),
               ),
             ],
@@ -447,7 +461,7 @@ Future<void> getSavedJourneyRefreshTokens() async {
     }
   }
 
-Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
+Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList) {
   if(journeysList.isEmpty) {
     return Center(
       child: showingPastJourneys ?
@@ -456,7 +470,7 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
     );
   }
 
-  List<Journey> journeys = List.from(journeysList);
+  List<Savedjourney> journeys = List.from(journeysList);
   if(!showingPastJourneys) {
     journeys.removeAt(0);
   }
@@ -471,15 +485,15 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
   List<List<Journey>> journeysByDate = [];
   for(int i = 0; i < journeys.length; i++) {
     if(i == 0) {
-      journeysByDate.add([journeys[i]]);
+      journeysByDate.add([journeys[i].journey]);
     } else {
-      DateTime previous = journeys[i-1].plannedDepartureTime;
-      if(journeys[i].plannedDepartureTime.day == previous.day &&
-         journeys[i].plannedDepartureTime.month == previous.month &&
-         journeys[i].plannedDepartureTime.year == previous.year) {
-        journeysByDate.last.add(journeys[i]);
+      DateTime previous = journeys[i-1].journey.plannedDepartureTime;
+      if(journeys[i].journey.plannedDepartureTime.day == previous.day &&
+         journeys[i].journey.plannedDepartureTime.month == previous.month &&
+         journeys[i].journey.plannedDepartureTime.year == previous.year) {
+        journeysByDate.last.add(journeys[i].journey);
       } else {
-        journeysByDate.add([journeys[i]]);
+        journeysByDate.add([journeys[i].journey]);
       }
     }
   }
@@ -662,7 +676,7 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
                     ),
                   ),
                 ).then((_) {
-                  getSavedJourneyRefreshTokens();
+                  getSavedJourneys().then((_) {updateJourneys(true);});
                 });
               } catch (e) {
                 // Close the loading dialog
@@ -805,7 +819,7 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
                     ),
                   ),
                 ).then((_) {
-                  getSavedJourneyRefreshTokens();
+                  getSavedJourneys().then((_) {updateJourneys(isFirst);});
                 });
               } catch (e) {
                 // Close the loading dialog
@@ -1100,7 +1114,7 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
                     ),
                   ),
                 ).then((_) {
-                  getSavedJourneyRefreshTokens();
+                  getSavedJourneys().then((_) {updateJourneys(false);});
                 });
               } catch (e) {
                 // Close the loading dialog
@@ -1260,23 +1274,15 @@ Widget _buildJourneysList(BuildContext context, List<Journey> journeysList) {
     }
   }
 
-  void reloadData()
-  {
-    setState(() {
-      savedJourneys.clear();
-      getSavedJourneyRefreshTokens();
-    });
-  }
-
   void sortJourneysbyDepartureTime() {
-    savedJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+    savedJourneys.sort((a, b) => a.journey.departureTime.compareTo(b.journey.departureTime));
   }
 
   void sortFutureJourneysbyDepartureTime() {
-    futureJourneys.sort((a, b) => a.departureTime.compareTo(b.departureTime));
+    futureJourneys.sort((a, b) => a.journey.departureTime.compareTo(b.journey.departureTime));
   }
 
   void sortPastJourneysbyDepartureTime() {
-    pastJourneys.sort((a, b) => b.departureTime.compareTo(a.departureTime));
+    pastJourneys.sort((a, b) => b.journey.departureTime.compareTo(a.journey.departureTime));
   }
 }
