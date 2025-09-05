@@ -750,6 +750,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                     IconButton.filledTonal(
                   onPressed: () {
                     showModalBottomSheet(
+                      useSafeArea: true,
+                      sheetAnimationStyle: AnimationStyle(curve: Curves.elasticOut, duration: Duration(milliseconds: 300)),
                       context: context,
                       isScrollControlled: true,
                       builder: (BuildContext context) {
@@ -787,6 +789,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             children: [
 
+                              Divider(),
+
                               ParentChildCheckboxes(
                                 textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
@@ -811,6 +815,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                                   });
                                 },
                               ),
+
+                              Divider(),
 
                               ParentChildCheckboxes(
                                 textColor: Theme.of(context).colorScheme.onSurface,
@@ -837,6 +843,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                                 },
                               ),
 
+                              Divider(),
+
                               ParentChildCheckboxes(
                                 textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
@@ -862,6 +870,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                                 },
                               ),
 
+                              Divider(),
+
                               ParentChildCheckboxes(
                                 textColor: Theme.of(context).colorScheme.onSurface,
                                 activeColor: Theme.of(context).colorScheme.primary,
@@ -886,6 +896,8 @@ MarkerLayer? _createMarkerLayer(String transportType) {
                                   });
                                 },
                               ),
+
+                              Divider(),
 
                               ParentChildCheckboxes(
                                 textColor: Theme.of(context).colorScheme.onSurface,
