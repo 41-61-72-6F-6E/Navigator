@@ -1286,7 +1286,7 @@ else
     
     print('DEBUG UI: Looking for trip for leg $leg');
     print('DEBUG UI: _legIndexToTripMap contents: ${_legIndexToTripMap.keys.toList()}');
-    print('DEBUG UI: Found trip: ${t != null ? "Yes (${t.stopovers.length} stopovers)" : "No"}');
+    print('DEBUG UI: Found trip: ${t != null ? "Yes ${t.id} with (${t.stopovers.length} stopovers for leg index $leg)" : "No"}');
     
     List<Stopover> stopsBeforeCurrentPosition = [];
     List<Stopover> stopsBeforeInterchange = [];

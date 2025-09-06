@@ -135,6 +135,8 @@ class ServicesMiddle {
       remarks: includeRemarks,
       polyline: includePolyline,
     );
+
+    //print('yo mama ${trip.id}');
     
     print("DEBUG: Successfully fetched trip: ${trip.line?.name ?? 'Unknown'}");
     print("DEBUG: Trip has ${trip.stopovers.length} stopovers");

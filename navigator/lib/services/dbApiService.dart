@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:navigator/env/env.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:geocoding/geocoding.dart' as geo;
+import 'package:navigator/models/stopover.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -149,7 +150,6 @@ class dbApiService {
   String language = 'en',
   bool pretty = true,
 }) async {
-  
   if (tripId.isEmpty) {
     throw ArgumentError('Trip ID cannot be empty');
   }
@@ -162,7 +162,6 @@ class dbApiService {
     'pretty': pretty.toString(),
   };
 
-  // Based on your API responses, use standard URI encoding first
   final encodedTripId = Uri.encodeComponent(tripId);
   
   try {
@@ -171,10 +170,8 @@ class dbApiService {
         .join('&');
     
     final url = 'http://$base_url/trips/$encodedTripId?$queryString';
-    print('DEBUG: Request URL: $url');
     
     final response = await http.get(Uri.parse(url));
-    print('DEBUG: Response status: ${response.statusCode}');
     
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -189,18 +186,15 @@ class dbApiService {
         throw FormatException('Unexpected response format: expected trip object');
       }
       
-      print('DEBUG: Successfully fetched trip: ${tripData['line']?['name'] ?? 'Unknown'}');
-      return Trip.fromJson(data);
+      // Fix: Pass tripData directly, not data['trip']
+      Trip t = Trip.fromJson(tripData);
+      t.debugPrintStopovers();
+      return t;
       
     } else if (response.statusCode == 404) {
-      print('WARNING: Trip not found: $tripId');
       throw HttpException('Trip not found or may have expired', uri: Uri.parse(url));
       
     } else if (response.statusCode == 500) {
-      print('WARNING: Server error for trip: $tripId');
-      print('DEBUG: Response body: ${response.body}');
-      
-      // Check if it's a temporary server issue
       if (response.body.contains('error') || response.body.isEmpty) {
         throw HttpException('Temporary server error - trip may be unavailable', uri: Uri.parse(url));
       } else {
@@ -208,8 +202,6 @@ class dbApiService {
       }
       
     } else {
-      print('WARNING: HTTP ${response.statusCode} for trip: $tripId');
-      print('DEBUG: Response: ${response.body}');
       throw HttpException(
         'Failed to load trip. Status code: ${response.statusCode}',
         uri: Uri.parse(url),
@@ -218,7 +210,6 @@ class dbApiService {
     
   } catch (e, stackTrace) {
     print('ERROR: Exception fetching trip $tripId: $e');
-    print('DEBUG: Stack trace: $stackTrace');
     rethrow;
   }
 }

@@ -50,8 +50,9 @@ class Trip {
       name: json['name'],
       direction: json['direction'],
       line: json['line'] != null ? Line.fromJson(json['line']) : null,
-      origin: json['origin'],
-      destination: json['destination'],
+      // Fix: Extract name from origin/destination objects
+      origin: json['origin'] is Map ? json['origin']['name'] : json['origin'],
+      destination: json['destination'] is Map ? json['destination']['name'] : json['destination'],
       departure: json['departure'] != null ? DateTime.parse(json['departure']) : null,
       plannedDeparture: json['plannedDeparture'] != null ? DateTime.parse(json['plannedDeparture']) : null,
       departureDelay: json['departureDelay'],
@@ -94,6 +95,13 @@ class Trip {
       'remarks': remarks.map((r) => r.toJson()).toList(),
       'polyline': polyline,
     };
+  }
+
+  void debugPrintStopovers() {
+    print('test');
+    for(Stopover s in stopovers) {
+      print(s.station.name);
+    }
   }
 }
 
