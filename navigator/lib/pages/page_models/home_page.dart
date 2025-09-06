@@ -32,22 +32,22 @@ class HomePage extends StatelessWidget
     switch(design)
     {
       case 1:
-      return HomePageIos(this, ongoingJourney);
+      return HomePageIos(this );
 
       case 2:
-      return HomePageLinux(this, ongoingJourney);
+      return HomePageLinux(this );
 
       case 3:
-      return HomePageMacos(this, ongoingJourney);
+      return HomePageMacos(this );
 
       case 4:
-      return HomePageWeb(this, ongoingJourney);
+      return HomePageWeb(this );
 
       case 5:
-      return HomePageWindows(this,ongoingJourney);
+      return HomePageWindows(this);
 
       default:
-      return HomePageAndroid(this, ongoingJourney);
+      return HomePageAndroid(this );
     }
     
   }

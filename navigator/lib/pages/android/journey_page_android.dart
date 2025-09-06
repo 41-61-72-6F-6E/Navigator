@@ -296,13 +296,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                               ),
                               if(!_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.saveJourney(widget.journey),
-                                updateIsSaved()
+                                Localdatasaver.saveJourney(widget.journey).then((_) {updateIsSaved();})
                               }, label: Text('Save Journey'), icon: const Icon(Icons.bookmark_outline)),
                               if(_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.removeSavedJourney(widget.journey),
-                                updateIsSaved()
+                                Localdatasaver.removeSavedJourney(widget.journey).then((_) {updateIsSaved();}),
                               }, label: Text('Journey Saved'), icon: const Icon(Icons.bookmark)),
                             ],
                           ),

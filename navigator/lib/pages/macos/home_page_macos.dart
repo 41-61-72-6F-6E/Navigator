@@ -4,10 +4,9 @@ import 'package:navigator/pages/page_models/home_page.dart';
 
 class HomePageMacos extends HomePage
 {
-  HomePageMacos(this.page, this.ongoingJourney,{super.key});
+  HomePageMacos(this.page,{super.key});
 
   HomePage page;
-  bool ongoingJourney;
 
   @override
   Widget build(BuildContext context) {

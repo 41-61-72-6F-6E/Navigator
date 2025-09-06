@@ -2,12 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:navigator/models/favouriteLocation.dart';
+import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
+import 'package:navigator/models/savedJourney.dart';
+import 'package:navigator/models/stopover.dart';
 import 'package:navigator/pages/android/connections_page_android.dart';
 import 'package:navigator/pages/android/savedJourneys_page_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/trip.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,9 +21,8 @@ import 'package:navigator/customWidgets/parent_child_checkboxes.dart';
 
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
-  final bool ongoingJourney;
 
-  const HomePageAndroid(this.page, this.ongoingJourney, {Key? key})
+  const HomePageAndroid(this.page,{Key? key})
     : super(key: key);
 
   @override
@@ -38,6 +41,10 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   final MapController _mapController = MapController();
   List<Polyline> _lines = [];
   List<Station> _stations = [];
+  Savedjourney? ongoingJourney;
+  List<Trip> tripsForOngoingJourneyLegs = [];
+  List<int> legsOfOngoingJourneyThatHaveATrip = [];
+  Map<int, Trip> _legIndexToTripMap = {};
 
   //Map Options
   bool showLightRail = true;
@@ -78,7 +85,137 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     });
 
     _setInitialUserLocation();
+    _initializeOngoingJourney();
     _getFaves();
+  }
+
+  Future<void> _initializeOngoingJourney() async {
+  await _updateOngoingJourney();
+  if (ongoingJourney != null) {
+    _initializeOngoingJourneyLineColorListener();
+    await _getOngoingJourneyTrips(); // This should complete before UI renders
+  }
+}
+
+  // Add these debug methods to help identify the issue:
+
+Future<void> _getOngoingJourneyTrips() async {
+  if(ongoingJourney == null) {
+    print('DEBUG: No ongoing journey found');
+    return;
+  }
+  
+  print('DEBUG: Processing ${ongoingJourney!.journey.legs.length} legs for ongoing journey');
+  
+  // Clear existing data
+  setState(() {
+    legsOfOngoingJourneyThatHaveATrip.clear();
+    tripsForOngoingJourneyLegs.clear();
+    _legIndexToTripMap.clear();
+  });
+  
+  Map<int, Trip> legIndexToTrip = {};
+  
+  List<Leg> legs = ongoingJourney!.journey.legs;
+  for(int i = 0; i < legs.length; i++) {
+    Leg leg = legs[i];
+    print('DEBUG: Processing leg $i/${legs.length - 1}');
+    print('DEBUG: - From: ${leg.origin.name}');
+    print('DEBUG: - To: ${leg.destination.name}');
+    print('DEBUG: - Product: ${leg.product}');
+    print('DEBUG: - Line: ${leg.lineName}');
+    print('DEBUG: - TripID: ${leg.tripID}');
+    print('DEBUG: - IsWalking: ${leg.isWalking}');
+    
+    // Only process non-walking legs with trip IDs
+    if(leg.isWalking != true && leg.tripID != null && leg.tripID!.isNotEmpty) {
+      print('DEBUG: Attempting to fetch trip for leg $i with tripID: ${leg.tripID}');
+      
+      try {
+        Trip? trip = await widget.page.service.getTripFromLeg(
+          leg,
+          includeRemarks: true,
+          includePolyline: false, // Don't need polyline for stopover display
+        );
+        
+        if(trip != null) {
+          print('DEBUG: Successfully fetched trip for leg $i');
+          print('DEBUG: - Trip ID: ${trip.id}');
+          print('DEBUG: - Trip line: ${trip.line?.name}');
+          print('DEBUG: - Stopovers count: ${trip.stopovers.length}');
+          
+          // Debug stopover details
+          if (trip.stopovers.isNotEmpty) {
+            print('DEBUG: - First stopover: ${trip.stopovers.first.station.name}');
+            print('DEBUG: - Last stopover: ${trip.stopovers.last.station.name}');
+            
+            // Print all stopovers for debugging
+            for (int j = 0; j < trip.stopovers.length; j++) {
+              final stopover = trip.stopovers[j];
+              print('DEBUG: - Stopover $j: ${stopover.station.name} at ${stopover.plannedArrival}');
+            }
+          } else {
+            print('DEBUG: - WARNING: Trip has no stopovers!');
+          }
+          
+          legIndexToTrip[i] = trip;
+        } else {
+          print('DEBUG: No trip returned for leg $i (API returned null)');
+        }
+      } catch (e) {
+        print('DEBUG: Exception fetching trip for leg $i: $e');
+      }
+    } else {
+      String reason = leg.isWalking == true ? 'walking leg' : 'no tripID';
+      print('DEBUG: Skipping leg $i - $reason');
+    }
+  }
+  
+  print('DEBUG: Successfully fetched ${legIndexToTrip.length} trips out of ${legs.length} legs');
+  
+  // Update state with all the fetched data
+  if (mounted) { // Check if widget is still mounted
+    setState(() {
+      legsOfOngoingJourneyThatHaveATrip = legIndexToTrip.keys.toList();
+      tripsForOngoingJourneyLegs = legIndexToTrip.values.toList();
+      _legIndexToTripMap = legIndexToTrip;
+    });
+    
+    print('DEBUG: State updated - _legIndexToTripMap has ${_legIndexToTripMap.length} entries');
+    
+    // Additional debugging: print the map contents
+    _legIndexToTripMap.forEach((legIndex, trip) {
+      print('DEBUG: Leg $legIndex -> Trip ${trip.id} with ${trip.stopovers.length} stopovers');
+    });
+  }
+}
+
+  void _initializeOngoingJourneyLineColorListener()
+  {
+    if(ongoingJourney != null)
+    {
+      for(Leg l in ongoingJourney!.journey.legs)
+      {
+        l.lineColorNotifier.addListener(_updateLineColor);
+        l.initializeLineColor();
+      }
+    }
+  }
+
+  void _updateLineColor()
+  {
+    setState(() {});
+  }
+
+  void _disposeOngoingJourneyLineColorListener()
+  {
+    if(ongoingJourney != null)
+    {
+      for(Leg l in ongoingJourney!.journey.legs)
+      {
+        l.lineColorNotifier.removeListener(_updateLineColor);
+      }
+    }
   }
 
   Future<void> _getFaves() async
@@ -87,6 +224,29 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     setState(() {
       faves = f;
     });
+  }
+
+  Future<void> _updateOngoingJourney() async
+  {
+    List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
+    bool found = false;
+    for(Savedjourney sj in journeys)
+    {
+      if(found)
+      {
+        break;
+      }
+      if(DateTime.now().isAfter(sj.journey.plannedDepartureTime) && DateTime.now().isBefore(sj.journey.arrivalTime))
+      {
+        Savedjourney j = sj;
+        Savedjourney newJ = Savedjourney(journey: await widget.page.service.refreshJourneyByToken(j.journey.refreshToken), id: Localdatasaver.calculateJourneyID(j.journey));
+        setState(() {
+          ongoingJourney = newJ;
+          print('ongoing');
+        });
+        found = true;
+      }
+    }
   }
 
   // Helper function to get minimum zoom level for different station types
@@ -545,6 +705,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
     _debounce?.cancel();
     _controller.dispose();
     _alignPositionStreamController.close();
+    _disposeOngoingJourneyLineColorListener();
     super.dispose();
   }
 
@@ -601,117 +762,128 @@ MarkerLayer? _createMarkerLayer(String transportType) {
       },
       child: Scaffold(
         backgroundColor: colors.surfaceContainerLowest,
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, anim)
-          {
-            final offsetAnimation = Tween<Offset>(
-              begin: const Offset(0.0, 1.0),
-              end: Offset.zero
-            ).animate(anim);
-            return SlideTransition(position: offsetAnimation, child: child);
-          },
-          child: hasResults
-              ? SafeArea(
-                  child: ListView.builder(
-                    key: const ValueKey('list'),
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      8,
-                      16,
-                      bottomSheetHeight + 16,
-                    ),
-                    itemCount: _searchResults.length,
-                    itemBuilder: (context, i) {
-                      final r = _searchResults[i];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: r is Station
-                            ? _stationResult(context, r)
-                            : _locationResult(context, r),
-                      );
-                    },
-                  ),
-                )
-              : FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentUserLocation ?? _currentCenter,
-              initialZoom: _currentZoom,
-              minZoom: 3.0,
-              maxZoom: 18.0,
-              interactionOptions: InteractionOptions(
-                flags: InteractiveFlag.drag | InteractiveFlag.flingAnimation | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom | InteractiveFlag.rotate,
-                rotationThreshold: 20.0,
-                pinchZoomThreshold: 0.5,
-                pinchMoveThreshold: 40.0,
-              ),
-              onPositionChanged: (MapCamera camera, bool hasGesture) {
-                if (hasGesture && _alignPositionOnUpdate != AlignOnUpdate.never) {
-                  setState(() => _alignPositionOnUpdate = AlignOnUpdate.never);
-                }
-                // Update current zoom level
-                setState(() {
-                  _currentZoom = camera.zoom;
-                  _currentCenter = camera.center;
-                });
-              },
-            ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                      'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.app',
-                    ),
-                    // Move all polyline layers here, before the location layers
-                    if(showSubway)
-                      PolylineLayer(polylines: _subwayLines),
-                    if(showLightRail)
-                      PolylineLayer(polylines: _lightRailLines),
-                    if(showTram)
-                      PolylineLayer(polylines: _tramLines),
-                    if(showFerry)
-                      PolylineLayer(polylines: _ferryLines),
-                    if(showFunicular)
-                      PolylineLayer(polylines: _funicularLines),
-
-                    CurrentLocationLayer(
-                      alignPositionStream: _alignPositionStreamController.stream,
-                      alignPositionOnUpdate: _alignPositionOnUpdate,
-                      style: LocationMarkerStyle(
-                        marker: DefaultLocationMarker(
-                          color: Colors.lightBlue[800]!,
-                        ),
-                        markerSize: const Size(20, 20),
-                        markerDirection: MarkerDirection.heading,
-                        accuracyCircleColor: Colors.blue[200]!.withAlpha(0x20),
-                        headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
-                        headingSectorRadius: 60,
+        body: Stack(
+          children:[
+            AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            transitionBuilder: (child, anim)
+            {
+              final offsetAnimation = Tween<Offset>(
+                begin: const Offset(0.0, 1.0),
+                end: Offset.zero
+              ).animate(anim);
+              return SlideTransition(position: offsetAnimation, child: child);
+            },
+            child: hasResults
+                ? SafeArea(
+                    child: ListView.builder(
+                      key: const ValueKey('list'),
+                      padding: const EdgeInsets.fromLTRB(
+                        16,
+                        8,
+                        16,
+                        bottomSheetHeight + 16,
                       ),
+                      itemCount: _searchResults.length,
+                      itemBuilder: (context, i) {
+                        final r = _searchResults[i];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: r is Station
+                              ? _stationResult(context, r)
+                              : _locationResult(context, r),
+                        );
+                      },
                     ),
-                    ..._buildMarkerLayers(),
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
-                        child: FloatingActionButton(
-                          shape: const CircleBorder(),
-                          onPressed: () {
-                            setState(
-                                  () => _alignPositionOnUpdate = AlignOnUpdate.always,
-                            );
-                            _alignPositionStreamController.add(18);
-                          },
-                          child: Icon(
-                            Icons.my_location,
-                            color: colors.tertiary.withValues(alpha: 0.5),
+                  )
+                : FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _currentUserLocation ?? _currentCenter,
+                initialZoom: _currentZoom,
+                minZoom: 3.0,
+                maxZoom: 18.0,
+                interactionOptions: InteractionOptions(
+                  flags: InteractiveFlag.drag | InteractiveFlag.flingAnimation | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom | InteractiveFlag.rotate,
+                  rotationThreshold: 20.0,
+                  pinchZoomThreshold: 0.5,
+                  pinchMoveThreshold: 40.0,
+                ),
+                onPositionChanged: (MapCamera camera, bool hasGesture) {
+                  if (hasGesture && _alignPositionOnUpdate != AlignOnUpdate.never) {
+                    setState(() => _alignPositionOnUpdate = AlignOnUpdate.never);
+                  }
+                  // Update current zoom level
+                  setState(() {
+                    _currentZoom = camera.zoom;
+                    _currentCenter = camera.center;
+                  });
+                },
+              ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                        'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.app',
+                      ),
+                      // Move all polyline layers here, before the location layers
+                      if(showSubway)
+                        PolylineLayer(polylines: _subwayLines),
+                      if(showLightRail)
+                        PolylineLayer(polylines: _lightRailLines),
+                      if(showTram)
+                        PolylineLayer(polylines: _tramLines),
+                      if(showFerry)
+                        PolylineLayer(polylines: _ferryLines),
+                      if(showFunicular)
+                        PolylineLayer(polylines: _funicularLines),
+          
+                      CurrentLocationLayer(
+                        alignPositionStream: _alignPositionStreamController.stream,
+                        alignPositionOnUpdate: _alignPositionOnUpdate,
+                        style: LocationMarkerStyle(
+                          marker: DefaultLocationMarker(
+                            color: Colors.lightBlue[800]!,
+                          ),
+                          markerSize: const Size(20, 20),
+                          markerDirection: MarkerDirection.heading,
+                          accuracyCircleColor: Colors.blue[200]!.withAlpha(0x20),
+                          headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
+                          headingSectorRadius: 60,
+                        ),
+                      ),
+                      ..._buildMarkerLayers(),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
+                          child: FloatingActionButton(
+                            shape: const CircleBorder(),
+                            onPressed: () {
+                              setState(
+                                    () => _alignPositionOnUpdate = AlignOnUpdate.always,
+                              );
+                              _alignPositionStreamController.add(18);
+                            },
+                            child: Icon(
+                              Icons.my_location,
+                              color: colors.tertiary.withValues(alpha: 0.5),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                if(ongoingJourney != null)
+                Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _buildOngoingJourney(context)
+            ),
+          ]
+        ),
         bottomSheet: Material(
           color: colors.surfaceContainer,
           elevation: 8,
@@ -948,6 +1120,343 @@ MarkerLayer? _createMarkerLayer(String transportType) {
       ),
     );
   }
+
+  Widget _buildOngoingJourney(BuildContext context)
+  {
+    ColorScheme colors = Theme.of(context).colorScheme;
+    TextTheme texts = Theme.of(context).textTheme;
+    int situationUpperBox = 0; // 0 = Waiting at station | 1 = on Transport | 2 Walking
+int situationLowerBox = 0; // 0 = Take some form of transportation | 1 = Get off at | 2 = Walk somewhere | 3 = Arrival
+bool isWalkingInterchange = false; // Whether interchange requires walking within same station complex
+
+int leg = 0;
+bool afterArrival = false;
+
+// Find current leg
+for(int i = 0; i < ongoingJourney!.journey.legs.length; i++)
+{
+  Leg l = ongoingJourney!.journey.legs[i];
+  if(DateTime.now().isAfter(l.plannedDepartureDateTime))
+  {
+    afterArrival = false;
+    leg = i;
+  }
+  if(DateTime.now().isAfter(l.plannedArrivalDateTime))
+  {
+    afterArrival = true;
+  }
+}
+
+if(!afterArrival)
+{
+  // Currently on a leg
+  if(ongoingJourney!.journey.legs[leg].isWalking == true)
+  {
+    situationUpperBox = 2; // Walking
+    if(leg == ongoingJourney!.journey.legs.length-1)
+    {
+      situationLowerBox = 3; // Arrival
+    }
+    else
+    {
+      situationLowerBox = 0; // Take some form of transportation
+    }
+  }
+  else
+  {
+    situationUpperBox = 1; // On Transport
+    situationLowerBox = 1; // Get off at
+  }
+  
+  isWalkingInterchange = false;
+}
+else
+{
+  // We've arrived at the destination of the current leg
+  if(leg == ongoingJourney!.journey.legs.length-1)
+  {
+    // Final destination
+    situationUpperBox = 0; // Waiting at station (arrived)
+    situationLowerBox = 3; // Arrival
+    isWalkingInterchange = false;
+  }
+  else
+  {
+    // At an interchange
+    situationUpperBox = 0; // Waiting at station
+    
+    // Find the next actual leg (skip same-station interchanges)
+    int nextActualLegIndex = leg + 1;
+    while(nextActualLegIndex < ongoingJourney!.journey.legs.length)
+    {
+      final nextLeg = ongoingJourney!.journey.legs[nextActualLegIndex];
+      
+      // Skip legs that are same-station interchanges
+      bool isSameStationInterchange = 
+          nextLeg.origin.id == nextLeg.destination.id &&
+          nextLeg.origin.name == nextLeg.destination.name;
+      
+      if(!isSameStationInterchange)
+      {
+        break;
+      }
+      nextActualLegIndex++;
+    }
+    
+    if(nextActualLegIndex < ongoingJourney!.journey.legs.length)
+    {
+      final currentLeg = ongoingJourney!.journey.legs[leg];
+      final nextLeg = ongoingJourney!.journey.legs[nextActualLegIndex];
+      
+      // Check if this is a walking interchange
+      isWalkingInterchange = false;
+      
+      // Case 1: There are same-station interchange legs between current and next
+      if(nextActualLegIndex - leg > 1)
+      {
+        for(int interchangeIndex = leg + 1; interchangeIndex < nextActualLegIndex; interchangeIndex++)
+        {
+          final interchangeLeg = ongoingJourney!.journey.legs[interchangeIndex];
+          
+          if(interchangeLeg.origin.id == interchangeLeg.destination.id &&
+             interchangeLeg.origin.name == interchangeLeg.destination.name)
+          {
+            isWalkingInterchange = true;
+            break;
+          }
+        }
+      }
+      
+      // Case 2: Next leg is walking within station complex
+      if(nextLeg.isWalking == true &&
+         nextLeg.origin.ril100Ids.isNotEmpty &&
+         nextLeg.destination.ril100Ids.isNotEmpty &&
+         _haveSameRil100Station(
+           nextLeg.origin.ril100Ids,
+           nextLeg.destination.ril100Ids,
+         ))
+      {
+        isWalkingInterchange = true;
+      }
+      
+      // Case 3: Current and next leg are in same station complex but different platforms
+      if(currentLeg.destination.ril100Ids.isNotEmpty &&
+         nextLeg.origin.ril100Ids.isNotEmpty &&
+         _haveSameRil100Station(
+           currentLeg.destination.ril100Ids,
+           nextLeg.origin.ril100Ids,
+         ))
+      {
+        isWalkingInterchange = true;
+      }
+      
+      // Set next action
+      if(nextLeg.isWalking == true)
+      {
+        situationLowerBox = 2; // Walk somewhere
+      }
+      else
+      {
+        situationLowerBox = 0; // Take some form of transportation
+      }
+    }
+    else
+    {
+      // No more legs
+      situationLowerBox = 3; // Arrival
+      isWalkingInterchange = false;
+    }
+  }
+}
+
+// Helper method (already exists in your code)
+
+
+    Widget upperBox = Container();
+    Widget lowerBox = Container();
+    
+    switch(situationUpperBox)
+    {
+      case 0:
+      upperBox = Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: colors.primary
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+          child: Column(
+            children: [
+              Text('at station', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),),
+              Text(ongoingJourney!.journey.legs[leg].destination.name, style: texts.headlineMedium!.copyWith(color: colors.onPrimary),)
+            ]
+          ),
+        ),
+      );
+      break;
+      case 1:
+    Color lineColor = ongoingJourney!.journey.legs[leg].lineColorNotifier.value ?? Colors.grey;
+    Color onLineColor = ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark ? Colors.white : Colors.black;
+    
+    // Get the trip for this leg with better error handling
+    Trip? t = _legIndexToTripMap[leg];
+    
+    print('DEBUG UI: Looking for trip for leg $leg');
+    print('DEBUG UI: _legIndexToTripMap contents: ${_legIndexToTripMap.keys.toList()}');
+    print('DEBUG UI: Found trip: ${t != null ? "Yes (${t!.stopovers.length} stopovers)" : "No"}');
+    
+    List<Stopover> stopsBeforeCurrentPosition = [];
+    List<Stopover> stopsBeforeInterchange = [];
+    List<Stopover> stopsAfterInterchange = [];
+
+    if(t != null && t.stopovers.isNotEmpty) {
+      print('DEBUG UI: Processing ${t.stopovers.length} stopovers');
+      
+      for(Stopover s in t.stopovers) {
+        DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
+        DateTime now = DateTime.now();
+        DateTime legArrival = ongoingJourney!.journey.legs[leg].arrivalDateTime;
+        
+        if(arrivalTime != null) {
+          if(arrivalTime.isBefore(now)) {
+            stopsBeforeCurrentPosition.add(s);
+          } else if(arrivalTime.isBefore(legArrival)) {
+            stopsBeforeInterchange.add(s);
+          } else {
+            stopsAfterInterchange.add(s);
+          }
+        }
+      }
+      
+      print('DEBUG UI: Stops before current: ${stopsBeforeCurrentPosition.length}');
+      print('DEBUG UI: Stops before interchange: ${stopsBeforeInterchange.length}');
+      print('DEBUG UI: Stops after interchange: ${stopsAfterInterchange.length}');
+    }
+
+    upperBox = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: colors.primary
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+        child: Column(
+          children: [
+            Align(alignment: Alignment.centerLeft ,child: Text('on the ${ongoingJourney!.journey.legs[leg].product}', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),)),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                if(ongoingJourney!.journey.legs[leg].lineName != null)
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: lineColor
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    child: Text(ongoingJourney!.journey.legs[leg].lineName!, style: texts.labelMedium!.copyWith(color: onLineColor)),
+                    )
+                ),
+                if(ongoingJourney!.journey.legs[leg].direction != null)
+                SizedBox(width: 8,),
+                if(ongoingJourney!.journey.legs[leg].direction != null)
+                Text(ongoingJourney!.journey.legs[leg].direction!, style: texts.titleLarge!.copyWith(color: colors.onPrimary),)
+              ],
+            ),
+            SizedBox(height: 4),
+            
+            // Improved stopover display logic
+            if(t == null)
+              Text('Loading trip details...', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),)
+            else if(t.stopovers.isEmpty)
+              Text('No intermediate stops available', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),)
+            else
+              Column(
+                children: [
+                  Text('${stopsBeforeInterchange.length} stops remaining', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),),
+                  SizedBox(height: 4),
+                  FilledButton.icon(
+                    onPressed: () {
+                      // Show stops dialog or navigate to stops view
+                      //_showStopsDialog(context, t, leg);
+                    }, 
+                    label: Text('Show ${t.stopovers.length} stops'),
+                    style: ButtonStyle(backgroundColor: WidgetStateProperty.all(colors.primaryContainer)), 
+                    icon: Icon(Icons.list),
+                  )
+                ]
+              )
+          ]
+        ),
+      ),
+    );
+    break;
+      case 2:
+      upperBox = Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: colors.primary
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+          child: Column(
+            children: [
+              Text('Walking', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),),
+            ]
+          ),
+        ),
+      );
+    }
+
+    switch(situationLowerBox)
+    {
+      case 0: lowerBox = Text('Take some form of transportation');
+      break;
+      case 1: lowerBox = Text('1 = Get off at');
+      break;
+      case 2: lowerBox = Text('Walk somewhere');
+      break;
+      case 3: lowerBox = Text('Arrival');
+    }
+
+    return AnimatedContainer(
+      width: double.infinity,
+      duration: Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
+        color: colors.surfaceContainerHighest
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              SizedBox(height: 8,),
+              Text('ongoing Journey', style: texts.titleMedium!.copyWith(color: colors.onSurfaceVariant),),
+              upperBox,
+              lowerBox
+            ],
+          )
+          ),
+      )
+    );
+  } 
+
+  bool _haveSameRil100Station(List<String> ril100Ids1, List<String> ril100Ids2) {
+  if (ril100Ids1.isEmpty || ril100Ids2.isEmpty) {
+    return false;
+  }
+  
+  for (String id1 in ril100Ids1) {
+    for (String id2 in ril100Ids2) {
+      if (id1 == id2) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
 
   Widget _buildFaves(BuildContext context) {
   return Row(

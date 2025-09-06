@@ -83,22 +83,22 @@ class Localdatasaver {
   }
 
   static Future<void> removeSavedJourney(Journey journey) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> savedJourneysJson = prefs.getStringList(savedJourneysKeyNew) ?? [];
-    List<Savedjourney> savedJourneys = [];
-    for(String s in savedJourneysJson)
-    {
-      savedJourneys.add(jsonDecode(s));
-    }
-    String id = calculateJourneyID(journey);
-    savedJourneys.removeWhere((sj) => sj.id == id);
-    List<String> savedJourneysJsonNew = [];
-    for(Savedjourney sj in savedJourneys)
-    {
-      savedJourneysJsonNew.add(jsonEncode(sj));
-    }
-    prefs.setStringList(savedJourneysKeyNew, savedJourneysJsonNew);
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  List<String> savedJourneysJson = prefs.getStringList(savedJourneysKeyNew) ?? [];
+  List<Savedjourney> savedJourneys = [];
+  for(String s in savedJourneysJson)
+  {
+    savedJourneys.add(Savedjourney.fromJson(jsonDecode(s))); // ← Added fromJson()
   }
+  String id = calculateJourneyID(journey);
+  savedJourneys.removeWhere((sj) => sj.id == id);
+  List<String> savedJourneysJsonNew = [];
+  for(Savedjourney sj in savedJourneys)
+  {
+    savedJourneysJsonNew.add(jsonEncode(sj));
+  }
+  prefs.setStringList(savedJourneysKeyNew, savedJourneysJsonNew);
+}
 
   static Future<List<Savedjourney>> getSavedJourneys() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
