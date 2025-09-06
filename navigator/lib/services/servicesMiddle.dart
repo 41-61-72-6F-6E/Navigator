@@ -57,15 +57,12 @@ class ServicesMiddle {
 
   Future<List<Journey>> getJourneys(myApp.Location from, myApp.Location to, DateAndTime when, bool departure, {required JourneySettings journeySettings}) async {
     final results = await dbRest.fetchJourneysByLocation(from, to, when, departure, journeySettings);
-    print("Journeys fetched: ${results.length}");
     return results;
   }
 
   Future<Journey> refreshJourney(Journey journey) async {
     try {
-      print("Refreshing journey with token: ${journey.refreshToken}");
       final refreshedJourney = await dbRest.refreshJourney(journey);
-      print("Journey refreshed successfully");
       return refreshedJourney;
     } catch (e) {
       print('Error refreshing journey: $e');
@@ -75,9 +72,7 @@ class ServicesMiddle {
 
   Future<Journey> refreshJourneyByToken(String refreshToken) async {
     try {
-      print("Refreshing journey with token: $refreshToken");
       final refreshedJourney = await dbRest.refreshJourneybyToken(refreshToken);
-      print("Journey refreshed successfully");
       return refreshedJourney;
     } catch (e) {
       print('Error refreshing journey by token: $e');
@@ -252,8 +247,6 @@ class ServicesMiddle {
   }
   
   Future<void> refreshPolylines() async {
-    print("🔄 Starting refreshPolylines... Instance: ${hashCode}");
-
     // Get current location
     myApp.Location currentLocation = await getCurrentLocation();
 
@@ -263,8 +256,5 @@ class ServicesMiddle {
       lon: currentLocation.longitude,
       radius: 50000 // 50 km in meters
     );
-
-    print("Fetched ${loadedSubwayLines.length} subway lines with colors");
-    print("✅ Set loadedSubwayLines to ${loadedSubwayLines.length} lines. Instance: ${hashCode}");
   }
 }

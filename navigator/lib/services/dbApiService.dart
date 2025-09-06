@@ -86,19 +86,15 @@ class dbApiService {
     queryParams['stopovers'] = 'true';
 
     final uri = Uri.http(base_url, '/journeys', queryParams);
-    print('Request URI: $uri');
 
     try {
       final response = await http.get(uri);
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
         // Check if journeys key exists and is not null
         if (data['journeys'] == null) {
-          print('No journeys found in response');
           return [];
         }
 
@@ -120,14 +116,8 @@ class dbApiService {
     final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
 
-    print('Refreshing journey with token: $token');
-    print('Final URI: $uri');
-
     try {
       final response = await http.get(uri);
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -159,7 +149,6 @@ class dbApiService {
   String language = 'en',
   bool pretty = true,
 }) async {
-  print('DEBUG: Fetching trip with ID: $tripId');
   
   if (tripId.isEmpty) {
     throw ArgumentError('Trip ID cannot be empty');
@@ -289,14 +278,8 @@ class dbApiService {
     final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
 
-    print('Refreshing journey with token: ${journey.refreshToken}');
-    print('Final URI: $uri');
-
     try {
       final response = await http.get(uri);
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -333,7 +316,6 @@ class dbApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        print('Locations response: ${jsonEncode(data)}');
 
         return (data as List)
             .where((item) => item != null && (

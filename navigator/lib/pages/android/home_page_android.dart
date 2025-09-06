@@ -241,7 +241,6 @@ Future<void> _getOngoingJourneyTrips() async {
         Savedjourney newJ = Savedjourney(journey: await widget.page.service.refreshJourneyByToken(j.journey.refreshToken), id: Localdatasaver.calculateJourneyID(j.journey));
         setState(() {
           ongoingJourney = newJ;
-          print('ongoing');
         });
         found = true;
       }
@@ -444,14 +443,6 @@ MarkerLayer? _createMarkerLayer(String transportType) {
 
   Future<void> initiateLines() async {
     await widget.page.service.refreshPolylines();
-
-    print(
-      "loadedSubwayLines.length = ${widget.page.service.loadedSubwayLines.length}",
-    );
-    print(
-      "First line length: ${widget.page.service.loadedSubwayLines.firstOrNull?.points.length ?? 0}",
-    );
-
     if (widget.page.service.loadedSubwayLines.isNotEmpty) {
       setState(() {
         _lines = widget.page.service.loadedSubwayLines
@@ -567,13 +558,6 @@ MarkerLayer? _createMarkerLayer(String transportType) {
             )
             .toList();
       });
-
-      print("Mapped ${_lines.length} colored polylines for display.");
-
-      // Debug: Print some color info
-      for (var line in widget.page.service.loadedSubwayLines.take(3)) {
-        print("Line: ${line.lineName} - Color: ${line.color}");
-      }
     }
   }
 
@@ -593,7 +577,6 @@ MarkerLayer? _createMarkerLayer(String transportType) {
           _stations = fetchedStations;
         });
 
-        print("✅ Loaded ${_stations.length} station labels");
       } catch (e) {
         print('Error fetching stations: $e');
       }
@@ -1707,8 +1690,6 @@ else
     {
       if(faves[i].location.id == location.id)
       {
-        print(location.id);
-        print(faves[i].location.id);
         alreadyFave = true;
         thatFave = faves[i];
       }
