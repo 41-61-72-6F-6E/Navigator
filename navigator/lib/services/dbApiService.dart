@@ -120,7 +120,7 @@ class dbApiService {
     final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
 
-    print('Refreshing journey with token: ${token}');
+    print('Refreshing journey with token: $token');
     print('Final URI: $uri');
 
     try {

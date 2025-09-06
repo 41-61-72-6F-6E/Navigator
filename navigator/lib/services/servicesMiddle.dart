@@ -20,9 +20,9 @@ class ServicesMiddle {
   factory ServicesMiddle() => _instance;
   ServicesMiddle._internal();
 
-  dbApiService dbRest = new dbApiService();
-  GeoService geoService = new GeoService();
-  Overpassapi overpass = new Overpassapi();
+  dbApiService dbRest = dbApiService();
+  GeoService geoService = GeoService();
+  Overpassapi overpass = Overpassapi();
   List<SubwayLine> loadedSubwayLines = [];
   List<List<LatLng>> get loadedPolylines => 
     loadedSubwayLines.map((line) => line.points).toList();
@@ -252,7 +252,7 @@ class ServicesMiddle {
   }
   
   Future<void> refreshPolylines() async {
-    print("🔄 Starting refreshPolylines... Instance: ${this.hashCode}");
+    print("🔄 Starting refreshPolylines... Instance: ${hashCode}");
 
     // Get current location
     myApp.Location currentLocation = await getCurrentLocation();
@@ -265,6 +265,6 @@ class ServicesMiddle {
     );
 
     print("Fetched ${loadedSubwayLines.length} subway lines with colors");
-    print("✅ Set loadedSubwayLines to ${loadedSubwayLines.length} lines. Instance: ${this.hashCode}");
+    print("✅ Set loadedSubwayLines to ${loadedSubwayLines.length} lines. Instance: ${hashCode}");
   }
 }

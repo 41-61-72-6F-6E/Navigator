@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'package:navigator/models/location.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class FavoriteLocation {
   final String name;

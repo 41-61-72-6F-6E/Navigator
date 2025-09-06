@@ -22,8 +22,7 @@ import 'package:navigator/customWidgets/parent_child_checkboxes.dart';
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
 
-  const HomePageAndroid(this.page,{Key? key})
-    : super(key: key);
+  const HomePageAndroid(this.page,{super.key});
 
   @override
   State<HomePageAndroid> createState() => _HomePageAndroidState();
@@ -1303,7 +1302,7 @@ else
     
     print('DEBUG UI: Looking for trip for leg $leg');
     print('DEBUG UI: _legIndexToTripMap contents: ${_legIndexToTripMap.keys.toList()}');
-    print('DEBUG UI: Found trip: ${t != null ? "Yes (${t!.stopovers.length} stopovers)" : "No"}');
+    print('DEBUG UI: Found trip: ${t != null ? "Yes (${t.stopovers.length} stopovers)" : "No"}');
     
     List<Stopover> stopsBeforeCurrentPosition = [];
     List<Stopover> stopsBeforeInterchange = [];
@@ -1466,7 +1465,7 @@ else
       if(faves.isEmpty)
       SizedBox(width: 16,),
       if(faves.isEmpty)
-        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith!(color: Theme.of(context).colorScheme.onSurfaceVariant),),
+        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),),
       if(faves.isNotEmpty)
         Expanded(
           child: SingleChildScrollView(
@@ -1733,7 +1732,7 @@ else
                 icon: Icon(Icons.favorite_border),
                 onPressed: () => showDialog(context: context, builder: (BuildContext context)
                 {
-                  TextEditingController c = new TextEditingController();
+                  TextEditingController c = TextEditingController();
                   return AlertDialog(
                     title: Text('Save Location', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                     content: 

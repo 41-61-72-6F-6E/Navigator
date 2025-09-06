@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget
 
   //search Button
   bool ongoingJourney = false;
-  ServicesMiddle service = new ServicesMiddle();
+  ServicesMiddle service = ServicesMiddle();
 
   final int design = 0; //0 = Android, 1 = ios, 2 = linux, 3 = macos, 4 = web, 5 = windows
   

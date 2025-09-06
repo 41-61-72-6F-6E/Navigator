@@ -1,6 +1,4 @@
 import 'package:navigator/models/remark.dart';
-import 'package:navigator/models/station.dart';
-import 'package:navigator/models/location.dart';
 import 'package:navigator/models/stopover.dart';
 
 class Trip {

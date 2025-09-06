@@ -10,7 +10,7 @@ import 'package:navigator/services/servicesMiddle.dart';
 
 class SavedjourneysPage extends StatefulWidget {
   int design;
-  SavedjourneysPage({Key? key, this.design = 0}) : super(key: key);
+  SavedjourneysPage({super.key, this.design = 0});
   ServicesMiddle services = ServicesMiddle();
 
   @override

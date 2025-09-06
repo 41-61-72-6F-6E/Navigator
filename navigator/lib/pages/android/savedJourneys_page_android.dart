@@ -13,7 +13,7 @@ class SavedjourneysPageAndroid extends StatefulWidget {
   final SavedjourneysPage page;
   List<Savedjourney> savedJourneys = [];
 
-  SavedjourneysPageAndroid(this.page, this.savedJourneys, {Key? key}) : super(key: key);
+  SavedjourneysPageAndroid(this.page, this.savedJourneys, {super.key});
 
   @override
   State<SavedjourneysPageAndroid> createState() =>
@@ -180,7 +180,7 @@ Future<void> getSavedJourneys() async {
     return SearchAnchor(
       builder: (BuildContext context, SearchController controller) {
         return SearchBar(
-          elevation: MaterialStateProperty.all(0),
+          elevation: WidgetStateProperty.all(0),
           controller: controller,
           hintText: 'Search saved journeys',
           trailing: <Widget>[

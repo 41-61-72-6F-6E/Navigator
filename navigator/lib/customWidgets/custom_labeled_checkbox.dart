@@ -7,17 +7,16 @@ enum CheckboxType {
 
 @immutable
 class CustomLabeledCheckbox extends StatelessWidget {
-  const CustomLabeledCheckbox({
+  const CustomLabeledCheckbox({super.key, 
     required this.label,
     required this.value,
     required this.onChanged,
     this.checkboxType = CheckboxType.Child,
     required this.activeColor,
     required this.textColor
-  })  : assert(label != null),
-        assert(checkboxType != null),
+  })  : assert(checkboxType != null),
         assert(
-          (checkboxType == CheckboxType.Child && value != null) ||
+          (checkboxType == CheckboxType.Child) ||
               checkboxType == CheckboxType.Parent,
         ),
         tristate = checkboxType == CheckboxType.Parent ? true : false;
@@ -31,12 +30,8 @@ class CustomLabeledCheckbox extends StatelessWidget {
   final Color textColor;
 
   void _onChanged() {
-    if (value != null) {
-      onChanged(!value);
-    } else {
-      onChanged(value);
+    onChanged(!value);
     }
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -4,7 +4,7 @@ import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 class SavedjourneysPageMacos extends SavedjourneysPage
 {
   SavedjourneysPage page;
-  SavedjourneysPageMacos(this.page, {Key? key});
+  SavedjourneysPageMacos(this.page, {super.key});
 
   
   @override

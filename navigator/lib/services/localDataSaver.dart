@@ -136,7 +136,7 @@ class Localdatasaver {
     String id = '';
     for(Leg l in j.legs)
     {
-      String newId = '${id}${l.origin.name}${l.plannedDeparture}${l.destination.name}${l.plannedArrival.toString()}';
+      String newId = '$id${l.origin.name}${l.plannedDeparture}${l.destination.name}${l.plannedArrival.toString()}';
       id = newId; 
     }
     return id;

@@ -5,9 +5,9 @@ class SharedBottomNavigation extends StatelessWidget {
   final int selectedIndex;
 
   const SharedBottomNavigation({
-    Key? key,
+    super.key,
     this.selectedIndex = -1, // -1 means no tab is selected (for non-main pages)
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

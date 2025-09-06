@@ -41,6 +41,8 @@ class NavigationService {
 }
 
 class MainNavigationPage extends StatefulWidget {
+  const MainNavigationPage({super.key});
+
   @override
   _MainNavigationPageState createState() => _MainNavigationPageState();
 }

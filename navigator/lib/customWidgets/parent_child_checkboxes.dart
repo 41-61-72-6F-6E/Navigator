@@ -13,7 +13,7 @@ class ParentChildCheckboxes extends StatefulWidget {
   final Color textColor;
 
   const ParentChildCheckboxes({
-    Key? key,
+    super.key,
     this.parentLabel = 'Select All',
     this.childrenLabels = const ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
     this.sectionTitle,
@@ -27,8 +27,7 @@ class ParentChildCheckboxes extends StatefulWidget {
          initialChildrenValues == null || 
          initialChildrenValues.length == childrenLabels.length,
          'initialChildrenValues length must match childrenLabels length'
-       ),
-       super(key: key);
+       );
 
   @override
   _ParentChildCheckboxesState createState() => _ParentChildCheckboxesState();
@@ -148,12 +147,8 @@ class _ParentChildCheckboxesState extends State<ParentChildCheckboxes> {
             label: widget.parentLabel,
             value: _parentValue??false,
             onChanged: (value) {
-              if (value != null) {
-                _checkAll(value);
-              } else {
-                _checkAll(true);
-              }
-            },
+              _checkAll(value);
+                        },
             checkboxType: CheckboxType.Parent,
             activeColor: widget.activeColor,
             textColor: widget.textColor,
