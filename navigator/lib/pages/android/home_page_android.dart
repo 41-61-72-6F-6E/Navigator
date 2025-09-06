@@ -1261,6 +1261,7 @@ else
     {
       case 0:
       upperBox = Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           color: colors.primary
@@ -1269,8 +1270,8 @@ else
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
           child: Column(
             children: [
-              Text('at station', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),),
-              Text(ongoingJourney!.journey.legs[leg].destination.name, style: texts.headlineMedium!.copyWith(color: colors.onPrimary),)
+              Align(alignment: Alignment.centerLeft, child: Text('at station', style: texts.bodyMedium!.copyWith(color: colors.onPrimary),)),
+              Align(alignment: Alignment.centerLeft, child: Text(ongoingJourney!.journey.legs[leg].destination.name, style: texts.headlineMedium!.copyWith(color: colors.onPrimary),))
             ]
           ),
         ),
@@ -1406,7 +1407,7 @@ else
       duration: Duration(milliseconds: 300),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
-        color: colors.surfaceContainerHighest
+        color: colors.surfaceContainerLowest
       ),
       child: SafeArea(
         child: Padding(
