@@ -1240,7 +1240,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           options: MapOptions(
             initialCenter: _currentCenter,
             initialZoom: _currentZoom,
-            minZoom: 3.0,
+            minZoom: 5.0,
             maxZoom: 18.0,
             interactionOptions: const InteractionOptions(
               flags:

@@ -638,7 +638,7 @@ MarkerLayer? _createMarkerLayer(String transportType) {
             options: MapOptions(
               initialCenter: _currentUserLocation ?? _currentCenter,
               initialZoom: _currentZoom,
-              minZoom: 3.0,
+              minZoom: 5.0,
               maxZoom: 18.0,
               interactionOptions: InteractionOptions(
                 flags: InteractiveFlag.drag | InteractiveFlag.flingAnimation | InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom | InteractiveFlag.rotate,
