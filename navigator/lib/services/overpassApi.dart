@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/subway_line.dart';
 
-import '../models/station.dart';
 
 class Overpassapi {
   Future<List<SubwayLine>> fetchSubwayLinesWithColors({
@@ -125,18 +123,12 @@ class Overpassapi {
         }
       }
     }
-    
-    print("✅ Parsed ${subwayLines.length} subway line segments with colors.");
-    
+        
     // Debug: Print some color info
     final uniqueLines = <String, SubwayLine>{};
     for (var line in subwayLines) {
       final key = '${line.lineName}_${line.lineRef}';
       uniqueLines[key] = line;
-    }
-    
-    for (var line in uniqueLines.values.take(5)) {
-      print("Line: ${line.lineName} (${line.lineRef}) - Color: ${line.color}");
     }
     
     return subwayLines;
@@ -244,8 +236,6 @@ out body;
         ));
       }
     }
-
-    print("✅ Parsed ${stations.length} stations");
     return stations;
   }
 
@@ -280,12 +270,6 @@ out body;
       
       // Extract core identifier (the actual line number/letter)
       String coreId = _extractCoreIdentifier(cleanLineName, cleanLineRef);
-      
-      print('=== Transit Line Color Query ===');
-      print('Line Name: "$cleanLineName"');
-      print('Line Ref: "$cleanLineRef"');
-      print('Core ID: "$coreId"');
-      print('Transport Type: "$transportType" -> Route Type: "$routeType"');
 
       final url = Uri.parse('https://overpass-api.de/api/interpreter');
       
@@ -293,7 +277,7 @@ out body;
       final queries = _buildOptimizedQueries(coreId, routeType, radius, lat, lon);
       
       for (int i = 0; i < queries.length; i++) {
-        print('=== Trying Query ${i + 1}/${queries.length} ===');
+        //print('=== Trying Query ${i + 1}/${queries.length} ===');
         
         final response = await http.post(url, body: {'data': queries[i]});
         
@@ -304,7 +288,7 @@ out body;
             final elements = data['elements'] as List;
             
             if (elements.isNotEmpty) {
-              print('Found ${elements.length} route(s)');
+              //print('Found ${elements.length} route(s)');
               
               // Find the best match
               final matchedRoute = _findBestRouteMatch(
@@ -320,10 +304,10 @@ out body;
                 final colorStr = tags['colour'] ?? tags['color'];
                 
                 if (colorStr != null && colorStr.isNotEmpty) {
-                  print('Found color: $colorStr');
+                  //print('Found color: $colorStr');
                   return parseColorFromString(colorStr);
                 } else {
-                  print('Route found but no color specified');
+                  //print('Route found but no color specified');
                 }
               }
             }
@@ -475,10 +459,6 @@ out body;
     Map<String, dynamic>? bestMatch;
     int bestScore = 0;
     
-    print('=== Finding Best Match ===');
-    print('Target Core ID: "$targetCoreId"');
-    print('Expected Route Type: "$expectedRouteType"');
-    
     for (var element in elements) {
       if (element['tags'] == null) continue;
       
@@ -487,9 +467,7 @@ out body;
       final String? elementName = tags['name'];
       final String? elementRoute = tags['route'];
       final String? elementColor = tags['colour'] ?? tags['color'];
-      
-      print('Checking route: ref="$elementRef", name="$elementName", route="$elementRoute", color="$elementColor"');
-      
+            
       int score = _calculateRouteScore(
         targetCoreId,
         expectedRouteType,
@@ -499,17 +477,12 @@ out body;
         elementColor != null
       );
       
-      print('Score: $score');
       
       if (score > bestScore) {
         bestScore = score;
         bestMatch = element;
-        print('New best match!');
       }
     }
-    
-    print('Best match score: $bestScore');
-    print('========================');
     
     return bestScore >= 50 ? bestMatch : null; // Minimum threshold
   }

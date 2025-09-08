@@ -8,8 +8,11 @@ import 'package:http/http.dart' as http;
 import 'package:navigator/env/env.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:geocoding/geocoding.dart' as geo;
+import 'package:navigator/models/stopover.dart';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:navigator/models/trip.dart';
 
 class dbApiService {
   final base_url = Env.api_url;
@@ -81,21 +84,18 @@ class dbApiService {
     });
 
     queryParams['results'] = '3';
+    queryParams['stopovers'] = 'true';
 
     final uri = Uri.http(base_url, '/journeys', queryParams);
-    print('Request URI: $uri');
 
     try {
       final response = await http.get(uri);
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
         // Check if journeys key exists and is not null
         if (data['journeys'] == null) {
-          print('No journeys found in response');
           return [];
         }
 
@@ -114,17 +114,11 @@ class dbApiService {
   }
   Future<Journey> refreshJourneybyToken(String token) async {
     final encodedToken = Uri.encodeComponent(token);
-    final url = 'http://$base_url/journeys/$encodedToken?polylines=true';
+    final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
-
-    print('Refreshing journey with token: ${token}');
-    print('Final URI: $uri');
 
     try {
       final response = await http.get(uri);
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -149,19 +143,134 @@ class dbApiService {
     }
   }
 
+  Future<Trip> fetchTripById(String tripId, {
+  bool stopovers = true,
+  bool remarks = true,
+  bool polyline = false,
+  String language = 'en',
+  bool pretty = true,
+}) async {
+  if (tripId.isEmpty) {
+    throw ArgumentError('Trip ID cannot be empty');
+  }
+  
+  final queryParams = <String, String>{
+    'stopovers': stopovers.toString(),
+    'remarks': remarks.toString(),
+    'polyline': polyline.toString(),
+    'language': language,
+    'pretty': pretty.toString(),
+  };
+
+  final encodedTripId = Uri.encodeComponent(tripId);
+  
+  try {
+    final queryString = queryParams.entries
+        .map((entry) => '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}')
+        .join('&');
+    
+    final url = 'http://$base_url/trips/$encodedTripId?$queryString';
+    
+    final response = await http.get(Uri.parse(url));
+    
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      
+      // Handle the nested structure from your API response
+      Map<String, dynamic> tripData;
+      if (data['trip'] != null) {
+        tripData = data['trip'];
+      } else if (data is Map<String, dynamic>) {
+        tripData = data;
+      } else {
+        throw FormatException('Unexpected response format: expected trip object');
+      }
+      
+      // Fix: Pass tripData directly, not data['trip']
+      Trip t = Trip.fromJson(tripData);
+      t.debugPrintStopovers();
+      return t;
+      
+    } else if (response.statusCode == 404) {
+      throw HttpException('Trip not found or may have expired', uri: Uri.parse(url));
+      
+    } else if (response.statusCode == 500) {
+      if (response.body.contains('error') || response.body.isEmpty) {
+        throw HttpException('Temporary server error - trip may be unavailable', uri: Uri.parse(url));
+      } else {
+        throw HttpException('Server error for trip: $tripId', uri: Uri.parse(url));
+      }
+      
+    } else {
+      throw HttpException(
+        'Failed to load trip. Status code: ${response.statusCode}',
+        uri: Uri.parse(url),
+      );
+    }
+    
+  } catch (e, stackTrace) {
+    print('ERROR: Exception fetching trip $tripId: $e');
+    rethrow;
+  }
+}
+
+   Future<Trip> fetchTripFromLeg(Leg leg, {
+    bool stopovers = true,
+    bool remarks = true,
+    bool polyline = false,
+    String language = 'en',
+    bool pretty = true,
+  }) async {
+    if (leg.tripID == null || leg.tripID!.isEmpty) {
+      throw ArgumentError('Leg does not contain a valid trip ID');
+    }
+    
+    return fetchTripById(
+      leg.tripID!,
+      stopovers: stopovers,
+      remarks: remarks,
+      polyline: polyline,
+      language: language,
+      pretty: pretty,
+    );
+  }
+
+  Future<List<Trip>> fetchMultipleTrips(List<String> tripIds, {
+    bool stopovers = true,
+    bool remarks = true,
+    bool polyline = false,
+    String language = 'en',
+    bool pretty = true,
+  }) async {
+    List<Trip> trips = [];
+    
+    for (String tripId in tripIds) {
+      try {
+        final trip = await fetchTripById(
+          tripId,
+          stopovers: stopovers,
+          remarks: remarks,
+          polyline: polyline,
+          language: language,
+          pretty: pretty,
+        );
+        trips.add(trip);
+      } catch (e) {
+        print('Failed to fetch trip $tripId: $e');
+        // Continue with other trips instead of failing completely
+      }
+    }
+    
+    return trips;
+  }
+
   Future<Journey> refreshJourney(Journey journey) async {
     final encodedToken = Uri.encodeComponent(journey.refreshToken);
-    final url = 'http://$base_url/journeys/$encodedToken?polylines=true';
+    final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
-
-    print('Refreshing journey with token: ${journey.refreshToken}');
-    print('Final URI: $uri');
 
     try {
       final response = await http.get(uri);
-
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -198,7 +307,6 @@ class dbApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        print('Locations response: ${jsonEncode(data)}');
 
         return (data as List)
             .where((item) => item != null && (

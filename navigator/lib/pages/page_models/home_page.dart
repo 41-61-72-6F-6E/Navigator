@@ -14,7 +14,7 @@ class HomePage extends StatelessWidget
 
   //search Button
   bool ongoingJourney = false;
-  ServicesMiddle service = new ServicesMiddle();
+  ServicesMiddle service = ServicesMiddle();
 
   final int design = 0; //0 = Android, 1 = ios, 2 = linux, 3 = macos, 4 = web, 5 = windows
   
@@ -32,22 +32,22 @@ class HomePage extends StatelessWidget
     switch(design)
     {
       case 1:
-      return HomePageIos(this, ongoingJourney);
+      return HomePageIos(this );
 
       case 2:
-      return HomePageLinux(this, ongoingJourney);
+      return HomePageLinux(this );
 
       case 3:
-      return HomePageMacos(this, ongoingJourney);
+      return HomePageMacos(this );
 
       case 4:
-      return HomePageWeb(this, ongoingJourney);
+      return HomePageWeb(this );
 
       case 5:
-      return HomePageWindows(this,ongoingJourney);
+      return HomePageWindows(this);
 
       default:
-      return HomePageAndroid(this, ongoingJourney);
+      return HomePageAndroid(this );
     }
     
   }

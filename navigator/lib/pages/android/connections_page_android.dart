@@ -611,7 +611,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
       if(faves.isEmpty)
       SizedBox(width: 16,),
       if(faves.isEmpty)
-        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith!(color: Theme.of(context).colorScheme.onSurfaceVariant),),
+        Text('No saved Locations so far', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),),
       if(faves.isNotEmpty)
         Expanded(
           child: SingleChildScrollView(
@@ -1626,7 +1626,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                                           Expanded(
                                             child:
                                                 DropdownButtonFormField<String>(
-                                                  value:
+                                                  initialValue:
                                                       tempSettings.walkingSpeed ??
                                                       'normal',
                                                   decoration: InputDecoration(
@@ -1679,7 +1679,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                                           SizedBox(width: 16),
                                           Expanded(
                                             child: DropdownButtonFormField<int?>(
-                                              value: tempSettings.transferTime,
+                                              initialValue: tempSettings.transferTime,
                                               decoration: InputDecoration(
                                                 border: OutlineInputBorder(),
                                                 contentPadding:
@@ -1855,7 +1855,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                 icon: Icon(Icons.favorite_border),
                 onPressed: () => showDialog(context: context, builder: (BuildContext context)
                 {
-                  TextEditingController c = new TextEditingController();
+                  TextEditingController c = TextEditingController();
                   return AlertDialog(
                     title: Text('Save Location', style: Theme.of(context).textTheme.headlineMedium!.copyWith(color: Theme.of(context).colorScheme.onSurface),),
                     content: 

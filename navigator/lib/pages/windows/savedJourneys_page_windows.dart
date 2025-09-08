@@ -5,8 +5,8 @@ import 'package:navigator/services/servicesMiddle.dart';
 class SavedjourneysPageWindows extends SavedjourneysPage
 {
   SavedjourneysPage page;
-  SavedjourneysPageWindows(this.page, {Key? key});
-  ServicesMiddle _servicesMiddle = ServicesMiddle();
+  SavedjourneysPageWindows(this.page, {super.key});
+  final ServicesMiddle _servicesMiddle = ServicesMiddle();
 
   
   @override

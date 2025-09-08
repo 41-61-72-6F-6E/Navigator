@@ -10,6 +10,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/remark.dart';
+import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
@@ -24,8 +25,7 @@ class JourneyPageAndroid extends StatefulWidget {
   final JourneyPage page;
   final Journey journey;
 
-  const JourneyPageAndroid(this.page, {Key? key, required this.journey})
-    : super(key: key);
+  const JourneyPageAndroid(this.page, {super.key, required this.journey});
 
   @override
   State<JourneyPageAndroid> createState() => _JourneyPageAndroidState();
@@ -79,16 +79,10 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 
   Future<void> updateIsSaved() async
   {
-    List<String> refreshTokens = await Localdatasaver.getSavedJourneyRefreshTokens();
-    if (refreshTokens.contains(widget.journey.refreshToken)) {
-      setState(() {
-        _isSaved = true;
-      });
-    } else {
-      setState(() {
-        _isSaved = false;
-      });
-    }
+    bool s = await Localdatasaver.journeyIsSaved(widget.journey);
+    setState(() {
+      _isSaved = s;
+    });
   }
 
   void _centerMapOnJourney() {
@@ -301,13 +295,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                               ),
                               if(!_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.saveJourney(widget.journey.refreshToken),
-                                updateIsSaved()
+                                Localdatasaver.saveJourney(widget.journey).then((_) {updateIsSaved();})
                               }, label: Text('Save Journey'), icon: const Icon(Icons.bookmark_outline)),
                               if(_isSaved)
                               FilledButton.tonalIcon(onPressed: () => {
-                                Localdatasaver.removeSavedJourney(widget.journey.refreshToken),
-                                updateIsSaved()
+                                Localdatasaver.removeSavedJourney(widget.journey).then((_) {updateIsSaved();}),
                               }, label: Text('Journey Saved'), icon: const Icon(Icons.bookmark)),
                             ],
                           ),
@@ -516,7 +508,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 
           // Only add if it's not a SizedBox.shrink or empty container
           if (interchangeWidget is! SizedBox ||
-              (interchangeWidget as SizedBox).height != 0) {
+              (interchangeWidget).height != 0) {
             journeyComponents.add(interchangeWidget);
           }
         }
@@ -708,8 +700,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              'Arrival ' +
-                                  arrivingLeg.effectiveArrivalFormatted,
+                              'Arrival ${arrivingLeg.effectiveArrivalFormatted}',
                               style: textTheme.titleMedium!.copyWith(
                                 color: arrivalTimeColor,
                               ),
@@ -721,8 +712,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                               ),
                             if (arrivingLeg.arrivalPlatform != null)
                               Text(
-                                'Platform ' +
-                                    arrivingLeg.effectiveArrivalPlatform,
+                                'Platform ${arrivingLeg.effectiveArrivalPlatform}',
                                 style: textTheme.bodySmall!.copyWith(
                                   color: arrivalPlatformColor,
                                 ),
@@ -769,14 +759,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                   4)
                                 if (showInterchangeTime)
                                   Text(
-                                    'Interchange Time: ' +
-                                        departingLeg.departureDateTime
+                                    'Interchange Time: ${departingLeg.departureDateTime
                                             .difference(
                                               arrivingLeg.arrivalDateTime,
                                             )
-                                            .inMinutes
-                                            .toString() +
-                                        ' min',
+                                            .inMinutes} min',
                                     style: textTheme.titleSmall!.copyWith(
                                       color: colorScheme.error,
                                     ),
@@ -787,14 +774,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                   4)
                                 if (showInterchangeTime)
                                   Text(
-                                    'Interchange Time: ' +
-                                        departingLeg.departureDateTime
+                                    'Interchange Time: ${departingLeg.departureDateTime
                                             .difference(
                                               arrivingLeg.arrivalDateTime,
                                             )
-                                            .inMinutes
-                                            .toString() +
-                                        ' min',
+                                            .inMinutes} min',
                                     style: textTheme.titleSmall!.copyWith(
                                       color: colorScheme.onSurface,
                                     ),
@@ -838,9 +822,8 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                           MainAxisAlignment.center,
                                       children: [
                                         Text(
-                                          'Departure ' +
-                                              departingLeg
-                                                  .effectiveDepartureFormatted,
+                                          'Departure ${departingLeg
+                                                  .effectiveDepartureFormatted}',
                                           style: textTheme.titleMedium!
                                               .copyWith(
                                                 color: departureTimeColor,
@@ -859,9 +842,8 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                                         if (departingLeg.departurePlatform !=
                                             null)
                                           Text(
-                                            'Platform ' +
-                                                departingLeg
-                                                    .effectiveDeparturePlatform,
+                                            'Platform ${departingLeg
+                                                    .effectiveDeparturePlatform}',
                                             style: textTheme.bodyMedium!
                                                 .copyWith(
                                                   color: departurePlatformColor,
@@ -1010,7 +992,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                         ),
                         if (l.departurePlatformEffective.isNotEmpty)
                           Text(
-                            'Platform ' + l.departurePlatformEffective,
+                            'Platform ${l.departurePlatformEffective}',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onPrimaryContainer,
                             ),
@@ -1075,7 +1057,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                         ),
                         if (l.arrivalPlatformEffective.isNotEmpty)
                           Text(
-                            'Platform ' + l.arrivalPlatformEffective,
+                            'Platform ${l.arrivalPlatformEffective}',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onPrimaryContainer,
                             ),
@@ -1116,7 +1098,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     SizedBox(width: (constraints.maxWidth / 100)* 12,),
                     Icon(Icons.directions_walk),
                     SizedBox(width: 8,),
-                    Text('Walk ' + leg.distance.toString() + 'm' + ' (' + _formatLegDuration(leg.departureDateTime, leg.arrivalDateTime) + ')', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer)),
+                    Text('Walk ${leg.distance}m (${_formatLegDuration(leg.departureDateTime, leg.arrivalDateTime)})', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                     Spacer(),
                     IconButton.filled(
                       onPressed: () => {},
@@ -1543,14 +1525,14 @@ class LegWidget extends StatefulWidget{
   final Leg leg;
   Color colorArg;
   
-  LegWidget({Key? key, required this.leg, required this.colorArg}) : super(key: key);
+  LegWidget({super.key, required this.leg, required this.colorArg});
   @override
   State<LegWidget> createState() => _LegWidgetState();
 }
 
 
 class _LegWidgetState extends State<LegWidget> {
-  bool _isExpanded = false;
+  final bool _isExpanded = false;
   Remark? comfortCheckinRemark; 
   Remark? bicycleRemark;
   late VoidCallback _colorListener;

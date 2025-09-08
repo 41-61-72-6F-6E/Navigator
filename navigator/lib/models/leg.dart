@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/stopover.dart';
 import 'package:navigator/services/overpassApi.dart';
 
 class Leg {
@@ -28,6 +29,7 @@ class Leg {
   final String? productName;
   final List<Remark>? remarks;
   final ValueNotifier<Color?> lineColorNotifier = ValueNotifier<Color?>(null);
+  final List<Stopover> stopovers;
 
   Leg({
     this.tripID,
@@ -51,61 +53,82 @@ class Leg {
     this.polyline,
     this.remarks,
     this.product,
+    required this.stopovers
   });
 
   factory Leg.fromJson(Map<String, dynamic> json) {
-    String? safeGetString(dynamic value) {
-      if (value == null) return null;
-      return value.toString();
-    }
+  String? safeGetString(dynamic value) {
+    if (value == null) return null;
+    return value.toString();
+  }
 
-    String? safeGetNestedString(Map<String, dynamic>? parent, String key) {
-      if (parent == null) return null;
-      final value = parent[key];
-      if (value == null) return null;
-      return value.toString();
-    }
+  String? safeGetNestedString(Map<String, dynamic>? parent, String key) {
+    if (parent == null) return null;
+    final value = parent[key];
+    if (value == null) return null;
+    return value.toString();
+  }
 
-    Station safeGetStation(dynamic stationJson) {
-      if (stationJson == null) return Station.empty();
-      try {
-        return Station.fromJson(stationJson);
-      } catch (e) {
-        print('Error parsing station: $e');
-        return Station.empty();
+  Station safeGetStation(dynamic stationJson) {
+    if (stationJson == null) return Station.empty();
+    try {
+      return Station.fromJson(stationJson);
+    } catch (e) {
+      print('Error parsing station: $e');
+      return Station.empty();
+    }
+  }
+
+  String? tripId = safeGetString(json['tripId']);
+  if (tripId != null && tripId.isEmpty) {
+    tripId = null; // Convert empty strings to null
+  }
+
+
+  List<Remark>? remarks = (json['remarks'] as List<dynamic>?)
+      ?.map((item) => Remark.fromJson(item as Map<String, dynamic>))
+      .toList();
+
+  // Parse stopovers/intermediate stops
+  List<Stopover> stopovers = [];
+    if (json['stopovers'] != null) {
+      final stopoversJson = json['stopovers'] as List<dynamic>;
+      
+      for (var stopoverJson in stopoversJson) {
+        try {
+          stopovers.add(Stopover.fromJson(stopoverJson));
+        } catch (e) {
+          print('Error parsing stopover: $e');
+          // Continue with other stopovers even if one fails
+        }
       }
     }
 
-    List<Remark>? remarks = (json['remarks'] as List<dynamic>?)
-    ?.map((item) => Remark.fromJson(item as Map<String, dynamic>))
-    .toList();
-
-    
-
-    return Leg(
-      tripID: safeGetString(json['tripId']),
-      direction: safeGetString(json['direction']),
-      origin: safeGetStation(json['origin']),
-      departure: safeGetString(json['departure']),
-      plannedDeparture: safeGetString(json['plannedDeparture']) ?? '',
-      departureDelay: safeGetString(json['departureDelay']),
-      departurePlatform: safeGetString(json['departurePlatform']),
-      plannedDeparturePlatform: safeGetString(json['plannedDeparturePlatform']),
-      destination: safeGetStation(json['destination']),
-      arrival: safeGetString(json['arrival']),
-      plannedArrival: safeGetString(json['plannedArrival']) ?? '',
-      arrivalDelay: safeGetString(json['arrivalDelay']),
-      arrivalPlatform: safeGetString(json['arrivalPlatform']),
-      plannedArrivalPlatform: safeGetString(json['plannedArrivalPlatform']),
-      isWalking: json['walking'],
-      distance: json['distance'],
-      lineName: safeGetNestedString(json['line'], 'name'),
-      productName: safeGetNestedString(json['line'], 'productName'),
-      polyline: json['polyline'], // Optional, can be null
-      remarks: remarks,
-      product: safeGetNestedString(json['line'], 'product'),
-    );
-  }
+  return Leg(
+    tripID: tripId,
+    direction: safeGetString(json['direction']),
+    origin: safeGetStation(json['origin']),
+    departure: safeGetString(json['departure']),
+    plannedDeparture: safeGetString(json['plannedDeparture']) ?? '',
+    departureDelay: safeGetString(json['departureDelay']),
+    departurePlatform: safeGetString(json['departurePlatform']),
+    plannedDeparturePlatform: safeGetString(json['plannedDeparturePlatform']),
+    destination: safeGetStation(json['destination']),
+    arrival: safeGetString(json['arrival']),
+    plannedArrival: safeGetString(json['plannedArrival']) ?? '',
+    arrivalDelay: safeGetString(json['arrivalDelay']),
+    arrivalPlatform: safeGetString(json['arrivalPlatform']),
+    plannedArrivalPlatform: safeGetString(json['plannedArrivalPlatform']),
+    isWalking: json['walking'],
+    distance: json['distance'],
+    lineName: safeGetNestedString(json['line'], 'name'),
+    productName: safeGetNestedString(json['line'], 'productName'),
+    polyline: json['polyline'], // Optional, can be null
+    remarks: remarks,
+    product: safeGetNestedString(json['line'], 'product'),
+    stopovers: stopovers, // Now properly populated
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {
@@ -130,9 +153,13 @@ class Leg {
         'productName': productName,
         'product': product
       } : null,
+      'stopovers': stopovers,
       if (polyline != null) 'polyline': polyline,
     };
   }
+
+   List<Stopover> get intermediateStops => 
+      stopovers.where((stopover) => stopover.isIntermediateStop).toList();
 
   void initializeLineColor() async
   {

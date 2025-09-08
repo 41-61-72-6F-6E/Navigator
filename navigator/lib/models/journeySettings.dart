@@ -26,7 +26,7 @@ class JourneySettings {
     this.deutschlandTicketConnectionsOnly = false,
     this.accessibility = false,
     this.walkingSpeed = 'normal',
-    this.transferTime = null,
+    this.transferTime,
   });
 
   Map<String, dynamic> toJson() {

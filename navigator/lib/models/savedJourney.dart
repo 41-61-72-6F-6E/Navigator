@@ -3,7 +3,7 @@ import 'package:navigator/models/journey.dart';
 class Savedjourney 
 {
   Journey journey;
-  int id;
+  String id;
 
   Savedjourney({required this.journey, required this.id});
 
@@ -16,8 +16,8 @@ class Savedjourney
 
   factory Savedjourney.fromJson(Map<String, dynamic> json) {
     return Savedjourney(
-      id: json['id'] as int,
-      journey: Journey.fromJson(json['location'] as Map<String, dynamic>),
+      id: json['id'] as String,
+      journey: Journey.fromJson(json['journey'] as Map<String, dynamic>),
     );
   }
 }

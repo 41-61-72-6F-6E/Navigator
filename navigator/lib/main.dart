@@ -95,11 +95,11 @@ class MyApp extends StatelessWidget {
             ? _enhanceColorScheme(darkDynamic)
             : _generateCustomColorScheme(Colors.blue, Brightness.dark);
 
-        final NavigationService _navService = NavigationService();
+        final NavigationService navService = NavigationService();
 
         return MaterialApp(
           title: 'Navigator',
-          navigatorKey: _navService.navigatorKey,
+          navigatorKey: navService.navigatorKey,
           themeMode: ThemeMode.system,
           theme: ThemeData(
             useMaterial3: true,
