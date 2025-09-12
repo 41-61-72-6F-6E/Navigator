@@ -237,6 +237,22 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     });
   }
 
+  Future<void> _saveFavoriteOrder(List<FavoriteLocation> reorderedFaves) async {
+    try {
+      // Clear all existing favorites
+      for (FavoriteLocation fave in faves) {
+        await Localdatasaver.removeFavouriteLocation(fave);
+      }
+
+      // Re-add them in the new order
+      for (FavoriteLocation fave in reorderedFaves) {
+        await Localdatasaver.addLocationToFavourites(fave.location, fave.name);
+      }
+    } catch (e) {
+      print('Error saving favorite order: $e');
+    }
+  }
+
   Future<void> _updateOngoingJourney() async {
     List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
     bool found = false;
@@ -952,7 +968,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                           useSafeArea: true,
                           sheetAnimationStyle: AnimationStyle(
                             curve: Curves.elasticOut,
-                            duration: Duration(milliseconds: 300),
+                            duration: Duration(milliseconds: 400),
                           ),
                           context: context,
                           isScrollControlled: true,
@@ -1863,7 +1879,6 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   Widget _buildFaves(BuildContext context) {
     return Row(
       children: [
-        if (faves.isEmpty) Icon(Icons.favorite),
         if (faves.isEmpty) SizedBox(width: 16),
         if (faves.isEmpty)
           Text(
@@ -1872,6 +1887,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+        if (faves.isEmpty) Spacer(),
         if (faves.isNotEmpty)
           Expanded(
             child: SingleChildScrollView(
@@ -1925,8 +1941,9 @@ class _HomePageAndroidState extends State<HomePageAndroid>
           ),
         SizedBox(width: 14),
         IconButton(
-          onPressed: () {},
+          onPressed: () => _showEditFavoritesModal(context),
           icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary),
+          tooltip: 'Edit Saved Locations',
         ),
       ],
     );
@@ -2199,4 +2216,334 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       ),
     );
   }
+
+  void _showEditFavoritesModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      sheetAnimationStyle: AnimationStyle(
+        curve: Curves.easeOutCubic,
+        duration: Duration(milliseconds: 400),
+      ),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            final colors = Theme.of(context).colorScheme;
+            final texts = Theme.of(context).textTheme;
+
+            return Container(
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle bar
+                    Container(
+                      width: 32,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: colors.onSurfaceVariant.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: colors.primary, size: 28),
+                          SizedBox(width: 16),
+                          Text(
+                            'Edit Saved Locations',
+                            style: texts.headlineSmall!.copyWith(
+                              color: colors.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Spacer(),
+                          if (faves.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: colors.secondaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '${faves.length}',
+                                style: texts.bodySmall!.copyWith(
+                                  color: colors.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Content with drag and drop
+                    Flexible(
+                      child: faves.isEmpty
+                          ? Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.favorite_outline,
+                              size: 64,
+                              color: colors.onSurfaceVariant.withOpacity(0.5),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No saved locations yet',
+                              style: texts.titleMedium!.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Add locations to favorites to manage them here. \n'
+                                  'Do this by searching for a station or location and tapping the heart icon.',
+                              style: texts.bodyMedium!.copyWith(
+                                color: colors.onSurfaceVariant.withOpacity(0.7),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                          : ReorderableListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        itemCount: faves.length,
+                        onReorder: (oldIndex, newIndex) async {
+                          if (newIndex > oldIndex) {
+                            newIndex -= 1;
+                          }
+
+                          List<FavoriteLocation> reorderedFaves = List.from(faves);
+                          final item = reorderedFaves.removeAt(oldIndex);
+                          reorderedFaves.insert(newIndex, item);
+
+                          setState(() {
+                            faves = reorderedFaves;
+                          });
+                          setModalState(() {
+                            faves = reorderedFaves;
+                          });
+
+                          await _saveFavoriteOrder(reorderedFaves);
+                        },
+                        itemBuilder: (context, index) {
+                          final fave = faves[index];
+                          return Padding(
+                            key: ValueKey('${fave.location.id}_$index'),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                leading: CircleAvatar(
+                                  backgroundColor: colors.primaryContainer,
+                                  child: Icon(
+                                    fave.location is Station
+                                        ? Icons.train
+                                        : Icons.location_on,
+                                    color: colors.onPrimaryContainer,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  fave.name,
+                                  style: texts.titleMedium!.copyWith(
+                                    color: colors.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  fave.location.name,
+                                  style: texts.bodySmall!.copyWith(
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.edit_outlined, color: colors.primary, size: 20),
+                                      onPressed: () => _showRenameFavoriteDialog(context, fave, setModalState),
+                                      tooltip: 'Rename',
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline, color: colors.error, size: 20),
+                                      onPressed: () => _showDeleteFavoriteDialog(context, fave, setModalState),
+                                      tooltip: 'Remove',
+                                    ),
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: Container(
+                                        padding: EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: colors.outline.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.drag_handle,
+                                          color: colors.onSurfaceVariant,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showRenameFavoriteDialog(
+      BuildContext context,
+      FavoriteLocation fave,
+      StateSetter setModalState,
+      ) {
+    final TextEditingController controller = TextEditingController(text: fave.name);
+    final colors = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Rename Location',
+              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                color: colors.onSurface,
+              )),
+          content: TextField(
+            controller: controller,
+            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+              color: colors.onSurface,
+            ),
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Location Name',
+              hintText: 'Enter new name',
+              hintStyle: TextStyle(color: colors.onSurfaceVariant),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (controller.text.trim().isNotEmpty) {
+                  // Remove old favorite
+                  await Localdatasaver.removeFavouriteLocation(fave);
+                  // Add with new name
+                  await Localdatasaver.addLocationToFavourites(
+                    fave.location,
+                    controller.text.trim(),
+                  );
+
+                  // Update local state
+                  final updatedFaves = await Localdatasaver.getFavouriteLocations();
+                  setState(() {
+                    faves = updatedFaves;
+                  });
+                  setModalState(() {
+                    faves = updatedFaves;
+                  });
+
+                  Navigator.of(context).pop();
+                }
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteFavoriteDialog(
+      BuildContext context,
+      FavoriteLocation fave,
+      StateSetter setModalState,
+      ) {
+    final colors = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Remove Location',
+              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                color: colors.onSurface,
+              )),
+          content: Text('Are you sure you want to remove "${fave.name}" from your saved locations?',
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: colors.onSurfaceVariant,
+              )),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
+              ),
+              onPressed: () async {
+                await Localdatasaver.removeFavouriteLocation(fave);
+
+                // Update local state
+                final updatedFaves = await Localdatasaver.getFavouriteLocations();
+                setState(() {
+                  faves = updatedFaves;
+                });
+                setModalState(() {
+                  faves = updatedFaves;
+                });
+
+                Navigator.of(context).pop();
+              },
+              child: Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
+
