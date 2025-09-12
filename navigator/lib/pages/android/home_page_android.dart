@@ -237,6 +237,22 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     });
   }
 
+  Future<void> _saveFavoriteOrder(List<FavoriteLocation> reorderedFaves) async {
+    try {
+      // Clear all existing favorites
+      for (FavoriteLocation fave in faves) {
+        await Localdatasaver.removeFavouriteLocation(fave);
+      }
+
+      // Re-add them in the new order
+      for (FavoriteLocation fave in reorderedFaves) {
+        await Localdatasaver.addLocationToFavourites(fave.location, fave.name);
+      }
+    } catch (e) {
+      print('Error saving favorite order: $e');
+    }
+  }
+
   Future<void> _updateOngoingJourney() async {
     List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
     bool found = false;
@@ -2243,11 +2259,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.edit,
-                            color: colors.primary,
-                            size: 28,
-                          ),
+                          Icon(Icons.edit, color: colors.primary, size: 28),
                           SizedBox(width: 16),
                           Text(
                             'Edit Saved Locations',
@@ -2256,11 +2268,27 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          Spacer(),
+                          if (faves.isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: colors.secondaryContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '${faves.length}',
+                                style: texts.bodySmall!.copyWith(
+                                  color: colors.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
 
-                    // Content
+                    // Content with drag and drop
                     Flexible(
                       child: faves.isEmpty
                           ? Padding(
@@ -2269,9 +2297,9 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.favorite_border,
+                              Icons.favorite_outline,
                               size: 64,
-                              color: colors.onSurfaceVariant.withOpacity(0.6),
+                              color: colors.onSurfaceVariant.withOpacity(0.5),
                             ),
                             SizedBox(height: 16),
                             Text(
@@ -2282,38 +2310,58 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Save locations by tapping the heart icon when searching',
-                              textAlign: TextAlign.center,
+                              'Add locations to favorites to manage them here',
                               style: texts.bodyMedium!.copyWith(
-                                color: colors.onSurfaceVariant.withOpacity(0.8),
+                                color: colors.onSurfaceVariant.withOpacity(0.7),
                               ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       )
-                          : ListView.builder(
+                          : ReorderableListView.builder(
                         shrinkWrap: true,
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                         itemCount: faves.length,
+                        onReorder: (oldIndex, newIndex) async {
+                          if (newIndex > oldIndex) {
+                            newIndex -= 1;
+                          }
+
+                          List<FavoriteLocation> reorderedFaves = List.from(faves);
+                          final item = reorderedFaves.removeAt(oldIndex);
+                          reorderedFaves.insert(newIndex, item);
+
+                          setState(() {
+                            faves = reorderedFaves;
+                          });
+                          setModalState(() {
+                            faves = reorderedFaves;
+                          });
+
+                          await _saveFavoriteOrder(reorderedFaves);
+                        },
                         itemBuilder: (context, index) {
                           final fave = faves[index];
                           return Padding(
+                            key: ValueKey('${fave.location.id}_$index'),
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Card(
-                              elevation: 0,
-                              color: colors.surfaceContainer,
+                              elevation: 2,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
                                   vertical: 8,
                                 ),
                                 leading: CircleAvatar(
                                   backgroundColor: colors.primaryContainer,
                                   child: Icon(
-                                    Icons.favorite,
+                                    fave.location is Station
+                                        ? Icons.train
+                                        : Icons.location_on,
                                     color: colors.onPrimaryContainer,
                                     size: 20,
                                   ),
@@ -2327,41 +2375,39 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                                 ),
                                 subtitle: Text(
                                   fave.location.name,
-                                  style: texts.bodyMedium!.copyWith(
+                                  style: texts.bodySmall!.copyWith(
                                     color: colors.onSurfaceVariant,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    IconButton.outlined(
-                                      onPressed: () {
-                                        _showRenameFavoriteDialog(
-                                          context,
-                                          fave,
-                                          setModalState,
-                                        );
-                                      },
-                                      icon: Icon(
-                                        Icons.edit_outlined,
-                                        color: colors.primary,
-                                      ),
+                                    IconButton(
+                                      icon: Icon(Icons.edit_outlined, color: colors.primary, size: 20),
+                                      onPressed: () => _showRenameFavoriteDialog(context, fave, setModalState),
                                       tooltip: 'Rename',
                                     ),
-                                    SizedBox(width: 8),
-                                    IconButton.outlined(
-                                      onPressed: () {
-                                        _showDeleteFavoriteDialog(
-                                          context,
-                                          fave,
-                                          setModalState,
-                                        );
-                                      },
-                                      icon: Icon(
-                                        Icons.delete_outline,
-                                        color: colors.error,
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline, color: colors.error, size: 20),
+                                      onPressed: () => _showDeleteFavoriteDialog(context, fave, setModalState),
+                                      tooltip: 'Remove',
+                                    ),
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: Container(
+                                        padding: EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: colors.outline.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.drag_handle,
+                                          color: colors.onSurfaceVariant,
+                                          size: 20,
+                                        ),
                                       ),
-                                      tooltip: 'Delete',
                                     ),
                                   ],
                                 ),
@@ -2499,3 +2545,4 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     );
   }
 }
+
