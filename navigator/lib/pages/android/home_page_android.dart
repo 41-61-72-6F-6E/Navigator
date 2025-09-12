@@ -1879,7 +1879,6 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   Widget _buildFaves(BuildContext context) {
     return Row(
       children: [
-        if (faves.isEmpty) Icon(Icons.favorite),
         if (faves.isEmpty) SizedBox(width: 16),
         if (faves.isEmpty)
           Text(
@@ -1888,6 +1887,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+        if (faves.isEmpty) Spacer(),
         if (faves.isNotEmpty)
           Expanded(
             child: SingleChildScrollView(
@@ -2310,7 +2310,8 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Add locations to favorites to manage them here',
+                              'Add locations to favorites to manage them here. \n'
+                                  'Do this by searching for a station or location and tapping the heart icon.',
                               style: texts.bodyMedium!.copyWith(
                                 color: colors.onSurfaceVariant.withOpacity(0.7),
                               ),
