@@ -2393,13 +2393,20 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Rename Location'),
+          title: Text('Rename Location',
+              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                color: colors.onSurface,
+              )),
           content: TextField(
             controller: controller,
+            style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+              color: colors.onSurface,
+            ),
             autofocus: true,
             decoration: InputDecoration(
               labelText: 'Location Name',
               hintText: 'Enter new name',
+              hintStyle: TextStyle(color: colors.onSurfaceVariant),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2452,8 +2459,14 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Remove Location'),
-          content: Text('Are you sure you want to remove "${fave.name}" from your saved locations?'),
+          title: Text('Remove Location',
+              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                color: colors.onSurface,
+              )),
+          content: Text('Are you sure you want to remove "${fave.name}" from your saved locations?',
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                color: colors.onSurfaceVariant,
+              )),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
