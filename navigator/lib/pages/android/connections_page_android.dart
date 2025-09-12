@@ -1626,7 +1626,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                                           Expanded(
                                             child:
                                                 DropdownButtonFormField<String>(
-                                                  initialValue:
+                                                  value:
                                                       tempSettings.walkingSpeed ??
                                                       'normal',
                                                   decoration: InputDecoration(
@@ -1679,7 +1679,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                                           SizedBox(width: 16),
                                           Expanded(
                                             child: DropdownButtonFormField<int?>(
-                                              initialValue: tempSettings.transferTime,
+                                              value: tempSettings.transferTime,
                                               decoration: InputDecoration(
                                                 border: OutlineInputBorder(),
                                                 contentPadding:
