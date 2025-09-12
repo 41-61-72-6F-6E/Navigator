@@ -1923,7 +1923,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
               ),
             ),
           ),
-        Spacer(),
+        SizedBox(width: 14),
         IconButton(
           onPressed: () {},
           icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary),
