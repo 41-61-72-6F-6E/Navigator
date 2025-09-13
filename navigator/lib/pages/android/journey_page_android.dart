@@ -258,15 +258,18 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 
   double _calculateLegZoom(double distanceKm) {
     // More granular zoom levels based on distance
-    if (distanceKm < 1) return 17.0;
+    if (distanceKm < 1) return 18.0;
     if (distanceKm < 3) return 15.0;
-    if (distanceKm < 7) return 14.0;
-    if (distanceKm < 15) return 13.0;
-    if (distanceKm < 30) return 11.5;
-    if (distanceKm < 70) return 10.0;
-    if (distanceKm < 150) return 9.0;
-    if (distanceKm < 300) return 8.0;
-    return 7.0;
+    if (distanceKm < 5) return 13.0;
+    if (distanceKm < 7) return 12.0;
+    if (distanceKm < 10) return 11.0;
+    if (distanceKm < 15) return 10.0;
+    if (distanceKm < 30) return 9.0;
+    if (distanceKm < 50) return 8.0;
+    if (distanceKm < 70) return 7.0;
+    if (distanceKm < 150) return 6.0;
+    if (distanceKm < 300) return 5.0;
+    return 4.0;
   }
 
   void _initializeLocationTracking() {
