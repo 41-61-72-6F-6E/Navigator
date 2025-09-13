@@ -57,6 +57,8 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   late StreamController<LocationMarkerHeading> _headingStreamController;
   StreamSubscription<Position>? _geolocatorSubscription;
 
+  AnimationController? _mapMoveController;
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +76,10 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     _headingStreamController.close();
     _geolocatorSubscription?.cancel();
     _alignPositionStreamController.close();
+
+    _mapMoveController?.stop();
+    _mapMoveController?.dispose();
+    _mapMoveController = null;
     super.dispose();
   }
 
@@ -137,51 +143,133 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     return 6.0;
   }
 
-  void animatedMapMove(LatLng destLocation, double destZoom) {
-    // Store the destination values
-    final latTween = Tween<double>(
-      begin: _mapController.camera.center.latitude,
-      end: destLocation.latitude,
-    );
-    final lngTween = Tween<double>(
-      begin: _mapController.camera.center.longitude,
-      end: destLocation.longitude,
-    );
-    final zoomTween = Tween<double>(
-        begin: _mapController.camera.zoom,
-        end: destZoom
+  void animatedMapMove(LatLng currentPosition, double currentZoomLevel, LatLng destLocation, double destZoom) {
+    // Cancel any running animation safely
+    if (_mapMoveController != null) {
+      _mapMoveController!.stop();
+      _mapMoveController!.dispose();
+      _mapMoveController = null;
+    }
+
+    final distanceKm = _calculateDistance(
+      currentPosition.latitude,
+      currentPosition.longitude,
+      destLocation.latitude,
+      destLocation.longitude,
     );
 
-    // Create and store controller locally to avoid conflicts
+    // If absolutely identical, snap
+    if (distanceKm < 1e-6 && (currentZoomLevel - destZoom).abs() < 0.001) {
+      _mapController.move(destLocation, destZoom);
+      return;
+    }
+
+    final latTween = Tween<double>(begin: currentPosition.latitude, end: destLocation.latitude);
+    final lngTween = Tween<double>(begin: currentPosition.longitude, end: destLocation.longitude);
+    final zoomTween = Tween<double>(begin: currentZoomLevel, end: destZoom);
+
     final controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
+    final curve = CurvedAnimation(parent: controller, curve: Curves.easeInOut);
 
-    final animation = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
+    void onTick() {
+      if (!mounted) return;
+      final newLat = latTween.evaluate(curve);
+      final newLng = lngTween.evaluate(curve);
+      final newZoom = zoomTween.evaluate(curve);
+      _mapController.move(LatLng(newLat, newLng), newZoom);
+    }
 
-    controller.addListener(() {
-      _mapController.move(
-        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
-        zoomTween.evaluate(animation),
-      );
-    });
+    void onStatus(AnimationStatus status) {
+      if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
+        if (mounted) {
+          // Snap to the final destination to ensure accuracy
+          _mapController.move(destLocation, destZoom);
 
-    animation.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        // Update the current values after animation completes
-        _currentCenter = destLocation;
-        _currentZoom = destZoom;
+          // Update state variables to match the final position
+          setState(() {
+            _currentCenter = destLocation;
+            _currentZoom = destZoom;
+          });
+        }
+        controller.removeListener(onTick);
+        curve.removeStatusListener(onStatus); // This was incorrectly adding a listener in your code
         controller.dispose();
-      } else if (status == AnimationStatus.dismissed) {
-        controller.dispose();
+        if (identical(_mapMoveController, controller)) {
+          _mapMoveController = null;
+        }
       }
-    });
+    }
 
-    controller.forward();
+    controller.addListener(onTick);
+    curve.addStatusListener(onStatus);
+    _mapMoveController = controller;
+    controller.forward(from: 0);
+  }
+
+  void _focusMapOnLeg(Leg leg) {
+    if (!mounted) return;
+
+    print("Focusing map on leg: ${leg.origin.name} to ${leg.destination.name}");
+
+    final startLat = leg.origin.latitude;
+    final startLng = leg.origin.longitude;
+    final endLat = leg.destination.latitude;
+    final endLng = leg.destination.longitude;
+
+    // Create bounding box
+    final double north = math.max(startLat, endLat);
+    final double south = math.min(startLat, endLat);
+    final double east = math.max(startLng, endLng);
+    final double west = math.min(startLng, endLng);
+
+    // Add padding (20%)
+    final latPadding = (north - south) * 0.2;
+    final lngPadding = (east - west) * 0.2;
+
+    final centerLat = (north + south) / 2;
+    final centerLng = (east + west) / 2;
+    final legCenter = LatLng(centerLat, centerLng);
+
+    final distanceKm = _calculateDistance(startLat, startLng, endLat, endLng);
+    final legZoom = _calculateLegZoom(distanceKm);
+
+    print("Leg center: $legCenter, zoom: $legZoom");
+
+    // SIMPLIFIED APPROACH: Direct map movement with a slight delay
+    Future.microtask(() {
+      // Temporarily disable any automatic positioning
+      setState(() {
+        _alignPositionOnUpdate = AlignOnUpdate.never;
+      });
+
+      // Move map directly to target position
+      _mapController.move(legCenter, legZoom);
+
+      // Update state variables to match the new position
+      setState(() {
+        _currentCenter = legCenter;
+        _currentZoom = legZoom;
+      });
+    });
+  }
+
+  double _calculateLegZoom(double distanceKm) {
+    // More granular zoom levels based on distance
+    if (distanceKm < 1) return 18.0;
+    if (distanceKm < 3) return 15.0;
+    if (distanceKm < 5) return 13.0;
+    if (distanceKm < 7) return 12.0;
+    if (distanceKm < 10) return 11.0;
+    if (distanceKm < 15) return 10.0;
+    if (distanceKm < 30) return 9.0;
+    if (distanceKm < 50) return 8.0;
+    if (distanceKm < 70) return 7.0;
+    if (distanceKm < 150) return 6.0;
+    if (distanceKm < 300) return 5.0;
+    return 4.0;
   }
 
   void _initializeLocationTracking() {
@@ -223,8 +311,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       _currentUserLocation = position.latLng;
     });
   }
-
-  
 
   String _formatLegDuration(DateTime? start, DateTime? end) {
     if (start == null || end == null) return '0min';
@@ -536,7 +622,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
           );
         } else {
           journeyComponents.add(
-            LegWidget(leg: leg, colorArg: leg.lineColorNotifier.value ?? Colors.grey),
+            LegWidget(
+              leg: leg,
+              colorArg: leg.lineColorNotifier.value ?? Colors.grey,
+              onMapPressed: () => _focusMapOnLeg(leg),
+            ),
           );
         }
       }
@@ -1101,7 +1191,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
                     Text('Walk ${leg.distance}m (${_formatLegDuration(leg.departureDateTime, leg.arrivalDateTime)})', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer)),
                     Spacer(),
                     IconButton.filled(
-                      onPressed: () => {},
+                      onPressed: () => _focusMapOnLeg(leg),
                       icon: Icon(Icons.map),
                       color: Theme.of(context).colorScheme.tertiary,
                       style: IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.tertiaryContainer),
@@ -1236,6 +1326,11 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
               pinchMoveThreshold: 40.0,
             ),
             onPositionChanged: (MapCamera camera, bool hasGesture) {
+              if (mounted) {
+                _currentCenter = camera.center;
+                _currentZoom = camera.zoom;
+              }
+
               if (hasGesture && _alignPositionOnUpdate != AlignOnUpdate.never) {
                 setState(
                       () => _alignPositionOnUpdate = AlignOnUpdate.never,
@@ -1369,8 +1464,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       print("Centering on location: $_currentUserLocation");
 
       setState(() {
-        _currentCenter = _currentUserLocation!;
-        _currentZoom = 18.0;
         _alignPositionOnUpdate = AlignOnUpdate.always;
       });
 
@@ -1378,7 +1471,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       _alignPositionStreamController.add(18.0);
 
       // Also use animatedMapMove for smooth transition
-      animatedMapMove(_currentUserLocation!, 18.0);
+      animatedMapMove(_mapController.camera.center, _mapController.camera.zoom, _currentUserLocation!, 18.0);
     } else {
       print("Cannot center: current user location is null");
     }
@@ -1524,8 +1617,9 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
 class LegWidget extends StatefulWidget{
   final Leg leg;
   Color colorArg;
+  final VoidCallback? onMapPressed;
   
-  LegWidget({super.key, required this.leg, required this.colorArg});
+  LegWidget({super.key, required this.leg, required this.colorArg, this.onMapPressed});
   @override
   State<LegWidget> createState() => _LegWidgetState();
 }
@@ -1676,7 +1770,7 @@ class _LegWidgetState extends State<LegWidget> {
                     ),
                     //Spacer(),
                     IconButton.filled(
-                      onPressed: () => {},
+                      onPressed: widget.onMapPressed,
                       icon: Icon(Icons.map),
                       color: Theme.of(context).colorScheme.tertiary,
                       style: IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.tertiaryContainer),
