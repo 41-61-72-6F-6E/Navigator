@@ -20,6 +20,8 @@ import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/services/overpassApi.dart';
 import 'package:navigator/services/overpassApi.dart' as overpassApi;
 
+import '../../models/stopover.dart';
+
 
 class JourneyPageAndroid extends StatefulWidget {
   final JourneyPage page;
@@ -1626,7 +1628,7 @@ class LegWidget extends StatefulWidget{
 
 
 class _LegWidgetState extends State<LegWidget> {
-  final bool _isExpanded = false;
+  bool _isExpanded = false;
   Remark? comfortCheckinRemark; 
   Remark? bicycleRemark;
   late VoidCallback _colorListener;
@@ -1674,23 +1676,17 @@ class _LegWidgetState extends State<LegWidget> {
     widget.leg.lineColorNotifier.removeListener(_colorListener);
     super.dispose();
   }
-  
+
 
   @override
-  Widget build(BuildContext context) 
-  {
-    
-    //if (widget.leg.distance == null || widget.leg.distance == 0) {
-      //return const SizedBox.shrink();
-    //}
-
+  Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints)
-      {
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final hasIntermediateStops = widget.leg.stopovers.length > 2;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Stack(
-            children: <Widget> [
+            children: <Widget>[
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
@@ -1699,85 +1695,98 @@ class _LegWidgetState extends State<LegWidget> {
                   color: lineColor.withAlpha(100),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                    SizedBox(width: (constraints.maxWidth / 100)* 12,),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        spacing: 8,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
                         children: [
-                        //Line Chip
-                        if(widget.leg.lineName != null && widget.leg.lineName!.isNotEmpty)
-                        Row(
-                          spacing: 8,
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                color: lineColor,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8), 
-                              child: Text(widget.leg.lineName!, style: TextStyle(color: onLineColor)))
-                              ,),
-                              Expanded(child: Text(widget.leg.direction ?? '', style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: onLineColor))),
-                          ],
-                        ),
-                        //Features
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          crossAxisAlignment: WrapCrossAlignment.start,
-                          alignment: WrapAlignment.start,
-                          children: [
-                            if(comfortCheckinRemark != null)
-                            remark(context, comfortCheckinRemark!),
-                            if(bicycleRemark != null) 
-                            remark(context, bicycleRemark!),
-                          
-                        ],),
-                        
-                        //Further Information
-                        FilledButton.tonalIcon(
-                          onPressed: () => {}, 
-                          label: Text('Further Information'),
-                          icon: Icon(Icons.chevron_right),
-                          iconAlignment: IconAlignment.end,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(lineColor),
-                            foregroundColor: WidgetStateProperty.all(onLineColor),
-                          )
-                        ),
-                        //Stops Button
-
-                        FilledButton.tonalIcon(
-                          onPressed: () => {}, 
-                          label: Text('Stops'),
-                          icon: Icon(Icons.arrow_drop_down),
-                          iconAlignment: IconAlignment.end,
-                          style: ButtonStyle(
-                            backgroundColor: WidgetStateProperty.all(lineColor),
-                            foregroundColor: WidgetStateProperty.all(onLineColor),
-                          )
-                        )
-
-                        //Stops based on is Expanded
-                        
-                      ],),
+                          SizedBox(width: (constraints.maxWidth / 100) * 12),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              spacing: 8,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Line Chip
+                                if (widget.leg.lineName != null && widget.leg.lineName!.isNotEmpty)
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: lineColor,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          widget.leg.lineName!,
+                                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                            color: onLineColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                // Features
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.start,
+                                  alignment: WrapAlignment.start,
+                                  children: [
+                                    if (comfortCheckinRemark != null)
+                                      remark(context, comfortCheckinRemark!),
+                                    if (bicycleRemark != null)
+                                      remark(context, bicycleRemark!),
+                                  ],
+                                ),
+                                // Further Information
+                                FilledButton.tonalIcon(
+                                  onPressed: () => {},
+                                  label: const Text('Further Information'),
+                                  icon: const Icon(Icons.chevron_right),
+                                  iconAlignment: IconAlignment.end,
+                                  style: ButtonStyle(
+                                    backgroundColor: WidgetStateProperty.all(lineColor.withAlpha(120)),
+                                    foregroundColor: WidgetStateProperty.all(onLineColor),
+                                  ),
+                                ),
+                                // Stops Button
+                                if (hasIntermediateStops)
+                                  FilledButton.tonalIcon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _isExpanded = !_isExpanded;
+                                      });
+                                    },
+                                    label: Text(_isExpanded ? 'Hide Stops' : 'Show Stops'),
+                                    icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+                                    iconAlignment: IconAlignment.end,
+                                    style: ButtonStyle(
+                                      backgroundColor: WidgetStateProperty.all(lineColor.withAlpha(120)),
+                                      foregroundColor: WidgetStateProperty.all(onLineColor),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          // Reserve space for the map button
+                          const SizedBox(width: 80),
+                        ],
+                      ),
                     ),
-                    //Spacer(),
-                    IconButton.filled(
-                      onPressed: widget.onMapPressed,
-                      icon: Icon(Icons.map),
-                      color: Theme.of(context).colorScheme.tertiary,
-                      style: IconButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.tertiaryContainer),
+                    // Expandable Stops List - outside the main padding
+                    AnimatedCrossFade(
+                      firstChild: const SizedBox.shrink(),
+                      secondChild: _buildStopsList(context),
+                      crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 300),
                     ),
-                  ],),
-                ) 
+                  ],
+                ),
               ),
+              // Line indicator
               Positioned.fill(
                 right: constraints.maxWidth / 100 * 88,
                 left: constraints.maxWidth / 100 * 6,
@@ -1785,13 +1794,110 @@ class _LegWidgetState extends State<LegWidget> {
                   height: constraints.maxHeight,
                   decoration: BoxDecoration(
                     color: lineColor,
-                    borderRadius: BorderRadius.all(Radius.circular(24)),
-                ),),)
+                    borderRadius: const BorderRadius.all(Radius.circular(4)),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 24,
+                right: 16,
+                child: IconButton.filled(
+                  onPressed: widget.onMapPressed,
+                  icon: Icon(Icons.map),
+                  color: Theme.of(context).colorScheme.tertiary,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+                  ),
+                ),
+              ),
             ],
           ),
         );
-      }
+      },
     );
+  }
+
+  Widget _buildStopsList(BuildContext context) {
+    // Filter out first and last stops
+    final intermediateStops = widget.leg.stopovers.length > 2
+        ? widget.leg.stopovers.sublist(1, widget.leg.stopovers.length - 1)
+        : <Stopover>[];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(56, 0, 16, 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: lineColor.withAlpha(50),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: lineColor.withAlpha(100), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: intermediateStops.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                color: lineColor.withAlpha(100),
+              ),
+              itemBuilder: (context, index) {
+                final stop = intermediateStops[index];
+                return _buildStopItem(context, stop);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStopItem(BuildContext context, Stopover stopover) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  stopover.station.name,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: onLineColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (stopover.effectiveArrivalDateTimeLocal != null)
+                Text(
+                  'Arr: ${_formatTime(stopover.effectiveArrivalDateTimeLocal!)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: onLineColor,
+                  ),
+                ),
+              if (stopover.effectiveDepartureDateTimeLocal != null)
+                Text(
+                  'Dep: ${_formatTime(stopover.effectiveDepartureDateTimeLocal!)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: onLineColor,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
 
