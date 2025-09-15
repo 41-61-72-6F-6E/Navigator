@@ -1764,7 +1764,10 @@ class _LegWidgetState extends State<LegWidget> {
                                       });
                                     },
                                     label: Text(_isExpanded ? 'Hide Stops' : 'Show Stops'),
-                                    icon: Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+                                    icon: AnimatedRotation(
+                                      duration: Duration(milliseconds: 200),
+                                      turns: _isExpanded ? .5 : 0,
+                                      child: Icon(Icons.arrow_drop_down)),
                                     iconAlignment: IconAlignment.end,
                                     style: ButtonStyle(
                                       backgroundColor: WidgetStateProperty.all(lineColor.withAlpha(120)),
