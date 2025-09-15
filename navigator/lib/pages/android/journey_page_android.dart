@@ -1734,6 +1734,10 @@ class _LegWidgetState extends State<LegWidget> {
                                           ),
                                         ),
                                       ),
+                                      if(widget.leg.direction != null && widget.leg.direction!.isNotEmpty)
+                                      SizedBox(width: 8),
+                                      if(widget.leg.direction != null && widget.leg.direction!.isNotEmpty)
+                                      Text(widget.leg.direction!, style: Theme.of(context).textTheme.titleMedium!.copyWith(color: onLineColor,))
                                     ],
                                   ),
                                 // Features
