@@ -1207,6 +1207,14 @@ Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList)
     {
       return ('$departureHour:$departureMinute - $arrivalHour:$arrivalMinute');
     }
+    if(arrivalTime.isBefore(DateTime.now()))
+    {
+      if(onlyDate)
+      {
+        return '${departureTime.day}.${departureTime.month}.${departureTime.year}';
+      }
+      return '${departureTime.day}.${departureTime.month}.${departureTime.year} $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
+    }
     if(departureTime.difference(currentTime).inDays < 3)
     {
       if(onlyDate && onlyTime)
