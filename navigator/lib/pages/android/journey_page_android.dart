@@ -1683,6 +1683,12 @@ class _LegWidgetState extends State<LegWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final intermediateStops = widget.leg.stopovers.length > 2
+        ? widget.leg.stopovers.sublist(1, widget.leg.stopovers.length - 1)
+        : <Stopover>[];
+
+    String stopOrStops = intermediateStops.length == 1 ? 'stop' : 'stops';
+    
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final hasIntermediateStops = widget.leg.stopovers.length > 2;
@@ -1723,9 +1729,8 @@ class _LegWidgetState extends State<LegWidget> {
                                         ),
                                         child: Text(
                                           widget.leg.lineName!,
-                                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                          style: Theme.of(context).textTheme.labelLarge!.copyWith(
                                             color: onLineColor,
-                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
@@ -1756,6 +1761,17 @@ class _LegWidgetState extends State<LegWidget> {
                                   ),
                                 ),
                                 // Stops Button
+                                if(!hasIntermediateStops)
+                                FilledButton.tonal(
+                                    onPressed: () {
+                                      
+                                    },
+                                    style: ButtonStyle(
+                                      backgroundColor: WidgetStateProperty.all(ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark ? Colors.grey.shade400 : Colors.grey.shade700),
+                                      foregroundColor: WidgetStateProperty.all(ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark ? Colors.black : Colors.white),
+                                    ),
+                                    child: Text('No intermediate stops'),
+                                  ),
                                 if (hasIntermediateStops)
                                   FilledButton.tonalIcon(
                                     onPressed: () {
@@ -1763,7 +1779,7 @@ class _LegWidgetState extends State<LegWidget> {
                                         _isExpanded = !_isExpanded;
                                       });
                                     },
-                                    label: Text(_isExpanded ? 'Hide Stops' : 'Show Stops'),
+                                    label: Text(_isExpanded ? 'Hide ${intermediateStops.length} $stopOrStops' : 'Show ${intermediateStops.length} $stopOrStops'),
                                     icon: AnimatedRotation(
                                       duration: Duration(milliseconds: 200),
                                       turns: _isExpanded ? .5 : 0,

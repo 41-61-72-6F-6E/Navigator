@@ -17,10 +17,10 @@ import '../models/journeySettings.dart';
 class ServicesMiddle {
   // Singleton implementation
   static final ServicesMiddle _instance = ServicesMiddle._internal();
+  static final DbApiService dbRest = DbApiService.instance;
   factory ServicesMiddle() => _instance;
   ServicesMiddle._internal();
 
-  dbApiService dbRest = dbApiService();
   GeoService geoService = GeoService();
   Overpassapi overpass = Overpassapi();
   List<SubwayLine> loadedSubwayLines = [];
@@ -78,6 +78,16 @@ class ServicesMiddle {
       print('Error refreshing journey by token: $e');
       throw Exception('Failed to refresh journey by token: $e');
     }
+  }
+
+  Future<List<Journey>> getJourneysEarlierThanLastSearch() async
+  {
+    return await dbRest.fetchEarlierOrLaterJourneys(true);
+  }
+
+  Future<List<Journey>> getJourneysLaterThanLastSearch() async
+  {
+    return await dbRest.fetchEarlierOrLaterJourneys(false);
   }
 
   // NEW TRIP METHODS
