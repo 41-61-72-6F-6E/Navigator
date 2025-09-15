@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:navigator/models/favouriteLocation.dart';
+import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
@@ -18,6 +20,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 import 'package:navigator/customWidgets/parent_child_checkboxes.dart';
+import 'dart:math' as math;
 
 class HomePageAndroid extends StatefulWidget {
   final HomePage page;
@@ -45,6 +48,11 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   List<int> legsOfOngoingJourneyThatHaveATrip = [];
   Map<int, Trip> _legIndexToTripMap = {};
   bool ongoingJourneyIntermediateStopsExpanded = false;
+  bool lowerBoxExpanded = false;
+  Completer<void>? ongoingJourneyMapViewCompleter;
+  List<Polyline> _ongoingJourneyPolylines = [];
+  final Map<String, Color> _ongoingJourneyTransitLineColorCache = {};
+  int? ongoingJourneycurrentLegIndex;
 
   //Map Options
   bool showLightRail = true;
@@ -70,6 +78,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   late AlignOnUpdate _alignPositionOnUpdate;
   late final StreamController<double?> _alignPositionStreamController;
   List<FavoriteLocation> faves = [];
+  bool ongoingJourneyOnMap = false;
 
   @override
   void initState() {
@@ -94,6 +103,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     if (ongoingJourney != null) {
       _initializeOngoingJourneyLineColorListener();
       await _getOngoingJourneyTrips(); // This should complete before UI renders
+      _updateOngoingJourneyPolylines();
     }
   }
 
@@ -219,8 +229,10 @@ class _HomePageAndroidState extends State<HomePageAndroid>
   }
 
   void _updateLineColor() {
-    setState(() {});
-  }
+  setState(() {
+    _updateOngoingJourneyPolylines(); // Add this line
+  });
+}
 
   void _disposeOngoingJourneyLineColorListener() {
     if (ongoingJourney != null) {
@@ -276,6 +288,128 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       }
     }
   }
+
+  void _updateOngoingJourneyPolylines() {
+  if (mounted) {
+    setState(() {
+      _ongoingJourneyPolylines = _extractOngoingJourneyPolylines();
+    });
+  }
+}
+
+  List<LatLng> _extractPointsFromLegPolyline(dynamic polylineData) {
+  List<LatLng> points = [];
+
+  try {
+    final Map<String, dynamic> geoJson = polylineData is Map<String, dynamic>
+        ? polylineData
+        : jsonDecode(polylineData);
+
+    if (geoJson['type'] == 'FeatureCollection' &&
+        geoJson['features'] is List) {
+      final List features = geoJson['features'];
+
+      for (final feature in features) {
+        if (feature['geometry'] != null &&
+            feature['geometry']['type'] == 'Point' &&  // This is correct for your API
+            feature['geometry']['coordinates'] is List) {
+          final List coords = feature['geometry']['coordinates'];
+
+          if (coords.length >= 2) {
+            final double lng = coords[0] is double
+                ? coords[0]
+                : double.parse(coords[0].toString());
+            final double lat = coords[1] is double
+                ? coords[1]
+                : double.parse(coords[1].toString());
+            points.add(LatLng(lat, lng));
+          }
+        }
+      }
+    }
+  } catch (e) {
+    print('Error parsing leg polyline points: $e');
+  }
+
+  return points;
+}
+
+  List<Polyline> _extractOngoingJourneyPolylines() {
+  if (ongoingJourney == null) return [];
+  
+  List<Polyline> polylines = [];
+  final Map<String, Color> modeColors = {
+    'train': const Color(0xFF9C27B0), // Purple for trains
+    'subway': const Color(0xFF0075BF), // Blue for subway/metro
+    'tram': const Color(0xFFE4000F), // Red for trams
+    'bus': const Color(0xFF9A258F), // Magenta for buses
+    'ferry': const Color(0xFF0098D8), // Light blue for ferries
+    'walking': Colors.grey, // Grey for walking
+    'default': Colors.blue, // Default blue
+  };
+
+  try {
+    for (int i = 0; i < ongoingJourney!.journey.legs.length; i++) {
+      final leg = ongoingJourney!.journey.legs[i];
+      if (leg.polyline == null) continue;
+
+      final List<LatLng> legPoints = _extractPointsFromLegPolyline(leg.polyline);
+      if (legPoints.isEmpty) continue;
+
+      // Determine color based on transit info
+      Color lineColor;
+
+      if (leg.isWalking == true) {
+        lineColor = modeColors['walking']!;
+      } else {
+        // Create a cache key using available properties
+        final String cacheKey = '${leg.lineName ?? ''}-${leg.productName ?? ''}';
+        String productType = leg.productName?.toLowerCase() ?? 'default';
+
+        // Use cached color if available, otherwise use product-specific color
+        lineColor = _ongoingJourneyTransitLineColorCache[cacheKey] ??
+            leg.lineColorNotifier.value ??
+            modeColors[productType] ??
+            modeColors['default']!;
+
+        // Listen for color updates if not cached
+        if (!_ongoingJourneyTransitLineColorCache.containsKey(cacheKey)) {
+          leg.lineColorNotifier.addListener(() {
+            if (mounted && leg.lineColorNotifier.value != null) {
+              setState(() {
+                _ongoingJourneyTransitLineColorCache[cacheKey] = leg.lineColorNotifier.value!;
+              });
+            }
+          });
+        }
+      }
+
+      double strokeWidth = leg.isWalking == true ? 1.0 : 3.0; // Slightly thicker for visibility
+      
+      if(ongoingJourneycurrentLegIndex != null && ongoingJourneycurrentLegIndex == i)
+      {
+        strokeWidth = strokeWidth * 2;
+      }
+
+      polylines.add(
+        Polyline(
+          borderColor: Theme.of(context).colorScheme.brightness == Brightness.dark ? Colors.white : Colors.black,
+          borderStrokeWidth: 5,
+          points: legPoints,
+          color: lineColor,
+          strokeWidth: strokeWidth,
+          pattern: leg.isWalking == true
+              ? StrokePattern.dotted()
+              : StrokePattern.solid(),
+        ),
+      );
+    }
+  } catch (e) {
+    print('Error creating ongoing journey polylines: $e');
+  }
+
+  return polylines;
+}
 
   // Helper function to get minimum zoom level for different station types
   double _getMinZoomForStation(Station station) {
@@ -732,6 +866,11 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     _controller.dispose();
     _alignPositionStreamController.close();
     _disposeOngoingJourneyLineColorListener();
+    if (ongoingJourney != null) {
+    for (final leg in ongoingJourney!.journey.legs) {
+      leg.lineColorNotifier.removeListener(() {});
+    }
+  }
     super.dispose();
   }
 
@@ -765,6 +904,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
 
     return layers;
   }
+
 
 @override
   Widget build(BuildContext context) {
@@ -860,6 +1000,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                               'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.app',
                         ),
+
                         // Move all polyline layers here, before the location layers
                         if (showSubway) PolylineLayer(polylines: _subwayLines),
                         if (showLightRail)
@@ -868,6 +1009,10 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                         if (showFerry) PolylineLayer(polylines: _ferryLines),
                         if (showFunicular)
                           PolylineLayer(polylines: _funicularLines),
+
+                        if (ongoingJourney != null && _ongoingJourneyPolylines.isNotEmpty)
+                          PolylineLayer(polylines: _ongoingJourneyPolylines),
+
 
                         CurrentLocationLayer(
                           alignPositionStream:
@@ -1250,6 +1395,8 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       }
     }
 
+    ongoingJourneycurrentLegIndex = leg;
+
     if (!afterArrival) {
       // Currently on a leg
       if (ongoingJourney!.journey.legs[leg].isWalking == true) {
@@ -1506,7 +1653,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Always visible button row
+        // Header (always visible)
         Padding(
           padding: const EdgeInsets.symmetric(
             vertical: 8.0,
@@ -1553,171 +1700,181 @@ class _HomePageAndroidState extends State<HomePageAndroid>
           ),
         ),
         
-        // Expandable content with ClipRect for smooth animation
-        ClipRect(
-          child: AnimatedAlign(
-            alignment: Alignment.center,
+        // Animated expandable content
+        ClipRRect(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(24),
+            bottomRight: Radius.circular(24),
+          ),
+          child: AnimatedContainer(
             duration: Duration(milliseconds: 300),
             curve: Curves.easeInOutCubic,
-            heightFactor: ongoingJourneyIntermediateStopsExpanded ? 1.0 : 0.0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...stopsBeforeInterchange.map((s) {
-                    String timeText = _generateStopoverTimeText(s);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colors.tertiaryContainer,
-                        ),
-                        onPressed: () {},
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                s.station.name,
-                                style: texts.titleMedium!.copyWith(
-                                  color: colors.onTertiaryContainer,
-                                ),
+            height: ongoingJourneyIntermediateStopsExpanded ? 300.0 : 0,
+            child: ongoingJourneyIntermediateStopsExpanded 
+                ? SingleChildScrollView(
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.only(
+                      left: 8.0,
+                      right: 8.0,
+                      bottom: 16.0, // Extra padding at bottom for better scrolling
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...stopsBeforeInterchange.map((s) {
+                          String timeText = _generateStopoverTimeText(s);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colors.tertiaryContainer,
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4.0,
-                                horizontal: 8,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                              onPressed: () {},
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    timeText,
-                                    style: texts.titleMedium!.copyWith(
-                                      color: colors.onTertiaryContainer,
-                                    ),
-                                  ),
-                                  if (s.arrivalPlatform != null)
-                                    Text(
-                                      'Platform ${s.arrivalPlatform!}',
-                                      style: texts.bodyMedium!.copyWith(
+                                  Expanded(
+                                    child: Text(
+                                      s.station.name,
+                                      style: texts.titleMedium!.copyWith(
                                         color: colors.onTertiaryContainer,
                                       ),
                                     ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                      horizontal: 8,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          timeText,
+                                          style: texts.titleMedium!.copyWith(
+                                            color: colors.onTertiaryContainer,
+                                          ),
+                                        ),
+                                        if (s.arrivalPlatform != null)
+                                          Text(
+                                            'Platform ${s.arrivalPlatform!}',
+                                            style: texts.bodyMedium!.copyWith(
+                                              color: colors.onTertiaryContainer,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  
-                  if (stopsAfterInterchange.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colors.tertiary,
-                        ),
-                        onPressed: () {},
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                stopsAfterInterchange.first.station.name,
-                                style: texts.titleMedium!.copyWith(
-                                  color: colors.onTertiary,
-                                ),
+                          );
+                        }).toList(),
+                        
+                        if (stopsAfterInterchange.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: colors.tertiary,
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4.0,
-                                horizontal: 8,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                              onPressed: () {},
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    _generateStopoverTimeText(stopsAfterInterchange.first),
-                                    style: texts.titleMedium!.copyWith(
-                                      color: colors.onTertiary,
-                                    ),
-                                  ),
-                                  if (stopsAfterInterchange.first.arrivalPlatform != null)
-                                    Text(
-                                      'Platform ${stopsAfterInterchange.first.arrivalPlatform}',
-                                      style: texts.bodyMedium!.copyWith(
+                                  Expanded(
+                                    child: Text(
+                                      stopsAfterInterchange.first.station.name,
+                                      style: texts.titleMedium!.copyWith(
                                         color: colors.onTertiary,
                                       ),
                                     ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                      horizontal: 8,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          _generateStopoverTimeText(stopsAfterInterchange.first),
+                                          style: texts.titleMedium!.copyWith(
+                                            color: colors.onTertiary,
+                                          ),
+                                        ),
+                                        if (stopsAfterInterchange.first.arrivalPlatform != null)
+                                          Text(
+                                            'Platform ${stopsAfterInterchange.first.arrivalPlatform}',
+                                            style: texts.bodyMedium!.copyWith(
+                                              color: colors.onTertiary,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  
-                  ...stopsAfterInterchange.skip(1).map((s) {
-                    String timeText = _generateStopoverTimeText(s);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                s.station.name,
-                                style: texts.titleMedium!.copyWith(
-                                  color: colors.onPrimaryContainer,
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 4.0,
-                                horizontal: 8,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                          ),
+                        
+                        ...stopsAfterInterchange.skip(1).map((s) {
+                          String timeText = _generateStopoverTimeText(s);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: OutlinedButton(
+                              onPressed: () {},
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    timeText,
-                                    style: texts.titleMedium!.copyWith(
-                                      color: colors.onPrimaryContainer,
-                                    ),
-                                  ),
-                                  if (s.arrivalPlatform != null)
-                                    Text(
-                                      'Platform ${s.arrivalPlatform!}',
-                                      style: texts.bodyMedium!.copyWith(
+                                  Expanded(
+                                    child: Text(
+                                      s.station.name,
+                                      style: texts.titleMedium!.copyWith(
                                         color: colors.onPrimaryContainer,
                                       ),
                                     ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                      horizontal: 8,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          timeText,
+                                          style: texts.titleMedium!.copyWith(
+                                            color: colors.onPrimaryContainer,
+                                          ),
+                                        ),
+                                        if (s.arrivalPlatform != null)
+                                          Text(
+                                            'Platform ${s.arrivalPlatform!}',
+                                            style: texts.bodyMedium!.copyWith(
+                                              color: colors.onPrimaryContainer,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  )
+                : SizedBox.shrink(),
           ),
         ),
       ],
     ),
   ),
-),
+)
               ],
             ),
           ),
@@ -1753,9 +1910,11 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                   style: FilledButton.styleFrom(
                     backgroundColor: colors.primaryContainer,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    _focusMapOnLeg(ongoingJourney!.journey.legs[leg]);
+                  },
                   label: Text(
-                    'Show Map',
+                    'Focus on Map',
                     style: texts.bodyMedium!.copyWith(
                       color: colors.onPrimaryContainer,
                     ),
@@ -1773,57 +1932,360 @@ class _HomePageAndroidState extends State<HomePageAndroid>
 
     switch (situationLowerBox) {
       case 0:
-        lowerBox = Text('Take some form of transportation');
-        break;
-      case 1:
-        lowerBox = Text('1 = Get off at');
-        break;
-      case 2:
-        lowerBox = Text('Walk somewhere');
-        break;
-      case 3:
-        lowerBox = Text('Arrival');
-    }
+      Color lineColor =
+            ongoingJourney!.journey.legs[leg+1].lineColorNotifier.value ??
+            Colors.grey;
+        Color onLineColor =
+            ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark
+            ? Colors.white
+            : Colors.black;
 
-    return AnimatedSize(
-      duration: Duration(milliseconds: 700),
-      curve: Curves.easeInOut,
-      child: AnimatedContainer(
-        width: double.infinity,
-        duration: Duration(milliseconds: 700),
-        curve: Curves.easeInOut,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(24),
+
+        lowerBox = Container(
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: lowerBoxExpanded ? BorderRadius.circular(24) :BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24))
           ),
-          color: colors.surfaceContainerLowest,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Padding(padding: EdgeInsetsGeometry.all(16),
             child: Column(
               children: [
-                SizedBox(height: 8),
-                Text(
-                  'ongoing Journey',
-                  style: texts.titleSmall!.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                SizedBox(height: 8),
-                upperBox,
-                lowerBox,
-              ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Take the ${ongoingJourney!.journey.legs[leg + 1].product}', style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer), overflow: TextOverflow.ellipsis, maxLines: 2,),
+                          SizedBox(height: 4),
+                                      Row(
+  children: [
+    if (ongoingJourney!.journey.legs[leg + 1].lineName != null)
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: lineColor,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: 4,
+            horizontal: 8,
+          ),
+          child: Text(
+            ongoingJourney!.journey.legs[leg + 1].lineName!,
+            style: texts.labelMedium!.copyWith(
+              color: onLineColor,
             ),
           ),
         ),
       ),
-    );
+    if (ongoingJourney!.journey.legs[leg +1].direction != null)
+      SizedBox(width: 8),
+    if (ongoingJourney!.journey.legs[leg + 1].direction != null)
+      Flexible(  // Add this wrapper
+        child: Text(
+          ongoingJourney!.journey.legs[leg + 1].direction!,
+          style: texts.titleLarge!.copyWith(
+            color: colors.onPrimaryContainer,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+  ],
+),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: colors.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(24)
+                      ),
+                      child: Padding(
+                        padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8),
+                        child: 
+                          Column(
+                            children: [
+                              Text(prettyPrintTime(ongoingJourney!.journey.legs[leg + 1].departureDateTime), style: texts.titleMedium!.copyWith(color: colors.onTertiaryContainer)),
+                              if (ongoingJourney!.journey.legs[leg+1].arrivalPlatform != null)
+                                          Text(
+                                            'Platform ${ongoingJourney!.journey.legs[leg+1].arrivalPlatform!}',
+                                            style: texts.bodyMedium!.copyWith(
+                                              color: colors.onTertiaryContainer,
+                                            ),
+                                          ),
+                            ],
+                          )
+                        )
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+        break;
+      case 1:
+      Trip? t = _legIndexToTripMap[leg];
+
+        List<Stopover> stopsBeforeCurrentPosition = [];
+        List<Stopover> stopsBeforeInterchange = [];
+        List<Stopover> stopsAfterInterchange = [];
+
+        if (t != null && t.stopovers.isNotEmpty) {
+          for (Stopover s in t.stopovers) {
+            DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
+            DateTime now = DateTime.now();
+            DateTime legArrival =
+                ongoingJourney!.journey.legs[leg].arrivalDateTime;
+
+            if (arrivalTime != null) {
+              if (arrivalTime.isBefore(now)) {
+                stopsBeforeCurrentPosition.add(s);
+              } else if (arrivalTime.isBefore(legArrival)) {
+                stopsBeforeInterchange.add(s);
+              } else {
+                stopsAfterInterchange.add(s);
+              }
+            }
+          }
+        }
+
+
+        lowerBox = lowerBox = Container(
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24))
+          ),
+          child: Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Get off in ${ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes(${stopsBeforeInterchange.length + 1} stops) at', style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer)),
+                        SizedBox(height: 4),
+                        Text(ongoingJourney!.journey.legs[leg].destination.name, style: texts.titleLarge!.copyWith(color: colors.onPrimaryContainer))
+                
+                      ],
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: colors.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(16)
+                      ),
+                      child: Padding(
+                        padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8),
+                        child: 
+                          Column(
+                            children: [
+                              Text(prettyPrintTime(ongoingJourney!.journey.legs[leg].arrivalDateTime), style: texts.titleMedium!.copyWith(color: colors.onTertiaryContainer)),
+                              if (ongoingJourney!.journey.legs[leg].arrivalPlatform != null)
+                                          Text(
+                                            'Platform ${ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
+                                            style: texts.bodyMedium!.copyWith(
+                                              color: colors.onTertiaryContainer,
+                                            ),
+                                          ),
+                            ],
+                          )
+                        )
+                    )
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+        break;
+      case 2:
+        lowerBox = Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+            color: colors.primaryContainer,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Walk ${ongoingJourney!.journey.legs[leg + 1].distance}m (${ongoingJourney!.journey.legs[leg + 1].arrivalDateTime.difference(ongoingJourney!.journey.legs[leg + 1].departureDateTime).inMinutes} minutes) towards',
+                    style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    ongoingJourney!.journey.legs[leg + 1].destination.name,
+                    style: texts.titleLarge!.copyWith(color: colors.onPrimaryContainer),
+                  ),
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.primary,
+                  ),
+                  onPressed: () {
+                    _focusMapOnLeg(ongoingJourney!.journey.legs[leg + 1]);
+                  },
+                  label: Text(
+                    'Focus on Map',
+                    style: texts.bodyMedium!.copyWith(
+                      color: colors.onPrimary,
+                    ),
+                  ),
+                  icon: Icon(
+                    Icons.map_outlined,
+                    color: colors.onPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        break;
+      case 3:
+        Trip? t = _legIndexToTripMap[leg];
+
+        List<Stopover> stopsBeforeCurrentPosition = [];
+        List<Stopover> stopsBeforeInterchange = [];
+        List<Stopover> stopsAfterInterchange = [];
+
+        if (t != null && t.stopovers.isNotEmpty) {
+          for (Stopover s in t.stopovers) {
+            DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
+            DateTime now = DateTime.now();
+            DateTime legArrival =
+                ongoingJourney!.journey.legs[leg].arrivalDateTime;
+
+            if (arrivalTime != null) {
+              if (arrivalTime.isBefore(now)) {
+                stopsBeforeCurrentPosition.add(s);
+              } else if (arrivalTime.isBefore(legArrival)) {
+                stopsBeforeInterchange.add(s);
+              } else {
+                stopsAfterInterchange.add(s);
+              }
+            }
+          }
+        }
+
+
+        lowerBox = Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(24)
+              ),
+              child: Padding(padding: EdgeInsetsGeometry.symmetric(vertical: 8, horizontal: 16),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Arrive in ${ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes at', style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer)),
+                              SizedBox(height: 4),
+                              Text(ongoingJourney!.journey.legs[leg].destination.name, style: texts.titleLarge!.copyWith(color: colors.onPrimaryContainer), overflow: TextOverflow.ellipsis, maxLines: 2,)
+                                              
+                            ],
+                          ),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: colors.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(16)
+                          ),
+                          child: Padding(
+                            padding: EdgeInsetsGeometry.symmetric(vertical: 4, horizontal: 8),
+                            child: 
+                              Column(
+                                children: [
+                                  Text(prettyPrintTime(ongoingJourney!.journey.legs[leg].arrivalDateTime), style: texts.titleMedium!.copyWith(color: colors.onTertiaryContainer)),
+                                  if (ongoingJourney!.journey.legs[leg].arrivalPlatform != null)
+                                              Text(
+                                                'Platform ${ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
+                                                style: texts.bodyMedium!.copyWith(
+                                                  color: colors.onTertiaryContainer,
+                                                ),
+                                              ),
+                                ],
+                              )
+                            )
+                        )
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 8,)
+          ],
+        );
+    }
+
+    return AnimatedSize(
+  duration: Duration(milliseconds: 700),
+  curve: Curves.easeInOut,
+  child: AnimatedContainer(
+    width: double.infinity,
+    duration: Duration(milliseconds: 700),
+    curve: Curves.easeInOut,
+    clipBehavior: Clip.hardEdge,
+    decoration: BoxDecoration(
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withAlpha(100),
+          spreadRadius: 0,
+          blurRadius: 16,
+          offset: Offset(0, 2),
+        ),
+      ],
+      borderRadius: BorderRadius.only(
+        bottomLeft: Radius.circular(24),
+        bottomRight: Radius.circular(24),
+      ),
+      color: colors.surfaceContainerLowest,
+    ),
+    child: SafeArea(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            SizedBox(height: 8),
+            Text(
+              'ongoing Journey',
+              style: texts.titleSmall!.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            SizedBox(height: 8),
+            upperBox,
+            SizedBox(height: 8),
+            lowerBox,
+          ],
+        ),
+      ),
+    ),
+  ),
+);
   }
 
   String prettyPrintTime(DateTime time) {
-    return '${time.hour}:${time.minute}';
+    String hour = '${time.hour}'.padLeft(2, '0');
+    String minute = '${time.minute}'.padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   String _generateStopoverTimeText(Stopover s)
@@ -1874,6 +2336,88 @@ class _HomePageAndroidState extends State<HomePageAndroid>
     }
 
     return false;
+  }
+
+   void _focusMapOnLeg(Leg leg) {
+    if (!mounted) return;
+
+    print("Focusing map on leg: ${leg.origin.name} to ${leg.destination.name}");
+
+    final startLat = leg.origin.latitude;
+    final startLng = leg.origin.longitude;
+    final endLat = leg.destination.latitude;
+    final endLng = leg.destination.longitude;
+
+    // Create bounding box
+    final double north = math.max(startLat, endLat);
+    final double south = math.min(startLat, endLat);
+    final double east = math.max(startLng, endLng);
+    final double west = math.min(startLng, endLng);
+
+    // Add padding (20%)
+    final latPadding = (north - south) * 0.2;
+    final lngPadding = (east - west) * 0.2;
+
+    final centerLat = (north + south) / 2;
+    final centerLng = (east + west) / 2;
+    final legCenter = LatLng(centerLat, centerLng);
+
+    final distanceKm = _calculateDistance(startLat, startLng, endLat, endLng);
+    final legZoom = _calculateLegZoom(distanceKm);
+
+    print("Leg center: $legCenter, zoom: $legZoom");
+
+    // SIMPLIFIED APPROACH: Direct map movement with a slight delay
+    Future.microtask(() {
+      // Temporarily disable any automatic positioning
+      setState(() {
+        _alignPositionOnUpdate = AlignOnUpdate.never;
+      });
+
+      // Move map directly to target position
+      _mapController.move(legCenter, legZoom);
+
+      // Update state variables to match the new position
+      setState(() {
+        _currentCenter = legCenter;
+        _currentZoom = legZoom;
+      });
+    });
+  }
+
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadius = 6371; // Earth's radius in kilometers
+
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLng = _degreesToRadians(lng2 - lng1);
+
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) * math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLng / 2) * math.sin(dLng / 2);
+
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+    return earthRadius * c;
+  }
+
+  double _degreesToRadians(double degrees) {
+    return degrees * math.pi / 180;
+  }
+
+  double _calculateLegZoom(double distanceKm) {
+    // More granular zoom levels based on distance
+    if (distanceKm < 1) return 18.0;
+    if (distanceKm < 3) return 15.0;
+    if (distanceKm < 5) return 13.0;
+    if (distanceKm < 7) return 12.0;
+    if (distanceKm < 10) return 11.0;
+    if (distanceKm < 15) return 10.0;
+    if (distanceKm < 30) return 9.0;
+    if (distanceKm < 50) return 8.0;
+    if (distanceKm < 70) return 7.0;
+    if (distanceKm < 150) return 6.0;
+    if (distanceKm < 300) return 5.0;
+    return 4.0;
   }
 
   Widget _buildFaves(BuildContext context) {
