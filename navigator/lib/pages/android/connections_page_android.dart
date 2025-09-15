@@ -44,12 +44,14 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
   bool searching = false;
   bool searchingFrom = true;
   List<FavoriteLocation> faves = [];
+  ScrollController? _scrollController;
 
 
   //Animations
   bool rotateSwitchButton = false;
   bool inJourneySearchAnimation = false;
   double rotatingSearchIconTurns = 0;
+    bool _shouldAutoScrollToTop = true;
 
   JourneySettings journeySettings = JourneySettings(
     nationalExpress: true,
@@ -80,6 +82,7 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     _selectedDate = DateTime.now();
     _searchResultsFrom = [];
     _searchResultsTo = [];
+    _scrollController = ScrollController();
 
     _fromFocusNode.addListener(() {
       if (!_fromFocusNode.hasFocus) {
@@ -174,6 +177,76 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
       });
     }
   }
+
+  Future<void> addEarlierJourneys() async {
+    setState(() {
+      inJourneySearchAnimation = true;
+      _shouldAutoScrollToTop = true;
+    });
+  try {
+    final journeys = await widget.page.services.getJourneysEarlierThanLastSearch();
+    if (journeys.isEmpty) {
+      print('no later Journeys found');
+    }
+    setState(() {
+      _currentJourneys!.addAll(journeys);
+      
+      // Fixed sorting logic
+      _currentJourneys!.sort(departure 
+        ? (a, b) => a.departureTime.compareTo(b.departureTime)
+        : (a, b) => a.arrivalTime.compareTo(b.arrivalTime)
+      );
+      
+      inJourneySearchAnimation = false;
+    });
+  } catch (e) {
+    print('Error adding earlier Journeys $e');
+    setState(() {
+      inJourneySearchAnimation = false;
+    });
+  }
+}
+
+Future<void> addLaterJourneys() async {
+  setState(() {
+    inJourneySearchAnimation = true;
+    _shouldAutoScrollToTop = false;
+  });
+  try {
+    final journeys = await widget.page.services.getJourneysLaterThanLastSearch();
+    if (journeys.isEmpty) {
+      print('no later Journeys found');
+    }
+    setState(() {
+      _currentJourneys!.addAll(journeys);
+      
+      // Fixed sorting logic
+      _currentJourneys!.sort(departure 
+        ? (a, b) => a.departureTime.compareTo(b.departureTime)
+        : (a, b) => a.arrivalTime.compareTo(b.arrivalTime)
+      );
+      
+      inJourneySearchAnimation = false;
+    });
+    
+    // Wait for the frame to complete before scrolling
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController?.hasClients == true) {
+        _scrollController!.animateTo(
+          _scrollController!.position.maxScrollExtent,
+          duration: Duration(milliseconds: 700),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+    
+  } catch (e) {
+    print('Error adding later Journeys $e');
+    setState(() {
+      inJourneySearchAnimation = false;
+    });
+  }
+}
 
   Future<void> getJourneys(
     String fromId,
@@ -693,25 +766,73 @@ class _ConnectionsPageAndroidState extends State<ConnectionsPageAndroid> {
     }
   }
 
-  Widget _buildJourneys(BuildContext context) {
+ Widget _buildJourneys(BuildContext context) {
     if (_currentJourneys == null) {
       return Expanded(child: Center(child: CircularProgressIndicator()));
     }
     if (_currentJourneys!.isEmpty) {
       return Expanded(child: Center(child: Text('No journeys found')));
     }
+    
+    // Auto-scroll after the widget builds
+    if(_shouldAutoScrollToTop)
+    {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController?.hasClients == true) {
+          _scrollController!.animateTo(
+          48,
+          duration: Duration(milliseconds: 700),
+          curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+    
     return Expanded(
-      child: ListView.builder(
-        key: const ValueKey('list'),
-        padding: EdgeInsets.symmetric(vertical: 8),
-        itemCount: _currentJourneys!.length,
-        itemBuilder: (context, i) {
-          final r = _currentJourneys![i];
-          return _buildJourneyCard(context, r);
-        },
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          // Buttons as a sliver
+          SliverToBoxAdapter(
+            child: Row(
+              children: [
+                OutlinedButton(onPressed: () {
+                setState(() {
+                  _selectedTime = TimeOfDay.now();
+                  _selectedDate = DateTime.now();
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Reset to current date and time'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+                  
+                child: Text('Now')),
+                SizedBox(width: 8),
+                Expanded(child: OutlinedButton(onPressed: addEarlierJourneys, child: Text('Earlier')))
+              ],
+            ),
+          ),
+          // Journey cards as a sliver list
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) {
+                final r = _currentJourneys![i];
+                return _buildJourneyCard(context, r);
+              },
+              childCount: _currentJourneys!.length,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: OutlinedButton(onPressed: addLaterJourneys, child: Text('Later'))
+          )
+        ],
       ),
     );
   }
+
 
   Widget _buildJourneyCard(BuildContext context, Journey j)
   {
@@ -1403,23 +1524,6 @@ Widget _buildModeLine(BuildContext context, Journey j) {
                 ),
               ),
             ),
-            // Reset button
-            IconButton.filledTonal(
-              onPressed: () {
-                setState(() {
-                  _selectedTime = TimeOfDay.now();
-                  _selectedDate = DateTime.now();
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Reset to current date and time'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              },
-              icon: Icon(Icons.refresh),
-              tooltip: 'Reset to now',
-            ),
             IconButton.filledTonal(
               onPressed: () async {
                 final updatedSettings = await showDialog<JourneySettings>(
@@ -1884,6 +1988,7 @@ Widget _buildModeLine(BuildContext context, Journey j) {
     setState(() {
       inJourneySearchAnimation = true;
       rotatingSearchIconTurns++;
+      _shouldAutoScrollToTop = true;
     });
     try {
       // Debug prints
