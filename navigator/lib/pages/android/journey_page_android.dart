@@ -214,6 +214,8 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
   void _focusMapOnLeg(Leg leg) {
     if (!mounted) return;
 
+
+
     print("Focusing map on leg: ${leg.origin.name} to ${leg.destination.name}");
 
     final startLat = leg.origin.latitude;
@@ -239,6 +241,7 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     final legZoom = _calculateLegZoom(distanceKm);
 
     print("Leg center: $legCenter, zoom: $legZoom");
+    _sheetController.jumpTo(0.15);
 
     // SIMPLIFIED APPROACH: Direct map movement with a slight delay
     Future.microtask(() {
@@ -1794,7 +1797,7 @@ class _LegWidgetState extends State<LegWidget> {
                   height: constraints.maxHeight,
                   decoration: BoxDecoration(
                     color: lineColor,
-                    borderRadius: const BorderRadius.all(Radius.circular(4)),
+                    borderRadius: const BorderRadius.all(Radius.circular(16)),
                   ),
                 ),
               ),
