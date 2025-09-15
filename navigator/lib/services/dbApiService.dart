@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/journeySettings.dart';
@@ -9,24 +10,149 @@ import 'package:navigator/env/env.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:geocoding/geocoding.dart' as geo;
 import 'package:navigator/models/stopover.dart';
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:navigator/models/trip.dart';
 
-class dbApiService {
-  final base_url = Env.api_url;
+class DbApiService {
+  // Singleton instance
+  static final DbApiService _instance = DbApiService._internal();
 
-  Future<List<Journey>> fetchJourneysByLocation(
-      Location from,
-      Location to,
-      DateAndTime when,
-      bool departure,
-      JourneySettings? journeySettings,
-      ) async {
+  // Private constructor
+  DbApiService._internal();
+
+  // Public getter to access the singleton
+  static DbApiService get instance => _instance;
+
+  final String baseUrl = Env.api_url;
+
+  String? earlierRef;
+  String? laterRef;
+  Location? earlierFrom;
+  Location? earlierTo;
+
+  Future<List<Journey>> fetchEarlierOrLaterJourneys(bool earlier) async
+  {
+    if(earlierFrom == null)
+    {
+      print('earlier From value is null which is not allowed when searching for earlier or later Journey');
+      return [];
+    }
+
+    if(earlierTo == null)
+    {
+      print('earlier From value is null which is not allowed when searching for earlier or later Journey');
+      return [];
+    }
     final queryParams = <String, String>{};
 
-    // Helper to build address string as "City, Street HouseNumber"
+    String buildAddress(geo.Placemark placemark) {
+      final city = placemark.locality ?? '';
+      final street = placemark.street ?? '';
+      return city.isNotEmpty && street.isNotEmpty ? '$city, $street' : city + street;
+    }
+
+    // FROM handling
+    if ((earlierFrom!.type == 'station' || earlierFrom!.type == 'stop') && (earlierFrom!.id.isNotEmpty)) {
+      queryParams['from'] = earlierFrom!.id;
+    } else {
+      queryParams['from.latitude'] = earlierFrom!.latitude.toString();
+    }
+    queryParams['from.longitude'] = earlierFrom!.longitude.toString();
+
+    try {
+      final placemarks = await geo.placemarkFromCoordinates(earlierFrom!.latitude, earlierFrom!.longitude);
+      if (placemarks.isNotEmpty) {
+        queryParams['from.address'] = buildAddress(placemarks.first);
+      }
+    } catch (e) {
+      print('Error getting address for from location: $e');
+    }
+
+    // TO handling
+    if ((earlierTo!.type == 'station' || earlierTo!.type == 'stop') && (earlierTo!.id.isNotEmpty)) {
+      queryParams['to'] = earlierTo!.id;
+    } else {
+      queryParams['to.latitude'] = earlierTo!.latitude.toString();
+    }
+    queryParams['to.longitude'] = earlierTo!.longitude.toString();
+
+    try {
+      final placemarks = await geo.placemarkFromCoordinates(earlierTo!.latitude, earlierTo!.longitude);
+      if (placemarks.isNotEmpty) {
+        queryParams['to.address'] = buildAddress(placemarks.first);
+      }
+    } catch (e) {
+      print('Error getting address for to location: $e');
+    }
+
+    if(earlier)
+    {
+      if(earlierRef!=null)
+      {
+        queryParams['earlierThan'] = earlierRef!;
+      }
+      else
+      {
+        print('earlierRef is null which is not allowed when searching for earlier Journeys');
+        return [];
+      }
+    }
+    else
+    {
+      if(laterRef!=null)
+      {
+        queryParams['laterThan'] = laterRef!;
+      }
+      else
+      {
+        print('laterRef is null which is not allowed when searching for earlier Journeys');
+        return [];
+      }
+    }
+
+    final uri = Uri.http(baseUrl, '/journeys', queryParams);
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        if (data['journeys'] == null) {
+          return [];
+        }
+
+        if(earlier)
+        {
+          earlierRef = data['earlierRef'];
+        }
+        else
+        {
+          laterRef = data['laterRef'];
+        }
+
+        return Journey.parseAndSort(data['journeys']);
+      } else {
+        print('HTTP Error: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to load journeys: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      print('Exception in fetchJourneysByLocation: $e');
+      print('Stack trace: $stackTrace');
+      rethrow;
+    }
+
+  }
+
+  Future<List<Journey>> fetchJourneysByLocation(
+    Location from,
+    Location to,
+    DateAndTime when,
+    bool departure,
+    JourneySettings? journeySettings,
+  ) async {
+    final queryParams = <String, String>{};
+
     String buildAddress(geo.Placemark placemark) {
       final city = placemark.locality ?? '';
       final street = placemark.street ?? '';
@@ -86,7 +212,7 @@ class dbApiService {
     queryParams['results'] = '3';
     queryParams['stopovers'] = 'true';
 
-    final uri = Uri.http(base_url, '/journeys', queryParams);
+    final uri = Uri.http(baseUrl, '/journeys', queryParams);
 
     try {
       final response = await http.get(uri);
@@ -94,12 +220,15 @@ class dbApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
-        // Check if journeys key exists and is not null
         if (data['journeys'] == null) {
           return [];
         }
 
-        // Use the parseAndSort method to parse and sort journeys by actual departure time
+        earlierRef = data['earlierRef'];
+        laterRef = data['laterRef'];
+        earlierFrom = from;
+        earlierTo = to;
+
         return Journey.parseAndSort(data['journeys']);
       } else {
         print('HTTP Error: ${response.statusCode}');
@@ -112,9 +241,10 @@ class dbApiService {
       rethrow;
     }
   }
+
   Future<Journey> refreshJourneybyToken(String token) async {
     final encodedToken = Uri.encodeComponent(token);
-    final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
+    final url = 'http://$baseUrl/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
 
     try {
@@ -125,7 +255,6 @@ class dbApiService {
 
         if (data is Map<String, dynamic>) {
           final journeyJson = data['journey'];
-
           return Journey.parseSingleJourneyResponse(journeyJson);
         } else {
           throw FormatException('Unexpected response format: expected a JSON object.');
@@ -143,78 +272,74 @@ class dbApiService {
     }
   }
 
-  Future<Trip> fetchTripById(String tripId, {
-  bool stopovers = true,
-  bool remarks = true,
-  bool polyline = false,
-  String language = 'en',
-  bool pretty = true,
-}) async {
-  if (tripId.isEmpty) {
-    throw ArgumentError('Trip ID cannot be empty');
-  }
-  
-  final queryParams = <String, String>{
-    'stopovers': stopovers.toString(),
-    'remarks': remarks.toString(),
-    'polyline': polyline.toString(),
-    'language': language,
-    'pretty': pretty.toString(),
-  };
-
-  final encodedTripId = Uri.encodeComponent(tripId);
-  
-  try {
-    final queryString = queryParams.entries
-        .map((entry) => '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}')
-        .join('&');
-    
-    final url = 'http://$base_url/trips/$encodedTripId?$queryString';
-    
-    final response = await http.get(Uri.parse(url));
-    
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      
-      // Handle the nested structure from your API response
-      Map<String, dynamic> tripData;
-      if (data['trip'] != null) {
-        tripData = data['trip'];
-      } else if (data is Map<String, dynamic>) {
-        tripData = data;
-      } else {
-        throw FormatException('Unexpected response format: expected trip object');
-      }
-      
-      // Fix: Pass tripData directly, not data['trip']
-      Trip t = Trip.fromJson(tripData);
-      t.debugPrintStopovers();
-      return t;
-      
-    } else if (response.statusCode == 404) {
-      throw HttpException('Trip not found or may have expired', uri: Uri.parse(url));
-      
-    } else if (response.statusCode == 500) {
-      if (response.body.contains('error') || response.body.isEmpty) {
-        throw HttpException('Temporary server error - trip may be unavailable', uri: Uri.parse(url));
-      } else {
-        throw HttpException('Server error for trip: $tripId', uri: Uri.parse(url));
-      }
-      
-    } else {
-      throw HttpException(
-        'Failed to load trip. Status code: ${response.statusCode}',
-        uri: Uri.parse(url),
-      );
+  Future<Trip> fetchTripById(
+    String tripId, {
+    bool stopovers = true,
+    bool remarks = true,
+    bool polyline = false,
+    String language = 'en',
+    bool pretty = true,
+  }) async {
+    if (tripId.isEmpty) {
+      throw ArgumentError('Trip ID cannot be empty');
     }
-    
-  } catch (e, stackTrace) {
-    print('ERROR: Exception fetching trip $tripId: $e');
-    rethrow;
-  }
-}
 
-   Future<Trip> fetchTripFromLeg(Leg leg, {
+    final queryParams = <String, String>{
+      'stopovers': stopovers.toString(),
+      'remarks': remarks.toString(),
+      'polyline': polyline.toString(),
+      'language': language,
+      'pretty': pretty.toString(),
+    };
+
+    final encodedTripId = Uri.encodeComponent(tripId);
+
+    try {
+      final queryString = queryParams.entries
+          .map((entry) => '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}')
+          .join('&');
+
+      final url = 'http://$baseUrl/trips/$encodedTripId?$queryString';
+
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+        Map<String, dynamic> tripData;
+        if (data['trip'] != null) {
+          tripData = data['trip'];
+        } else if (data is Map<String, dynamic>) {
+          tripData = data;
+        } else {
+          throw FormatException('Unexpected response format: expected trip object');
+        }
+
+        Trip t = Trip.fromJson(tripData);
+        t.debugPrintStopovers();
+        return t;
+      } else if (response.statusCode == 404) {
+        throw HttpException('Trip not found or may have expired', uri: Uri.parse(url));
+      } else if (response.statusCode == 500) {
+        if (response.body.contains('error') || response.body.isEmpty) {
+          throw HttpException('Temporary server error - trip may be unavailable', uri: Uri.parse(url));
+        } else {
+          throw HttpException('Server error for trip: $tripId', uri: Uri.parse(url));
+        }
+      } else {
+        throw HttpException(
+          'Failed to load trip. Status code: ${response.statusCode}',
+          uri: Uri.parse(url),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('ERROR: Exception fetching trip $tripId: $e');
+      rethrow;
+    }
+  }
+
+  Future<Trip> fetchTripFromLeg(
+    Leg leg, {
     bool stopovers = true,
     bool remarks = true,
     bool polyline = false,
@@ -224,7 +349,7 @@ class dbApiService {
     if (leg.tripID == null || leg.tripID!.isEmpty) {
       throw ArgumentError('Leg does not contain a valid trip ID');
     }
-    
+
     return fetchTripById(
       leg.tripID!,
       stopovers: stopovers,
@@ -235,7 +360,8 @@ class dbApiService {
     );
   }
 
-  Future<List<Trip>> fetchMultipleTrips(List<String> tripIds, {
+  Future<List<Trip>> fetchMultipleTrips(
+    List<String> tripIds, {
     bool stopovers = true,
     bool remarks = true,
     bool polyline = false,
@@ -243,7 +369,7 @@ class dbApiService {
     bool pretty = true,
   }) async {
     List<Trip> trips = [];
-    
+
     for (String tripId in tripIds) {
       try {
         final trip = await fetchTripById(
@@ -257,16 +383,15 @@ class dbApiService {
         trips.add(trip);
       } catch (e) {
         print('Failed to fetch trip $tripId: $e');
-        // Continue with other trips instead of failing completely
       }
     }
-    
+
     return trips;
   }
 
   Future<Journey> refreshJourney(Journey journey) async {
     final encodedToken = Uri.encodeComponent(journey.refreshToken);
-    final url = 'http://$base_url/journeys/$encodedToken?polylines=true&stopovers=true';
+    final url = 'http://$baseUrl/journeys/$encodedToken?polylines=true&stopovers=true';
     final uri = Uri.parse(url);
 
     try {
@@ -277,7 +402,6 @@ class dbApiService {
 
         if (data is Map<String, dynamic>) {
           final journeyJson = data['journey'];
-
           return Journey.parseSingleJourneyResponse(journeyJson);
         } else {
           throw FormatException('Unexpected response format: expected a JSON object.');
@@ -296,7 +420,7 @@ class dbApiService {
   }
 
   Future<List<Location>> fetchLocations(String query) async {
-    final uri = Uri.http(base_url, '/locations', {
+    final uri = Uri.http(baseUrl, '/locations', {
       'poi': 'false',
       'addresses': 'true',
       'query': query,
@@ -309,14 +433,13 @@ class dbApiService {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
 
         return (data as List)
-            .where((item) => item != null && (
-            (item['id'] != null && item['id'].toString().toLowerCase() != 'null') ||
-                (item['type'] != 'station' && item['latitude'] != null && item['longitude'] != null)
-        ))
+            .where((item) =>
+                item != null &&
+                ((item['id'] != null && item['id'].toString().toLowerCase() != 'null') ||
+                    (item['type'] != 'station' && item['latitude'] != null && item['longitude'] != null)))
             .map<Location>((item) {
           try {
             if (item['type'] == 'station' || item['type'] == 'stop') {
-              // Use Station.fromJson which now properly handles RIL100 IDs
               return Station.fromJson(item);
             } else {
               return Location.fromJson(item);
@@ -324,28 +447,29 @@ class dbApiService {
           } catch (e) {
             print('Error parsing location item: $e');
             print('Item: $item');
-            
-            // Enhanced fallback for stations/stops to preserve RIL100 IDs if possible
+
             if (item['type'] == 'station' || item['type'] == 'stop') {
               try {
-                // Try to create a Station with available data
                 final location = item['location'];
                 final products = item['products'];
-                
-                // Parse RIL100 IDs if available
+
                 List<String> ril100Ids = [];
                 if (item['ril100Ids'] != null) {
                   ril100Ids = List<String>.from(item['ril100Ids']);
                 } else if (item['station']?['ril100Ids'] != null) {
                   ril100Ids = List<String>.from(item['station']['ril100Ids']);
                 }
-                
+
                 return Station(
                   id: item['id']?.toString() ?? '',
                   name: item['name']?.toString() ?? 'Unknown',
                   type: item['type']?.toString() ?? 'station',
-                  latitude: location?['latitude']?.toDouble() ?? item['latitude']?.toDouble() ?? 0.0,
-                  longitude: location?['longitude']?.toDouble() ?? item['longitude']?.toDouble() ?? 0.0,
+                  latitude: location?['latitude']?.toDouble() ??
+                      item['latitude']?.toDouble() ??
+                      0.0,
+                  longitude: location?['longitude']?.toDouble() ??
+                      item['longitude']?.toDouble() ??
+                      0.0,
                   nationalExpress: products?['nationalExpress'] ?? false,
                   national: products?['national'] ?? false,
                   regional: products?['regional'] ?? false,
@@ -360,24 +484,26 @@ class dbApiService {
                 );
               } catch (stationError) {
                 print('Failed to create Station fallback: $stationError');
-                // Fall back to basic Location if Station creation fails
                 return Location(
                   id: item['id']?.toString() ?? '',
                   name: item['name']?.toString() ?? 'Unknown',
                   type: item['type']?.toString() ?? 'unknown',
-                  latitude: item['location']?['latitude']?.toDouble() ?? item['latitude']?.toDouble(),
-                  longitude: item['location']?['longitude']?.toDouble() ?? item['longitude']?.toDouble(),
+                  latitude: item['location']?['latitude']?.toDouble() ??
+                      item['latitude']?.toDouble(),
+                  longitude: item['location']?['longitude']?.toDouble() ??
+                      item['longitude']?.toDouble(),
                   address: null,
                 );
               }
             } else {
-              // Return a basic location for non-station items
               return Location(
                 id: item['id']?.toString() ?? '',
                 name: item['name']?.toString() ?? 'Unknown',
                 type: item['type']?.toString() ?? 'unknown',
-                latitude: item['location']?['latitude']?.toDouble() ?? item['latitude']?.toDouble(),
-                longitude: item['location']?['longitude']?.toDouble() ?? item['longitude']?.toDouble(),
+                latitude: item['location']?['latitude']?.toDouble() ??
+                    item['latitude']?.toDouble(),
+                longitude: item['location']?['longitude']?.toDouble() ??
+                    item['longitude']?.toDouble(),
                 address: null,
               );
             }
