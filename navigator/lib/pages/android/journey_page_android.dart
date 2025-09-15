@@ -682,7 +682,21 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
     final Set<String> addedStations = {};
     final List<Marker> markers = [];
 
-    // For each leg, add origin and destination stations
+    // Add start marker (first leg's origin)
+    if (journey.legs.isNotEmpty) {
+      final firstLeg = journey.legs.first;
+      final startKey = '${firstLeg.origin.latitude},${firstLeg.origin.longitude}';
+      if (!addedStations.contains(startKey)) {
+        addedStations.add(startKey);
+        markers.add(_createStartFinishMarker(
+          firstLeg.origin,
+          colors,
+          isStart: true,
+        ));
+      }
+    }
+
+    // For each leg, add origin and destination stations (transit only)
     for (final leg in journey.legs) {
       // Only add transit legs (skip walking legs)
       if (leg.isWalking != true && leg.lineName != null) {
@@ -702,7 +716,78 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       }
     }
 
+    // Add finish marker (last leg's destination)
+    if (journey.legs.isNotEmpty) {
+      final lastLeg = journey.legs.last;
+      final endKey = '${lastLeg.destination.latitude},${lastLeg.destination.longitude}';
+      if (!addedStations.contains(endKey)) {
+        addedStations.add(endKey);
+        markers.add(_createStartFinishMarker(
+          lastLeg.destination,
+          colors,
+          isStart: false,
+        ));
+      }
+    }
+
     return markers;
+  }
+
+  Marker _createStartFinishMarker(Station station, ColorScheme colors, {required bool isStart}) {
+    return Marker(
+      point: LatLng(station.latitude, station.longitude),
+      width: 150,
+      height: 70,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainer,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              station.name,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: colors.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            decoration: BoxDecoration(
+              color: isStart ? colors.primary : colors.secondary,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isStart ? colors.primary : colors.secondary).withOpacity(0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Icon(
+              isStart ? Icons.trip_origin : Icons.location_on,
+              color: colors.onPrimary,
+              size: 14,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildInterchangeComponent(
