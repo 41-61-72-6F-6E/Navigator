@@ -807,6 +807,7 @@ Future<void> addLaterJourneys() async {
                     duration: Duration(seconds: 2),
                   ),
                 );
+                _search();
               },
                   
                 child: Text('Now')),
