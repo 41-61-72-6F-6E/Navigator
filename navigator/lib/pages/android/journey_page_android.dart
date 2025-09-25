@@ -2011,18 +2011,81 @@ class _LegWidgetState extends State<LegWidget> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  void _showRemarkPopup(BuildContext context, Remark remark) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              _getRemarkIcon(remark.summary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  remark.summary ?? 'Information',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (remark.text != null && remark.text!.isNotEmpty)
+                Text(
+                  remark.text!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-  Widget remark(BuildContext context, Remark remark)
-  {
-    Icon icon = Icon(Icons.power_off);
-    switch (remark.summary) 
-    {
+  Widget _getRemarkIcon(String? summary) {
+    switch (summary) {
       case 'Komfort-Checkin available':
-      icon = Icon(Icons.check_circle_outline, size: 12);
-      break;
+        return Icon(
+          Icons.check_circle_outline,
+          size: 20,
+          color: Theme.of(context).colorScheme.primary,
+        );
       case 'bicycles conveyed':
-      icon = Icon(Icons.pedal_bike_outlined, size: 12);
-      break;
+        return Icon(
+          Icons.pedal_bike_outlined,
+          size: 20,
+          color: Theme.of(context).colorScheme.secondary,
+        );
+      default:
+        return Icon(
+          Icons.info_outline,
+          size: 20,
+          color: Theme.of(context).colorScheme.tertiary,
+        );
+    }
+  }
+
+  Widget remark(BuildContext context, Remark remark) {
+    Icon icon = Icon(Icons.power_off);
+    switch (remark.summary) {
+      case 'Komfort-Checkin available':
+        icon = Icon(Icons.check_circle_outline, size: 12);
+        break;
+      case 'bicycles conveyed':
+        icon = Icon(Icons.pedal_bike_outlined, size: 12);
+        break;
     }
 
     if (remark.summary == null || remark.summary!.isEmpty) {
@@ -2034,25 +2097,27 @@ class _LegWidgetState extends State<LegWidget> {
         color: Colors.transparent,
         borderRadius: BorderRadius.all(Radius.circular(12)),
         child: InkWell(
-      borderRadius: BorderRadius.all(Radius.circular(12)),
-      onTap: () {
-        // Your onTap action here
-        print('Tapped on remark: ${remark.summary}');
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-          border: Border.all(color: Theme.of(context).colorScheme.outline, width: 1),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          child: Row(children: [
-            icon,
-            SizedBox(width: 4),
-            Text(remark.summary!, style: Theme.of(context).textTheme.labelSmall!.copyWith(color: onLineColor),),
-          ],)
-        ),
-      ),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          onTap: () => _showRemarkPopup(context, remark),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline, width: 1),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              child: Row(
+                children: [
+                  icon,
+                  SizedBox(width: 4),
+                  Text(
+                    remark.summary!,
+                    style: Theme.of(context).textTheme.labelSmall!.copyWith(color: onLineColor),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
