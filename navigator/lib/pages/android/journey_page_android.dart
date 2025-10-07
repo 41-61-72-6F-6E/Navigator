@@ -1934,33 +1934,37 @@ class _LegWidgetState extends State<LegWidget> {
         ? widget.leg.stopovers.sublist(1, widget.leg.stopovers.length - 1)
         : <Stopover>[];
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(56, 0, 16, 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: lineColor.withAlpha(50),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: lineColor.withAlpha(100), width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: intermediateStops.length,
-              separatorBuilder: (context, index) => Divider(
-                height: 1,
-                color: lineColor.withAlpha(100),
-              ),
-              itemBuilder: (context, index) {
-                final stop = intermediateStops[index];
-                return _buildStopItem(context, stop);
-              },
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB((constraints.maxWidth / 100) * 12 + 16, 0, 16 + 80, 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: lineColor.withAlpha(50),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: lineColor.withAlpha(100), width: 1),
             ),
-          ],
-        ),
-      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: intermediateStops.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    color: lineColor.withAlpha(100),
+                  ),
+                  itemBuilder: (context, index) {
+                    final stop = intermediateStops[index];
+                    return _buildStopItem(context, stop);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
