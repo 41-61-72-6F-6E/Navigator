@@ -4,6 +4,7 @@ class Remark {
   final String? code;
   final String? summary;
   final int? priority;
+  final String? modified;
 
   Remark({
     this.text,
@@ -11,6 +12,7 @@ class Remark {
     this.code,
     this.summary,
     this.priority,
+    this.modified,
   });
 
   factory Remark.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Remark {
       code: json['code'] as String?,
       summary: json['summary'] as String?,
       priority: json['priority'] as int?,
+      modified: json['modified'] as String?,
     );
   }
 
@@ -30,6 +33,7 @@ class Remark {
       'code': code,
       'summary': summary,
       'priority': priority,
+      'modified': modified,
     };
   }
 
@@ -41,7 +45,8 @@ class Remark {
         other.type == type &&
         other.code == code &&
         other.summary == summary &&
-        other.priority == priority;
+        other.priority == priority &&
+        other.modified == modified;
   }
 
   @override
@@ -50,12 +55,13 @@ class Remark {
         type.hashCode ^
         code.hashCode ^
         summary.hashCode ^
-        priority.hashCode;
+        priority.hashCode ^
+        modified.hashCode;
   }
 
   @override
   String toString() {
-    return 'Remark{text: $text, type: $type, code: $code, summary: $summary, priority: $priority}';
+    return 'Remark{text: $text, type: $type, code: $code, summary: $summary, priority: $priority, modified: $modified}';
   }
 
   // Helper methods for common remark types
