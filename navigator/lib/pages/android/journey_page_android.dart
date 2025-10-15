@@ -16,6 +16,7 @@ import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:intl/intl.dart';
 
 import 'package:navigator/services/overpassApi.dart';
 import 'package:navigator/services/overpassApi.dart' as overpassApi;
@@ -2014,6 +2015,25 @@ class _LegWidgetState extends State<LegWidget> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatModifiedDate(String? modifiedStr) {
+    if (modifiedStr == null || modifiedStr.isEmpty) return '';
+
+    try {
+      DateTime dateTime = DateTime.parse(modifiedStr);
+
+      if (dateTime.isUtc) {
+        dateTime = dateTime.toLocal();
+      }
+
+      // German format: dd.MM.yyyy HH:mm
+      final formatter = DateFormat('dd.MM.yyyy HH:mm');
+      return formatter.format(dateTime);
+    } catch (e) {
+      return modifiedStr;
+    }
+  }
+
+
   void _showInformationPopup(BuildContext context, Remark remark) {
     showDialog(
       context: context,
@@ -2043,12 +2063,12 @@ class _LegWidgetState extends State<LegWidget> {
               ),
               if (remark.modified != null)
                 const SizedBox(height: 4),
-                Text(
-                  'Last updated: ${remark.modified}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              Text(
+                'Last updated: ${_formatModifiedDate(remark.modified)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
+              ),
             ],
           ),
           content: Column(
