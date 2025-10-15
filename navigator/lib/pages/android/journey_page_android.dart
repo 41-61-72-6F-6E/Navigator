@@ -16,6 +16,7 @@ import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:intl/intl.dart';
 
 import 'package:navigator/services/overpassApi.dart';
 import 'package:navigator/services/overpassApi.dart' as overpassApi;
@@ -1719,6 +1720,7 @@ class _LegWidgetState extends State<LegWidget> {
   bool _isExpanded = false;
   Remark? comfortCheckinRemark; 
   Remark? bicycleRemark;
+  Remark? infoRemark;
   late VoidCallback _colorListener;
   Color lineColor = Colors.grey;
   Color onLineColor = Colors.black;
@@ -1739,6 +1741,12 @@ class _LegWidgetState extends State<LegWidget> {
     } catch (e) {
       bicycleRemark = null;
     }
+    try{
+    infoRemark = widget.leg.remarks!.firstWhere((remark) => remark.type == 'status');
+    } catch (e) {
+      infoRemark = null;
+    }
+
     final brightness = ThemeData.estimateBrightnessForColor(lineColor);
     onLineColor = brightness == Brightness.light 
       ? Colors.black 
@@ -1839,16 +1847,8 @@ class _LegWidgetState extends State<LegWidget> {
                                   ],
                                 ),
                                 // Further Information
-                                FilledButton.tonalIcon(
-                                  onPressed: () => {},
-                                  label: const Text('Further Information'),
-                                  icon: const Icon(Icons.chevron_right),
-                                  iconAlignment: IconAlignment.end,
-                                  style: ButtonStyle(
-                                    backgroundColor: WidgetStateProperty.all(lineColor.withAlpha(120)),
-                                    foregroundColor: WidgetStateProperty.all(onLineColor),
-                                  ),
-                                ),
+                                if (infoRemark != null)
+                                  info(context, infoRemark!),
                                 // Stops Button
                                 if(!hasIntermediateStops)
                                 FilledButton.tonal(
@@ -2015,6 +2015,86 @@ class _LegWidgetState extends State<LegWidget> {
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
+  String _formatModifiedDate(String? modifiedStr) {
+    if (modifiedStr == null || modifiedStr.isEmpty) return '';
+
+    try {
+      DateTime dateTime = DateTime.parse(modifiedStr);
+
+      if (dateTime.isUtc) {
+        dateTime = dateTime.toLocal();
+      }
+
+      // German format: dd.MM.yyyy HH:mm
+      final formatter = DateFormat('dd.MM.yyyy HH:mm');
+      return formatter.format(dateTime);
+    } catch (e) {
+      return modifiedStr;
+    }
+  }
+
+
+  void _showInformationPopup(BuildContext context, Remark remark) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.tertiary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      remark.summary ?? 'Information',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (remark.modified != null)
+                const SizedBox(height: 4),
+              Text(
+                'Last updated: ${_formatModifiedDate(remark.modified)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (remark.text != null && remark.text!.isNotEmpty)
+                Text(
+                  remark.text!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showRemarkPopup(BuildContext context, Remark remark) {
     showDialog(
       context: context,
@@ -2079,6 +2159,19 @@ class _LegWidgetState extends State<LegWidget> {
           color: Theme.of(context).colorScheme.tertiary,
         );
     }
+  }
+
+  Widget info(BuildContext context, Remark remark) {
+    return FilledButton.tonalIcon(
+      onPressed: () => _showInformationPopup(context, remark),
+      label: const Text('Further Information'),
+      icon: const Icon(Icons.chevron_right),
+      iconAlignment: IconAlignment.end,
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.all(lineColor.withAlpha(120)),
+        foregroundColor: WidgetStateProperty.all(onLineColor),
+      ),
+    );
   }
 
   Widget remark(BuildContext context, Remark remark) {
