@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
+import 'package:flutter/services.dart';
 
 class NavigationService {
   static final NavigationService _instance = NavigationService._internal();
@@ -64,24 +65,49 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) {  // <-- REPLACE THIS ENTIRE METHOD
     return ValueListenableBuilder<int>(
       valueListenable: _navService.currentIndex,
       builder: (context, currentIndex, child) {
-        return Scaffold(
-          body: IndexedStack(
-            index: currentIndex,
-            children: _navigators, // Use the pre-built navigators
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: currentIndex,
-            onDestinationSelected: (index) {
-              _navService.setTab(index);
-            },
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-              NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
-            ],
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            
+            // Get the current tab's navigator
+            final navigatorKey = currentIndex == 0 
+              ? _navService.homeNavigatorKey 
+              : _navService.savedNavigatorKey;
+            
+            // Check if the current tab can pop
+            final canPop = navigatorKey.currentState?.canPop() ?? false;
+            
+            if (canPop) {
+              // Pop within the current tab
+              navigatorKey.currentState?.pop();
+            } else if (currentIndex != 0) {
+              // If at root of non-home tab, go to home tab
+              _navService.setTab(0);
+            } else {
+              // If at root of home tab, exit app
+              SystemNavigator.pop();
+            }
+          },
+          child: Scaffold(
+            body: IndexedStack(
+              index: currentIndex,
+              children: _navigators,
+            ),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                _navService.setTab(index);
+              },
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
+                NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
+              ],
+            ),
           ),
         );
       },
