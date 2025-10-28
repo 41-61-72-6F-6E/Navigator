@@ -43,6 +43,6 @@ class SavedjourneysPageState extends State<SavedjourneysPage> {
   Widget build(BuildContext context) {
     // For now, only Android implementation is refactored
     // Other platforms can be added later following the same pattern
-    return SavedJourneysPageView(model: _model);
+    return SavedJourneysPageView(model: _model, design: widget.design);
   }
 }

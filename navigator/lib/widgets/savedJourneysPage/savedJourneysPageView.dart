@@ -7,14 +7,18 @@ import 'package:navigator/pages/android/journey_page_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/searchBar/searchBar.dart' as mysearchbar;
+
 /// View class for the Saved Journeys page
 /// Handles all UI rendering and user interactions
 class SavedJourneysPageView extends StatefulWidget {
   final SavedJourneysPageModel model;
+  final int design;
 
   const SavedJourneysPageView({
     super.key,
     required this.model,
+    required this.design,
   });
 
   @override
@@ -88,7 +92,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 16,
       children: [
-        _buildSearchBar(context),
+        mysearchbar.SearchBar(design: widget.design, state: state, model: widget.model),       
         if (state.nextJourney != null && !state.showingPastJourneys)
           _buildNextJourney(context),
         if (state.showingPastJourneys && state.pastJourneys.isNotEmpty)
@@ -110,7 +114,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context) {
+  /* Widget _buildSearchBar(BuildContext context) {
     final state = widget.model.state;
     
     return SearchAnchor(
@@ -189,7 +193,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
         });
       },
     );
-  }
+  } */
 
   Widget _buildNextJourney(BuildContext context) {
     final state = widget.model.state;

@@ -67,7 +67,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       ),
       _buildNavigator(
         navigatorKey: _navService.savedNavigatorKey,
-        initialPage: SavedjourneysPage(),
+        initialPage: SavedjourneysPage(design: widget.design),
       ),
     ];
   }

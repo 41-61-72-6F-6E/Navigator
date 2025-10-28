@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
     brightness: Brightness.dark,
   );
 
-  final int design = 1; // 0 for Android, 1 for iOS
+  final int design = 0; // 0 for Android, 1 for iOS
 
   /// Generates a proper ColorScheme with distinct surface container variants
   /// using the material_color_utilities package
