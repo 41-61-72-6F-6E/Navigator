@@ -18,7 +18,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/services/localDataSaver.dart';
-import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 import 'package:navigator/widgets/customWidgets/parent_child_checkboxes.dart';
 import 'dart:math' as math;
 

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:flutter/services.dart';
 import 'package:navigator/widgets/mainNavigationPage/main_navigation_page_android';
 import 'package:navigator/widgets/mainNavigationPage/main_navigation_page_ios.dart';
 import 'package:navigator/widgets/mainNavigationPage/main_navigation_page.dart';
+import 'package:navigator/widgets/savedJourneysPage/savedJourneyPage.dart';
 
 
 class NavigationService {
