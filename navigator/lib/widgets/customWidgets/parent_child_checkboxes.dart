@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:navigator/customWidgets/custom_labeled_checkbox.dart'; // Import your custom checkbox
+import 'package:navigator/widgets/customWidgets/custom_labeled_checkbox.dart'; // Import your custom checkbox
 
 class ParentChildCheckboxes extends StatefulWidget {
   final String parentLabel;

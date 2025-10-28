@@ -11,7 +11,6 @@ import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/savedJourney.dart';
-import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'dart:convert';
 import 'package:navigator/models/station.dart';
@@ -334,7 +333,6 @@ class _JourneyPageAndroidState extends State<JourneyPageAndroid>
       body: Stack(
         children: [_buildMapView(context), _buildDraggableSheet(context)],
       ),
-            bottomNavigationBar: SharedBottomNavigation(),
     );
   }
 

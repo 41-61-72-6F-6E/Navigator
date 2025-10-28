@@ -19,7 +19,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
-import 'package:navigator/customWidgets/parent_child_checkboxes.dart';
+import 'package:navigator/widgets/customWidgets/parent_child_checkboxes.dart';
 import 'dart:math' as math;
 
 class HomePageAndroid extends StatefulWidget {
@@ -2456,8 +2456,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
                               context,
                             ).colorScheme.tertiaryContainer,
                             onPressed: () => {
-                              Navigator.push(
-                                context,
+                              Navigator.of(context, rootNavigator: false).push(
                                 MaterialPageRoute(
                                   builder: (_) => ConnectionsPageAndroid(
                                     ConnectionsPage(
@@ -2504,8 +2503,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
+          Navigator.of(context, rootNavigator: false).push(
             MaterialPageRoute(
               builder: (_) => ConnectionsPageAndroid(
                 ConnectionsPage(
@@ -2628,8 +2626,7 @@ class _HomePageAndroidState extends State<HomePageAndroid>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
+          Navigator.of(context, rootNavigator: false).push(
             MaterialPageRoute(
               builder: (_) => ConnectionsPageAndroid(
                 ConnectionsPage(

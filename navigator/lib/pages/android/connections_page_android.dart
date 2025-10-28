@@ -9,7 +9,6 @@ import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
-import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
@@ -341,7 +340,6 @@ Future<void> addLaterJourneys() async {
           ),
         ),
       ),
-            bottomNavigationBar: SharedBottomNavigation(),
     );
   }
 
