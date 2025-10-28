@@ -6,8 +6,11 @@ import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
+import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUpAndroid.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/searchBar/searchBar.dart' as mysearchbar;
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPageUIUtils.dart';
 
 /// View class for the Saved Journeys page
 /// Handles all UI rendering and user interactions
@@ -114,87 +117,6 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     );
   }
 
-  /* Widget _buildSearchBar(BuildContext context) {
-    final state = widget.model.state;
-    
-    return SearchAnchor(
-      builder: (BuildContext context, SearchController controller) {
-        return SearchBar(
-          elevation: WidgetStateProperty.all(0),
-          controller: controller,
-          hintText: 'Search saved journeys',
-          trailing: <Widget>[
-            Tooltip(
-              message: "Filter your search",
-              child: IconButton(
-                icon: const Icon(Icons.filter_list),
-                onPressed: () {
-                  // Implement filter functionality here
-                },
-              ),
-            ),
-            if (state.cardView)
-              Tooltip(
-                message: "Switch to list view",
-                child: IconButton(
-                  onPressed: () => widget.model.toggleViewMode(),
-                  icon: const Icon(Icons.list),
-                ),
-              ),
-            if (!state.cardView)
-              Tooltip(
-                message: "Switch to card view",
-                child: IconButton(
-                  onPressed: () => widget.model.toggleViewMode(),
-                  icon: const Icon(Icons.view_agenda_outlined),
-                ),
-              ),
-            MenuAnchor(
-              builder: (BuildContext context, MenuController controller, Widget? child) {
-                return Tooltip(
-                  message: 'More Options',
-                  child: IconButton(
-                    icon: const Icon(Icons.more_vert),
-                    onPressed: () {
-                      controller.open();
-                    },
-                  ),
-                );
-              },
-              menuChildren: [
-                MenuItemButton(
-                  onPressed: () => widget.model.togglePastJourneysView(),
-                  child: Text(
-                    state.showingPastJourneys
-                        ? 'Show Future Journeys'
-                        : 'Show Past Journeys',
-                  ),
-                ),
-                MenuItemButton(
-                  onPressed: () {},
-                  child: const Text('Settings'),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-      suggestionsBuilder: (BuildContext context, SearchController controller) {
-        return List<ListTile>.generate(5, (int index) {
-          final String item = 'item $index';
-          return ListTile(
-            title: Text(item),
-            onTap: () {
-              setState(() {
-                controller.closeView(item);
-              });
-            },
-          );
-        });
-      },
-    );
-  } */
-
   Widget _buildNextJourney(BuildContext context) {
     final state = widget.model.state;
     final nextJourney = state.nextJourney;
@@ -224,7 +146,10 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     bool ongoing = state.isNextJourneyOngoing;
 
     return GestureDetector(
-      onTap: () => _navigateToJourney(context, nextJourney.journey),
+      onTap: () => RefreshJourneyPopUp.navigateToJourney(context, nextJourney.journey, widget.model, (model) async {
+                await widget.model.loadSavedJourneys();
+                widget.model.refreshJourneys(onlyFutureJourneys: !state.showingPastJourneys);
+              }),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primaryContainer,
@@ -246,7 +171,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
                       ),
                     ),
                     Text(
-                      _generateJourneyTimeText(nextJourney.journey, true, false),
+                      SavedJourneyPageUIUtils.generateJourneyTimeText(nextJourney.journey, true, false),
                       style: Theme.of(context).textTheme.titleMedium!.copyWith(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
@@ -381,7 +306,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
                       : Theme.of(context).colorScheme.onSurface,
                 ),
                 child: Text(
-                  _generateJourneyTimeText(journeyGroup.first, true, false),
+                  SavedJourneyPageUIUtils.generateJourneyTimeText(journeyGroup.first, true, false),
                 ),
               ),
             ),
@@ -501,7 +426,10 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
                       bottomRight: Radius.circular(24.0),
                     )
                   : null,
-              onTap: () => _navigateToJourney(context, journey),
+              onTap: () => RefreshJourneyPopUp.navigateToJourney(context, journey, widget.model, (model) async {
+                await widget.model.loadSavedJourneys();
+                widget.model.refreshJourneys(onlyFutureJourneys: !state.showingPastJourneys);
+              }),
               child: state.cardView
                   ? _buildCardView(context, journey, false)
                   : _buildListView(context, journey),
@@ -513,72 +441,53 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
   }
 
   // Navigation helper method
-  Future<void> _navigateToJourney(BuildContext context, Journey journey) async {
-    final outerContext = context;
+//   Future<void> navigateToJourney(BuildContext context, Journey journey) async {
+//   final outerContext = context;
+  
+//   RefreshJourneyPopUpAndroid.show(
+//     outerContext,
+//     message: 'Refreshing journey information...',
+//   );
 
-    showDialog(
-      context: outerContext,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Refreshing journey information...',
-              style: TextStyle(
-                color: Theme.of(dialogContext).colorScheme.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final refreshedJourney =
-          await widget.model.refreshSingleJourney(journey.refreshToken);
-
-      if (outerContext.mounted) {
-        Navigator.of(outerContext, rootNavigator: true).pop();
-      }
-
-      if (outerContext.mounted) {
-        Navigator.of(outerContext, rootNavigator: false)
-            .push(
-          MaterialPageRoute(
-            builder: (context) => JourneyPageAndroid(
-              JourneyPage(journey: refreshedJourney),
-              journey: refreshedJourney,
-            ),
-          ),
-        )
-            .then((_) {
-          widget.model.loadSavedJourneys().then((_) {
-            widget.model.refreshJourneys(onlyFutureJourneys: true);
-          });
-        });
-      }
-    } catch (e) {
-      if (outerContext.mounted) {
-        Navigator.of(outerContext, rootNavigator: true).pop();
-      }
-
-      if (outerContext.mounted) {
-        ScaffoldMessenger.of(outerContext).showSnackBar(
-          SnackBar(
-            content: Text('Could not refresh journey: ${e.toString()}'),
-            backgroundColor: Theme.of(outerContext).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
+//   try {
+//     final refreshedJourney =
+//         await widget.model.refreshSingleJourney(journey.refreshToken);
+    
+//     RefreshJourneyPopUpAndroid.hide(outerContext);
+    
+//     if (outerContext.mounted) {
+//       Navigator.of(outerContext, rootNavigator: false)
+//           .push(
+//         MaterialPageRoute(
+//           builder: (context) => JourneyPageAndroid(
+//             JourneyPage(journey: refreshedJourney),
+//             journey: refreshedJourney,
+//           ),
+//         ),
+//       )
+//           .then((_) {
+//         widget.model.loadSavedJourneys().then((_) {
+//           widget.model.refreshJourneys(onlyFutureJourneys: true);
+//         });
+//       });
+//     }
+//   } catch (e) {
+//     RefreshJourneyPopUpAndroid.hide(outerContext);
+    
+//     if (outerContext.mounted) {
+//       ScaffoldMessenger.of(outerContext).showSnackBar(
+//         SnackBar(
+//           content: Text('Could not refresh journey: ${e.toString()}'),
+//           backgroundColor: Theme.of(outerContext).colorScheme.error,
+//         ),
+//       );
+//     }
+//   }
+// }
 
   Widget _buildCardView(BuildContext context, Journey journey, bool isFirst) {
     bool delayed = false;
-    String timeText = _generateJourneyTimeText(journey, false, true);
+    String timeText = SavedJourneyPageUIUtils.generateJourneyTimeText(journey, false, true);
     Text liveTimeTextP1 = const Text('');
     Text liveTimeTextP2 = const Text('');
 
@@ -851,7 +760,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
 
   Widget _buildListView(BuildContext context, Journey journey) {
     bool delayed = false;
-    String timeText = _generateJourneyTimeText(journey, false, true);
+    String timeText = SavedJourneyPageUIUtils.generateJourneyTimeText(journey, false, true);
     Text liveTimeTextP1 = const Text('');
     Text liveTimeTextP2 = const Text('');
     Icon modeIcon = Icon(
@@ -926,7 +835,10 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
       mainAxisSize: MainAxisSize.min,
       children: [
         ListTile(
-          onTap: () => _navigateToJourney(context, journey),
+          onTap: () => RefreshJourneyPopUp.navigateToJourney(context, journey, widget.model, (model) async {
+                await widget.model.loadSavedJourneys();
+                widget.model.refreshJourneys(onlyFutureJourneys: !widget.model.state.showingPastJourneys);
+              }),
           leading: modeIcon,
           title: Text(
             '${journey.legs.first.origin.name} - ${journey.legs.last.destination.name}',
@@ -1080,78 +992,4 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     return '$departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
   }
 
-  String _generateJourneyTimeText(
-    Journey journey,
-    bool onlyDate,
-    bool onlyTime,
-  ) {
-    DateTime currentTime = DateTime.now();
-    DateTime departureTime = journey.plannedDepartureTime.toLocal();
-    DateTime arrivalTime = journey.plannedArrivalTime.toLocal();
-    String departureHour = departureTime.hour.toString().padLeft(2, '0');
-    String departureMinute = departureTime.minute.toString().padLeft(2, '0');
-    String arrivalHour = arrivalTime.hour.toString().padLeft(2, '0');
-    String arrivalMinute = arrivalTime.minute.toString().padLeft(2, '0');
-
-    if (onlyTime) {
-      return '$departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-    }
-
-    if (arrivalTime.isBefore(DateTime.now())) {
-      if (onlyDate) {
-        return '${departureTime.day}.${departureTime.month}.${departureTime.year}';
-      }
-      return '${departureTime.day}.${departureTime.month}.${departureTime.year} $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-    }
-
-    if (departureTime.difference(currentTime).inDays < 3) {
-      if (departureTime.day == currentTime.day) {
-        if (onlyDate) {
-          return 'Today';
-        }
-        return 'Today $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-      } else if (departureTime.day == currentTime.day + 1) {
-        if (onlyDate) {
-          return 'Tomorrow';
-        }
-        return 'Tomorrow $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-      }
-    }
-
-    if (departureTime.subtract(const Duration(days: 7)).isBefore(currentTime)) {
-      String weekdayName = '';
-      switch (departureTime.weekday) {
-        case 1:
-          weekdayName = 'Monday';
-          break;
-        case 2:
-          weekdayName = 'Tuesday';
-          break;
-        case 3:
-          weekdayName = 'Wednesday';
-          break;
-        case 4:
-          weekdayName = 'Thursday';
-          break;
-        case 5:
-          weekdayName = 'Friday';
-          break;
-        case 6:
-          weekdayName = 'Saturday';
-          break;
-        case 7:
-          weekdayName = 'Sunday';
-          break;
-      }
-      if (onlyDate) {
-        return 'next $weekdayName';
-      }
-      return 'next $weekdayName $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-    } else {
-      if (onlyDate) {
-        return '${departureTime.day}.${departureTime.month}.${departureTime.year}';
-      }
-      return '${departureTime.day}.${departureTime.month}.${departureTime.year} $departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
-    }
-  }
 }
