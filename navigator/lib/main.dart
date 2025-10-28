@@ -1,6 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
-import 'package:navigator/pages/main_navigation_page.dart';
+import 'package:navigator/widgets/mainNavigationPage/main_navigation_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
@@ -18,6 +18,8 @@ class MyApp extends StatelessWidget {
     primarySwatch: Colors.blue,
     brightness: Brightness.dark,
   );
+
+  final int design = 1; // 0 for Android, 1 for iOS
 
   /// Generates a proper ColorScheme with distinct surface container variants
   /// using the material_color_utilities package
@@ -113,7 +115,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
             textTheme: GoogleFonts.robotoTextTheme(),
           ),
-          home: MainNavigationPage(),
+          home: MainNavigationPage(design: design),
         );
       },
     );

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:navigator/pages/page_models/savedJourneys_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:flutter/services.dart';
+import 'package:navigator/widgets/mainNavigationPage/main_navigation_page_android';
+import 'package:navigator/widgets/mainNavigationPage/main_navigation_page_ios.dart';
+import 'package:navigator/widgets/mainNavigationPage/main_navigation_page.dart';
+
 
 class NavigationService {
   static final NavigationService _instance = NavigationService._internal();
@@ -20,6 +24,8 @@ class NavigationService {
   late final GlobalKey<NavigatorState> homeNavigatorKey;
   late final GlobalKey<NavigatorState> savedNavigatorKey;
 
+  int _currentDesign = 0;
+
   void setTab(int index) {
     currentIndex.value = index;
   }
@@ -28,7 +34,7 @@ class NavigationService {
     currentIndex.value = index;
     if (navigatorKey.currentState != null) {
       navigatorKey.currentState!.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => MainNavigationPage()),
+        MaterialPageRoute(builder: (context) => MainNavigationPage(design: _currentDesign)),
         (route) => false,
       );
     }
@@ -36,7 +42,8 @@ class NavigationService {
 }
 
 class MainNavigationPage extends StatefulWidget {
-  const MainNavigationPage({super.key});
+  const MainNavigationPage({super.key, required this.design});
+  final int design;
 
   @override
   _MainNavigationPageState createState() => _MainNavigationPageState();
@@ -51,6 +58,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void initState() {
     super.initState();
+    _navService._currentDesign = widget.design;
     // Initialize navigators once in initState
     _navigators = [
       _buildNavigator(
@@ -65,10 +73,31 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 
   @override
-  Widget build(BuildContext context) {  // <-- REPLACE THIS ENTIRE METHOD
+  Widget build(BuildContext context) {
+    
     return ValueListenableBuilder<int>(
       valueListenable: _navService.currentIndex,
       builder: (context, currentIndex, child) {
+        Widget designImplementation;
+    switch(widget.design) {
+      case 0:
+        designImplementation = MainNavigationPageAndroid(currentIndex: currentIndex, onDestinationSelected: (index) {
+              _navService.setTab(index);
+            }, children: _navigators
+          );
+        break;
+      case 1:
+        designImplementation = MainNavigationPageIOS(currentIndex: currentIndex, onDestinationSelected: (index) {
+              _navService.setTab(index);
+            }, children: _navigators
+          );
+          break;
+      default:
+        designImplementation = MainNavigationPageAndroid(currentIndex: currentIndex, onDestinationSelected: (index) {
+              _navService.setTab(index);
+            }, children: _navigators
+          );
+    }
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) async {
@@ -98,17 +127,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
               index: currentIndex,
               children: _navigators,
             ),
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: currentIndex,
-              onDestinationSelected: (index) {
-                _navService.setTab(index);
-              },
-              destinations: const [
-                NavigationDestination(icon: Icon(Icons.home), label: 'Home'),
-                NavigationDestination(icon: Icon(Icons.bookmark), label: 'Saved'),
-              ],
-            ),
-          ),
+            bottomNavigationBar: designImplementation,
+        )
         );
       },
     );
