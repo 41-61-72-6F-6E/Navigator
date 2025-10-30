@@ -156,4 +156,35 @@ class SavedJourneyPageUIUtils
     }
   }
 
+  static String findHighestMode(Journey journey) {
+    String currentHighest = 'walk';
+    for (Leg l in journey.legs) {
+      if (l.product != null && l.product!.isNotEmpty) {
+        if (modeIsHigher(currentHighest, l.product!)) {
+          currentHighest = l.product!;
+        }
+      }
+    }
+    return currentHighest;
+  }
+
+  static bool modeIsHigher(String compareMode, String newMode) {
+    List<String> modes = [
+      'walk',
+      'taxi',
+      'bus',
+      'tram',
+      'ferry',
+      'subway',
+      'suburban',
+      'regional',
+      'regionalexpress',
+      'national',
+      'nationalexpress'
+    ];
+    int compareIndex = modes.indexOf(compareMode.toLowerCase());
+    int newIndex = modes.indexOf(newMode.toLowerCase());
+    return newIndex > compareIndex;
+  }
+
 }

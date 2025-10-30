@@ -1,18 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:navigator/models/journey.dart';
-import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/savedJourney.dart';
-import 'package:navigator/pages/android/journey_page_android.dart';
-import 'package:navigator/pages/page_models/journey_page.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
-import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUpAndroid.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/cardView/cardView.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/nextJourney/nextJourney.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/searchBar/searchBar.dart' as mysearchbar;
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPageUIUtils.dart';
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/listView/listView.dart' as mylistview;
 
 /// View class for the Saved Journeys page
 /// Handles all UI rendering and user interactions
@@ -118,86 +114,6 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
       ],
     );
   }
-
-  /* Widget _buildNextJourney(BuildContext context) {
-    final state = widget.model.state;
-    final nextJourney = state.nextJourney;
-    
-    if (nextJourney == null) return const SizedBox.shrink();
-
-    bool delayed = false;
-    String delayText = 'no delays';
-    
-    if (nextJourney.journey.legs.first.departureDelayMinutes != null) {
-      delayed = true;
-      delayText = 'Departure delayed';
-    }
-    if (nextJourney.journey.legs.last.arrivalDelayMinutes != null) {
-      delayText = delayed ? 'Delayed' : 'Arrival delayed';
-      delayed = true;
-    }
-
-    Color delayColor = delayed
-        ? Theme.of(context).colorScheme.errorContainer
-        : successColor;
-    
-    Color onDelayColor = delayed
-        ? Theme.of(context).colorScheme.onErrorContainer
-        : onSuccessColor;
-
-    bool ongoing = state.isNextJourneyOngoing;
-
-    return GestureDetector(
-      onTap: () => RefreshJourneyPopUp.navigateToJourney(context, nextJourney.journey, widget.model, (model) async {
-                await widget.model.loadSavedJourneys();
-                widget.model.refreshJourneys(onlyFutureJourneys: !state.showingPastJourneys);
-              }),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Column(
-                  children: [
-                    Text(
-                      ongoing ? 'Ongoing Journey' : 'Next Journey',
-                      style: Theme.of(context).textTheme.headlineLarge!.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      SavedJourneyPageUIUtils.generateJourneyTimeText(nextJourney.journey, true, false),
-                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Material(
-                borderRadius: BorderRadius.circular(24),
-                elevation: 10,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: cardView(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor, journey: ,),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  } */
 
   Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList) {
     final state = widget.model.state;
@@ -434,7 +350,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
               }),
               child: state.cardView
                   ? cardView(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor, journey: journey, isFirst: false)
-                  : _buildListView(context, journey),
+                  : mylistview.ListView(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor, journey: journey),
             ),
           ),
         ),
@@ -760,7 +676,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     );
   } */
 
-  Widget _buildListView(BuildContext context, Journey journey) {
+ /*  Widget _buildListView(BuildContext context, Journey journey) {
     bool delayed = false;
     String timeText = SavedJourneyPageUIUtils.generateJourneyTimeText(journey, false, true);
     Text liveTimeTextP1 = const Text('');
@@ -884,37 +800,6 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
         ),
       ],
     );
-  }
-
-  String _findHighestMode(Journey journey) {
-    String currentHighest = 'walk';
-    for (Leg l in journey.legs) {
-      if (l.product != null && l.product!.isNotEmpty) {
-        if (_modeIsHigher(currentHighest, l.product!)) {
-          currentHighest = l.product!;
-        }
-      }
-    }
-    return currentHighest;
-  }
-
-  bool _modeIsHigher(String compareMode, String newMode) {
-    List<String> modes = [
-      'walk',
-      'taxi',
-      'bus',
-      'tram',
-      'ferry',
-      'subway',
-      'suburban',
-      'regional',
-      'regionalexpress',
-      'national',
-      'nationalexpress'
-    ];
-    int compareIndex = modes.indexOf(compareMode.toLowerCase());
-    int newIndex = modes.indexOf(newMode.toLowerCase());
-    return newIndex > compareIndex;
-  }
+  } */
 
 }
