@@ -8,6 +8,8 @@ import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
 import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUpAndroid.dart';
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/cardView/cardView.dart';
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/nextJourney/nextJourney.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/searchBar/searchBar.dart' as mysearchbar;
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPageUIUtils.dart';
@@ -97,7 +99,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
       children: [
         mysearchbar.SearchBar(design: widget.design, state: state, model: widget.model),       
         if (state.nextJourney != null && !state.showingPastJourneys)
-          _buildNextJourney(context),
+          nextJourney(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor,),
         if (state.showingPastJourneys && state.pastJourneys.isNotEmpty)
           Center(
             child: Text(
@@ -117,7 +119,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     );
   }
 
-  Widget _buildNextJourney(BuildContext context) {
+  /* Widget _buildNextJourney(BuildContext context) {
     final state = widget.model.state;
     final nextJourney = state.nextJourney;
     
@@ -187,7 +189,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
                     color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: _buildCardView(context, nextJourney.journey, true),
+                  child: cardView(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor, journey: ,),
                 ),
               ),
             ],
@@ -195,7 +197,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
         ),
       ),
     );
-  }
+  } */
 
   Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList) {
     final state = widget.model.state;
@@ -431,7 +433,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
                 widget.model.refreshJourneys(onlyFutureJourneys: !state.showingPastJourneys);
               }),
               child: state.cardView
-                  ? _buildCardView(context, journey, false)
+                  ? cardView(design: widget.design, state: state, model: widget.model, successColor: successColor, onSuccessColor: onSuccessColor, journey: journey, isFirst: false)
                   : _buildListView(context, journey),
             ),
           ),
@@ -485,7 +487,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
 //   }
 // }
 
-  Widget _buildCardView(BuildContext context, Journey journey, bool isFirst) {
+  /* Widget _buildCardView(BuildContext context, Journey journey, bool isFirst) {
     bool delayed = false;
     String timeText = SavedJourneyPageUIUtils.generateJourneyTimeText(journey, false, true);
     Text liveTimeTextP1 = const Text('');
@@ -756,7 +758,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
         ),
       ),
     );
-  }
+  } */
 
   Widget _buildListView(BuildContext context, Journey journey) {
     bool delayed = false;
@@ -770,7 +772,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
 
     String highestMode = _findHighestMode(journey);
     modeIcon = Icon(
-      _getModeIcon(highestMode).icon,
+      SavedJourneyPageUIUtils.getModeIcon(highestMode).icon,
       color: Theme.of(context).colorScheme.tertiary,
     );
 
@@ -791,7 +793,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
           ? Theme.of(context).colorScheme.error
           : c;
       liveTimeTextP1 = Text(
-        _generateLiveTimeText(journey, true, false),
+        SavedJourneyPageUIUtils.generateLiveTimeText(journey, true, false),
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),
       );
     }
@@ -807,11 +809,11 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
             ? Theme.of(context).colorScheme.error
             : cA;
         liveTimeTextP1 = Text(
-          _generateLiveTimeText(journey, true, false),
+          SavedJourneyPageUIUtils.generateLiveTimeText(journey, true, false),
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cD),
         );
         liveTimeTextP2 = Text(
-          _generateLiveTimeText(journey, false, true),
+          SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cA),
         );
       } else {
@@ -821,7 +823,7 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
             ? Theme.of(context).colorScheme.error
             : c;
         liveTimeTextP2 = Text(
-          _generateLiveTimeText(journey, false, true),
+          SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
           style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),
         );
         liveTimeTextP1 = Text(
@@ -884,62 +886,6 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     );
   }
 
-  Widget _buildModes(BuildContext context, Journey journey, Color color) {
-    List<String> products = [];
-    for (Leg leg in journey.legs) {
-      if (leg.product != null && leg.product!.isNotEmpty) {
-        products.add(leg.product!);
-      }
-    }
-
-    List<Widget> modeWidgets = [];
-    for (int index = 0; index < products.length; index++) {
-      if (index > 0) {
-        modeWidgets.add(Icon(Icons.chevron_right, color: color, size: 20));
-      }
-      modeWidgets.add(Icon(
-        _getModeIcon(products[index]).icon,
-        color: color,
-        size: 20,
-      ));
-    }
-
-    return SizedBox(
-      height: 24,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: modeWidgets,
-      ),
-    );
-  }
-
-  Icon _getModeIcon(String mode) {
-    switch (mode.toLowerCase()) {
-      case 'bus':
-        return const Icon(Icons.directions_bus);
-      case 'nationalexpress':
-        return const Icon(Icons.train);
-      case 'national':
-        return const Icon(Icons.train);
-      case 'regional':
-        return const Icon(Icons.directions_railway);
-      case 'regionalexpress':
-        return const Icon(Icons.directions_railway);
-      case 'suburban':
-        return const Icon(Icons.directions_subway);
-      case 'subway':
-        return const Icon(Icons.subway_outlined);
-      case 'tram':
-        return const Icon(Icons.tram);
-      case 'taxi':
-        return const Icon(Icons.local_taxi);
-      case 'ferry':
-        return const Icon(Icons.directions_boat);
-      default:
-        return const Icon(Icons.train);
-    }
-  }
-
   String _findHighestMode(Journey journey) {
     String currentHighest = 'walk';
     for (Leg l in journey.legs) {
@@ -969,27 +915,6 @@ class _SavedJourneysPageViewState extends State<SavedJourneysPageView> {
     int compareIndex = modes.indexOf(compareMode.toLowerCase());
     int newIndex = modes.indexOf(newMode.toLowerCase());
     return newIndex > compareIndex;
-  }
-
-  String _generateLiveTimeText(
-    Journey journey,
-    bool onlyDeparture,
-    bool onlyArrival,
-  ) {
-    DateTime departureTime = journey.departureTime.toLocal();
-    DateTime arrivalTime = journey.arrivalTime.toLocal();
-    String departureHour = departureTime.hour.toString().padLeft(2, '0');
-    String departureMinute = departureTime.minute.toString().padLeft(2, '0');
-    String arrivalHour = arrivalTime.hour.toString().padLeft(2, '0');
-    String arrivalMinute = arrivalTime.minute.toString().padLeft(2, '0');
-
-    if (onlyDeparture) {
-      return '$departureHour:$departureMinute';
-    }
-    if (onlyArrival) {
-      return '$arrivalHour:$arrivalMinute';
-    }
-    return '$departureHour:$departureMinute - $arrivalHour:$arrivalMinute';
   }
 
 }

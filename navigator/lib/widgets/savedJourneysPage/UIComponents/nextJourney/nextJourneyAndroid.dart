@@ -4,6 +4,7 @@ import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPag
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageUIState.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageView.dart';
+import 'package:navigator/widgets/savedJourneysPage/UIComponents/cardView/cardView.dart';
 
 class nextJourneyAndroid extends StatelessWidget {
   final SavedJourneysPageUIState state;
@@ -89,7 +90,7 @@ class nextJourneyAndroid extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: _buildCardView(context, nextJourney.journey, true),
+                  child: cardView(design: 0, state: state, model: model, successColor: successColor, onSuccessColor: onSuccessColor, journey: nextJourney.journey, isFirst: true,),
                 ),
               ),
             ],
