@@ -12,6 +12,9 @@ class SavedJourneysPageUIState {
   final bool cardView;
   final String searchQuery;
   
+  // Cache the computed journeysByDate to prevent recomputation
+  final List<List<Savedjourney>>? _cachedJourneysByDate;
+  
   const SavedJourneysPageUIState({
     this.savedJourneys = const [],
     this.pastJourneys = const [],
@@ -22,7 +25,8 @@ class SavedJourneysPageUIState {
     this.showingPastJourneys = false,
     this.cardView = true,
     this.searchQuery = '',
-  });
+    List<List<Savedjourney>>? cachedJourneysByDate,
+  }) : _cachedJourneysByDate = cachedJourneysByDate;
 
   SavedJourneysPageUIState copyWith({
     List<Savedjourney>? savedJourneys,
@@ -35,6 +39,12 @@ class SavedJourneysPageUIState {
     bool? cardView,
     String? searchQuery,
   }) {
+    // Recompute journeysByDate if relevant data changed
+    final needsRecompute = savedJourneys != null ||
+        pastJourneys != null ||
+        futureJourneys != null ||
+        showingPastJourneys != null;
+    
     return SavedJourneysPageUIState(
       savedJourneys: savedJourneys ?? this.savedJourneys,
       pastJourneys: pastJourneys ?? this.pastJourneys,
@@ -45,6 +55,7 @@ class SavedJourneysPageUIState {
       showingPastJourneys: showingPastJourneys ?? this.showingPastJourneys,
       cardView: cardView ?? this.cardView,
       searchQuery: searchQuery ?? this.searchQuery,
+      cachedJourneysByDate: needsRecompute ? null : _cachedJourneysByDate,
     );
   }
 
@@ -55,17 +66,22 @@ class SavedJourneysPageUIState {
 
   /// Returns journeys grouped by date for the current view
   List<List<Savedjourney>> get journeysByDate {
+    // Return cached value if available
+    if (_cachedJourneysByDate != null) {
+      return _cachedJourneysByDate!;
+    }
+    
+    // Compute and cache
     List<Savedjourney> journeys = List.from(displayedJourneys);
     
     // Remove the first future journey if showing future journeys (it's shown separately)
     if (!showingPastJourneys && journeys.isNotEmpty) {
       journeys.removeAt(0);
     }
-    
-    if (journeys.isEmpty) return [];
-    
+
+    if (journeys.isEmpty) return const [];
+
     List<List<Savedjourney>> grouped = [];
-    
     for (int i = 0; i < journeys.length; i++) {
       if (i == 0) {
         grouped.add([journeys[i]]);
@@ -82,7 +98,7 @@ class SavedJourneysPageUIState {
         }
       }
     }
-    
+
     return grouped;
   }
 
@@ -94,9 +110,8 @@ class SavedJourneysPageUIState {
   /// Checks if the next journey is currently ongoing
   bool get isNextJourneyOngoing {
     if (nextJourney == null) return false;
-    
     DateTime now = DateTime.now();
     return now.isAfter(nextJourney!.journey.plannedDepartureTime) &&
-           now.isBefore(nextJourney!.journey.arrivalTime);
+        now.isBefore(nextJourney!.journey.arrivalTime);
   }
 }
