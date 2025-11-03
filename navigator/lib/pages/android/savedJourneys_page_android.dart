@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/* import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
@@ -307,62 +307,73 @@ Future<void> getSavedJourneys() async {
 
     return GestureDetector(
       onTap: () async {
-            // Show loading indicator
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Refreshing journey information...',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-
-            try {
-              // Refresh the journey using the service
-              final refreshedJourney = await widget.page.services
-                  .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
-
-              // Close the loading dialog
-              Navigator.pop(context);
-
-              // Navigate to journey page with the refreshed journey
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => JourneyPageAndroid(
-                    JourneyPage(journey: refreshedJourney),
-                    journey: refreshedJourney,
-                  ),
-                ),
-              ).then((_) {
-                getSavedJourneys().then((_) {updateJourneys(true);});
-              });
-            } catch (e) {
-              // Close the loading dialog
-              Navigator.pop(context);
-
-              // Show error message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Could not refresh journey: ${e.toString()}'),
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                ),
-              );
-
-              // Navigate with the original journey as fallback
-            }
-          },
+  // Capture the outer context
+  final outerContext = context;
+  
+  // Show loading indicator
+  showDialog(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Refreshing journey information...',
+            style: TextStyle(
+              color: Theme.of(dialogContext).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+  
+  try {
+    // Refresh the journey using the service
+    final refreshedJourney = await widget.page.services
+        .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
+    
+    // Close the loading dialog - use root navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Navigate to journey page with the refreshed journey - use tab navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: refreshedJourney),
+            journey: refreshedJourney,
+          ),
+        ),
+      ).then((_) {
+        getSavedJourneys().then((_) {
+          updateJourneys(true);
+        });
+      });
+    }
+  } catch (e) {
+    // Close the loading dialog
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Show error message
+    if (outerContext.mounted) {
+      ScaffoldMessenger.of(outerContext).showSnackBar(
+        SnackBar(
+          content: Text('Could not refresh journey: ${e.toString()}'),
+          backgroundColor: Theme.of(outerContext).colorScheme.error,
+        ),
+      );
+    }
+    // Navigate with the original journey as fallback removed as per your code
+  }
+},
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primaryContainer,
@@ -637,62 +648,73 @@ Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList)
                                     bottomRight: Radius.circular(24.0),
                                   ) : null,
                                   onTap: () async {
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text(
-                        'Refreshing journey information...',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-      
-              try {
-                // Refresh the journey using the service
-                final refreshedJourney = await widget.page.services
-                    .refreshJourneyByToken(journey.refreshToken);
-      
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Navigate to journey page with the refreshed journey
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => JourneyPageAndroid(
-                      JourneyPage(journey: refreshedJourney),
-                      journey: refreshedJourney,
-                    ),
-                  ),
-                ).then((_) {
-                  getSavedJourneys().then((_) {updateJourneys(true);});
-                });
-              } catch (e) {
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Show error message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Could not refresh journey: ${e.toString()}'),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
-      
-                // Navigate with the original journey as fallback
-              }
-            },
+  // Capture the outer context
+  final outerContext = context;
+  
+  // Show loading indicator
+  showDialog(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Refreshing journey information...',
+            style: TextStyle(
+              color: Theme.of(dialogContext).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+  
+  try {
+    // Refresh the journey using the service
+    final refreshedJourney = await widget.page.services
+        .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
+    
+    // Close the loading dialog - use root navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Navigate to journey page with the refreshed journey - use tab navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: refreshedJourney),
+            journey: refreshedJourney,
+          ),
+        ),
+      ).then((_) {
+        getSavedJourneys().then((_) {
+          updateJourneys(true);
+        });
+      });
+    }
+  } catch (e) {
+    // Close the loading dialog
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Show error message
+    if (outerContext.mounted) {
+      ScaffoldMessenger.of(outerContext).showSnackBar(
+        SnackBar(
+          content: Text('Could not refresh journey: ${e.toString()}'),
+          backgroundColor: Theme.of(outerContext).colorScheme.error,
+        ),
+      );
+    }
+    // Navigate with the original journey as fallback removed as per your code
+  }
+},
                                   child: cardView ? _buildCardView(context, journey, false) : _buildListView(context, journey),
                                 ),
                               ),
@@ -780,62 +802,73 @@ Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList)
       padding: isFirst ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
       child: GestureDetector(
         onTap: () async {
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text(
-                        'Refreshing journey information...',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-      
-              try {
-                // Refresh the journey using the service
-                final refreshedJourney = await widget.page.services
-                    .refreshJourneyByToken(journey.refreshToken);
-      
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Navigate to journey page with the refreshed journey
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => JourneyPageAndroid(
-                      JourneyPage(journey: refreshedJourney),
-                      journey: refreshedJourney,
-                    ),
-                  ),
-                ).then((_) {
-                  getSavedJourneys().then((_) {updateJourneys(isFirst);});
-                });
-              } catch (e) {
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Show error message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Could not refresh journey: ${e.toString()}'),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
-      
-                // Navigate with the original journey as fallback
-              }
-            },
+  // Capture the outer context
+  final outerContext = context;
+  
+  // Show loading indicator
+  showDialog(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Refreshing journey information...',
+            style: TextStyle(
+              color: Theme.of(dialogContext).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+  
+  try {
+    // Refresh the journey using the service
+    final refreshedJourney = await widget.page.services
+        .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
+    
+    // Close the loading dialog - use root navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Navigate to journey page with the refreshed journey - use tab navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: refreshedJourney),
+            journey: refreshedJourney,
+          ),
+        ),
+      ).then((_) {
+        getSavedJourneys().then((_) {
+          updateJourneys(true);
+        });
+      });
+    }
+  } catch (e) {
+    // Close the loading dialog
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Show error message
+    if (outerContext.mounted) {
+      ScaffoldMessenger.of(outerContext).showSnackBar(
+        SnackBar(
+          content: Text('Could not refresh journey: ${e.toString()}'),
+          backgroundColor: Theme.of(outerContext).colorScheme.error,
+        ),
+      );
+    }
+    // Navigate with the original journey as fallback removed as per your code
+  }
+},
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: isFirst ? 16 : 16.0, horizontal:16),
           child: IntrinsicHeight(
@@ -1075,62 +1108,73 @@ Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList)
       children: [
         ListTile(
           onTap: () async {
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => AlertDialog(
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text(
-                        'Refreshing journey information...',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-      
-              try {
-                // Refresh the journey using the service
-                final refreshedJourney = await widget.page.services
-                    .refreshJourneyByToken(journey.refreshToken);
-      
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Navigate to journey page with the refreshed journey
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => JourneyPageAndroid(
-                      JourneyPage(journey: refreshedJourney),
-                      journey: refreshedJourney,
-                    ),
-                  ),
-                ).then((_) {
-                  getSavedJourneys().then((_) {updateJourneys(false);});
-                });
-              } catch (e) {
-                // Close the loading dialog
-                Navigator.pop(context);
-      
-                // Show error message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Could not refresh journey: ${e.toString()}'),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
-      
-                // Navigate with the original journey as fallback
-              }
-            },
+  // Capture the outer context
+  final outerContext = context;
+  
+  // Show loading indicator
+  showDialog(
+    context: outerContext,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Refreshing journey information...',
+            style: TextStyle(
+              color: Theme.of(dialogContext).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+  
+  try {
+    // Refresh the journey using the service
+    final refreshedJourney = await widget.page.services
+        .refreshJourneyByToken(futureJourneys.first.journey.refreshToken);
+    
+    // Close the loading dialog - use root navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Navigate to journey page with the refreshed journey - use tab navigator
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: refreshedJourney),
+            journey: refreshedJourney,
+          ),
+        ),
+      ).then((_) {
+        getSavedJourneys().then((_) {
+          updateJourneys(true);
+        });
+      });
+    }
+  } catch (e) {
+    // Close the loading dialog
+    if (outerContext.mounted) {
+      Navigator.of(outerContext, rootNavigator: true).pop();
+    }
+    
+    // Show error message
+    if (outerContext.mounted) {
+      ScaffoldMessenger.of(outerContext).showSnackBar(
+        SnackBar(
+          content: Text('Could not refresh journey: ${e.toString()}'),
+          backgroundColor: Theme.of(outerContext).colorScheme.error,
+        ),
+      );
+    }
+    // Navigate with the original journey as fallback removed as per your code
+  }
+},
           leading: modeIcon,
           title: Text(
             '${journey.legs.first.origin.name} - ${journey.legs.last.destination.name}',
@@ -1294,3 +1338,4 @@ Widget _buildJourneysList(BuildContext context, List<Savedjourney> journeysList)
     pastJourneys.sort((a, b) => b.journey.departureTime.compareTo(a.journey.departureTime));
   }
 }
+ */

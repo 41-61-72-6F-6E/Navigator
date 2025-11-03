@@ -9,7 +9,6 @@ import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
-import 'package:navigator/pages/android/shared_bottom_navigation_android.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
@@ -341,7 +340,6 @@ Future<void> addLaterJourneys() async {
           ),
         ),
       ),
-            bottomNavigationBar: SharedBottomNavigation(),
     );
   }
 
@@ -874,69 +872,77 @@ Future<void> addLaterJourneys() async {
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: InkWell(
         onTap: () async {
-                // Show loading indicator
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => AlertDialog(
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          'Refreshing journey information...',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+  // Show loading indicator and capture its context
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (dialogContext) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Refreshing journey information...',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
+        ],
+      ),
+    ),
+  );
 
-                try {
-                  // Refresh the journey using the service
-                  final refreshedJourney = await widget.page.services
-                      .refreshJourney(j);
+  try {
+    // Refresh the journey using the service
+    final refreshedJourney = await widget.page.services
+        .refreshJourney(j);
 
-                  // Close the loading dialog
-                  Navigator.pop(context);
+    // Close the loading dialog - use the original context
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
 
-                  // Navigate to journey page with the refreshed journey
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => JourneyPageAndroid(
-                        JourneyPage(journey: refreshedJourney),
-                        journey: refreshedJourney,
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  // Close the loading dialog
-                  Navigator.pop(context);
+    // Navigate to journey page with the refreshed journey
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: refreshedJourney),
+            journey: refreshedJourney,
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    // Close the loading dialog
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
 
-                  // Show error message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Could not refresh journey: ${e.toString()}',
-                      ),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
+    // Show error message
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not refresh journey: ${e.toString()}',
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
 
-                  // Navigate with the original journey as fallback
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => JourneyPageAndroid(
-                        JourneyPage(journey: j),
-                        journey: j,
-                      ),
-                    ),
-                  );
-                }
-              },
+    // Navigate with the original journey as fallback
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: false).push(
+        MaterialPageRoute(
+          builder: (context) => JourneyPageAndroid(
+            JourneyPage(journey: j),
+            journey: j,
+          ),
+        ),
+      );
+    }
+  }
+},
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,

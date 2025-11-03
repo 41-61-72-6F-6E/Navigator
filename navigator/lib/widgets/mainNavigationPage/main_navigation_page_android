@@ -1,0 +1,32 @@
+import 'package:flutter/material.dart';
+
+class MainNavigationPageAndroid extends StatelessWidget {
+  final int currentIndex;
+  final Function(int) onDestinationSelected;
+  final List<Widget> children;
+
+  const MainNavigationPageAndroid({
+    super.key,
+    required this.currentIndex,
+    required this.onDestinationSelected,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigationBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: onDestinationSelected,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bookmark),
+            label: 'Saved',
+          ),
+        ],
+      );
+  }
+}
