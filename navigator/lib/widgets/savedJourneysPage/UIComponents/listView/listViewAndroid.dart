@@ -62,39 +62,41 @@ class ListViewAndroid extends StatelessWidget {
     }
 
     if (journey.legs.last.arrivalDelayMinutes != null) {
-      if (delayed) {
-        Color cD = journey.legs.first.departureDelayMinutes! <= 0 ? g : y;
-        cD = journey.legs.first.departureDelayMinutes! >= 15
-            ? Theme.of(context).colorScheme.error
-            : cD;
-        Color cA = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
-        cA = journey.legs.last.arrivalDelayMinutes! >= 15
-            ? Theme.of(context).colorScheme.error
-            : cA;
-        liveTimeTextP1 = Text(
-          SavedJourneyPageUIUtils.generateLiveTimeText(journey, true, false),
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cD),
-        );
-        liveTimeTextP2 = Text(
-          SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cA),
-        );
-      } else {
-        delayed = true;
-        Color c = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
-        c = journey.legs.last.arrivalDelayMinutes! >= 15
-            ? Theme.of(context).colorScheme.error
-            : c;
-        liveTimeTextP2 = Text(
-          SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
-          style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),
-        );
-        liveTimeTextP1 = Text(
-          '        ',
-          style: Theme.of(context).textTheme.bodyMedium,
-        );
-      }
-    }
+  if (delayed && journey.legs.first.departureDelayMinutes != null) {
+    // Both departure and arrival delays exist
+    Color cD = journey.legs.first.departureDelayMinutes! <= 0 ? g : y;
+    cD = journey.legs.first.departureDelayMinutes! >= 15
+        ? Theme.of(context).colorScheme.error
+        : cD;
+    Color cA = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+    cA = journey.legs.last.arrivalDelayMinutes! >= 15
+        ? Theme.of(context).colorScheme.error
+        : cA;
+    liveTimeTextP1 = Text(
+      SavedJourneyPageUIUtils.generateLiveTimeText(journey, true, false),
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cD),
+    );
+    liveTimeTextP2 = Text(
+      SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: cA),
+    );
+  } else {
+    // Only arrival delay exists
+    delayed = true;
+    Color c = journey.legs.last.arrivalDelayMinutes! <= 0 ? g : y;
+    c = journey.legs.last.arrivalDelayMinutes! >= 15
+        ? Theme.of(context).colorScheme.error
+        : c;
+    liveTimeTextP2 = Text(
+      SavedJourneyPageUIUtils.generateLiveTimeText(journey, false, true),
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(color: c),
+    );
+    liveTimeTextP1 = Text(
+      '        ',
+      style: Theme.of(context).textTheme.bodyMedium,
+    );
+  }
+}
 
     return Column(
       mainAxisSize: MainAxisSize.min,
