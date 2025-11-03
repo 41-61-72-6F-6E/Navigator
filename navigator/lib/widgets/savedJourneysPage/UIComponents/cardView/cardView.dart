@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/cardView/cardViewAndroid.dart';
-import 'package:navigator/widgets/savedJourneysPage/UIComponents/nextJourney/nextJourneyAndroid.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageUIState.dart';
 

@@ -3,7 +3,6 @@ import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refres
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPageUIUtils.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageUIState.dart';
-import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageView.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/cardView/cardView.dart';
 
 class nextJourneyAndroid extends StatelessWidget {

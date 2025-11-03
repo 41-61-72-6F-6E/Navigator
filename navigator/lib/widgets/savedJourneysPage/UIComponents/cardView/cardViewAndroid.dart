@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/models/journey.dart';
-import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
 import 'package:navigator/widgets/savedJourneysPage/UIComponents/savedJourneyPageUIUtils.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageModel.dart';
 import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageUIState.dart';
-import 'package:navigator/widgets/savedJourneysPage/savedJourneysPageView.dart';
 
 class cardViewAndroid extends StatelessWidget {
   final SavedJourneysPageUIState state;
