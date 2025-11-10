@@ -1,7 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:navigator/widgets/mainNavigationPage/main_navigation_page.dart';
-import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 
@@ -19,7 +18,7 @@ class MyApp extends StatelessWidget {
     brightness: Brightness.dark,
   );
 
-  final int design = 0; // 0 for Android, 1 for iOS
+  final int design = 0; // 0 for Android, 1 for iOS, 2 for Windows, 3 for MacOS, 4 for Linux
 
   /// Generates a proper ColorScheme with distinct surface container variants
   /// using the material_color_utilities package
