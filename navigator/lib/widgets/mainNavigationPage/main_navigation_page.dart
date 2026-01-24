@@ -54,6 +54,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   
   // Create the pages once and keep them alive
   late final List<Widget> _navigators;
+  final GlobalKey<SavedjourneysPageState> _savedJourneysKey = GlobalKey<SavedjourneysPageState>();
 
   @override
   void initState() {
@@ -67,10 +68,22 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       ),
       _buildNavigator(
         navigatorKey: _navService.savedNavigatorKey,
-        initialPage: SavedjourneysPage(design: widget.design),
+        initialPage: SavedjourneysPage(design: widget.design, key: _savedJourneysKey),
       ),
     ];
   }
+
+  void _onTabSelected(int index) {
+  _navService.setTab(index);  // Still change the tab
+  
+  // NEW: Check if SavedJourneys tab (index 1) was selected
+  if (index == 1) {
+    // Trigger reload on SavedJourneysPage
+    Future.microtask(() {
+      _savedJourneysKey.currentState?.reloadPage();
+    });
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -81,21 +94,24 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         Widget designImplementation;
     switch(widget.design) {
       case 0:
-        designImplementation = MainNavigationPageAndroid(currentIndex: currentIndex, onDestinationSelected: (index) {
-              _navService.setTab(index);
-            }, children: _navigators
+        designImplementation = MainNavigationPageAndroid(
+          currentIndex: currentIndex, 
+          onDestinationSelected: _onTabSelected,
+          children: _navigators
           );
         break;
       case 1:
-        designImplementation = MainNavigationPageIOS(currentIndex: currentIndex, onDestinationSelected: (index) {
-              _navService.setTab(index);
-            }, children: _navigators
+        designImplementation = MainNavigationPageIOS(
+          currentIndex: currentIndex, 
+          onDestinationSelected: _onTabSelected, 
+          children: _navigators
           );
           break;
       default:
-        designImplementation = MainNavigationPageAndroid(currentIndex: currentIndex, onDestinationSelected: (index) {
-              _navService.setTab(index);
-            }, children: _navigators
+        designImplementation = MainNavigationPageAndroid(
+          currentIndex: currentIndex, 
+          onDestinationSelected: _onTabSelected, 
+          children: _navigators
           );
     }
         return PopScope(

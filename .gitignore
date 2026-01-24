@@ -1,4 +1,5 @@
 .idea/
+local.properties
 
 #Environment Files
 .env
