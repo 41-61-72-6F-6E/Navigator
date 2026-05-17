@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/journey.dart';
-import 'package:navigator/pages/android/journey_page_android.dart';
+//import 'package:navigator/pages/android/journey_page_android.dart';
+import 'package:navigator/widgets/journeyPage/journeyPage.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUpAndroid.dart';
