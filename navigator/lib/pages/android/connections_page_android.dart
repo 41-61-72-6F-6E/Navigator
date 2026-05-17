@@ -9,6 +9,7 @@ import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/pages/android/journey_page_android.dart';
+import 'package:navigator/widgets/journeyPage/journeyPage.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
