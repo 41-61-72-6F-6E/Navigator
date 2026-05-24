@@ -64,7 +64,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     _navigators = [
       _buildNavigator(
         navigatorKey: _navService.homeNavigatorKey,
-        initialPage: HomePage(),
+        initialPage: HomePageIni(),
       ),
       _buildNavigator(
         navigatorKey: _navService.savedNavigatorKey,

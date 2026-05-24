@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 
-class HomePageIos extends HomePage
+class HomePageIos extends HomePageIni
 {
   HomePageIos(this.page, {super.key});
 
-  HomePage page;
+  HomePageIni page;
   
   @override
   Widget build(BuildContext context) {

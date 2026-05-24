@@ -7,10 +7,11 @@ import 'package:navigator/pages/macos/home_page_macos.dart';
 import 'package:navigator/pages/web/home_page_web.dart';
 import 'package:navigator/pages/windows/home_page_windows.dart';
 import 'package:navigator/services/servicesMiddle.dart';
+import 'package:navigator/widgets/homePage/homePage.dart';
 
-class HomePage extends StatelessWidget
+class HomePageIni extends StatelessWidget
 {
-  HomePage({super.key});
+  HomePageIni({super.key});
 
   //search Button
   bool ongoingJourney = false;
@@ -29,26 +30,6 @@ class HomePage extends StatelessWidget
   //map
   @override
   Widget build(BuildContext context) {
-    switch(design)
-    {
-      case 1:
-      return HomePageIos(this );
-
-      case 2:
-      return HomePageLinux(this );
-
-      case 3:
-      return HomePageMacos(this );
-
-      case 4:
-      return HomePageWeb(this );
-
-      case 5:
-      return HomePageWindows(this);
-
-      default:
-      return HomePageAndroid(this );
-    }
-    
+    return HomePage(  this);
   }
 }
