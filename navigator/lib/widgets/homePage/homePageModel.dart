@@ -2,164 +2,64 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/favouriteLocation.dart';
+import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/trip.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/widgets/homePage/homePageUIState.dart';
+import 'dart:math' as math;
 
-/// Model class for the Home page
-/// Handles all business logic and state management
 class HomePageModel extends ChangeNotifier {
   final HomePageIni page;
 
   HomePageUIState _state = const HomePageUIState();
   HomePageUIState get state => _state;
 
-  HomePageModel({required this.page});
+  final MapController mapController = MapController();
+  final StreamController<double?> alignPositionStreamController =
+      StreamController<double?>();
+  final TextEditingController searchController = TextEditingController();
+  Timer? _debounce;
+
+  HomePageModel({required this.page}) {
+    searchController.addListener(() {
+      _onSearchChanged(searchController.text.trim());
+    });
+  }
 
   void _updateState(HomePageUIState newState) {
     _state = newState;
     notifyListeners();
   }
 
-  // ─── Initialisation ───────────────────────────────────────────────────────
+  // ─── Init ────────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    await initiateLines();
-    await fetchStations();
-    await setInitialUserLocation();
+    initiateLines();
+    fetchStations();
+    // vsync provided by view via setInitialUserLocation(vsync)
     await initializeOngoingJourney();
     await getFaves();
   }
 
   Future<void> initializeOngoingJourney() async {
-    await updateOngoingJourney();
+    await _updateOngoingJourney();
     if (_state.ongoingJourney != null) {
-      initializeOngoingJourneyLineColorListeners();
-      await getOngoingJourneyTrips();
-      updateOngoingJourneyPolylines();
+      _initializeOngoingJourneyLineColorListener();
+      await _getOngoingJourneyTrips();
+      _updateOngoingJourneyPolylines();
     }
   }
 
-  // ─── Lines ────────────────────────────────────────────────────────────────
-
-  Future<void> initiateLines() async {
-    await page.service.refreshPolylines();
-    if (page.service.loadedSubwayLines.isNotEmpty) {
-      final allLines = page.service.loadedSubwayLines
-          .where((l) => l.points.isNotEmpty)
-          .map((l) => Polyline(
-                points: l.points,
-                strokeWidth: 2.0,
-                color: l.color,
-                borderColor: l.color.withAlpha(60),
-              ))
-          .toList();
-
-      _updateState(_state.copyWith(
-        lines: allLines,
-        subwayLines: _polylinesForType('subway'),
-        lightRailLines: _polylinesForType('light_rail'),
-        tramLines: _polylinesForType('tram'),
-        ferryLines: _polylinesForType('ferry', strokeWidth: 1.0),
-        funicularLines: _polylinesForType('funicular'),
-      ));
-    }
-  }
-
-  List<Polyline> _polylinesForType(String type, {double strokeWidth = 2.0}) {
-    return page.service.loadedSubwayLines
-        .where((l) => l.points.isNotEmpty && l.type == type)
-        .map((l) => Polyline(
-              points: l.points,
-              strokeWidth: strokeWidth,
-              color: l.color,
-              borderColor: l.color.withAlpha(60),
-            ))
-        .toList();
-  }
-
-  // ─── Stations ─────────────────────────────────────────────────────────────
-
-  Future<void> fetchStations() async {
-    final location = await page.service.getCurrentLocation();
-    if (location.latitude != 0 && location.longitude != 0) {
-      try {
-        final fetchedStations = await page.service.overpass.fetchStationsByType(
-          lat: location.latitude,
-          lon: location.longitude,
-          radius: 50000,
-        );
-        _updateState(_state.copyWith(stations: fetchedStations));
-      } catch (e) {
-        print('Error fetching stations: $e');
-      }
-    }
-  }
-
-  // ─── User location ────────────────────────────────────────────────────────
-
-  Future<void> setInitialUserLocation() async {
-    final loc = await page.service.getCurrentLocation();
-    if (loc.latitude != 0 && loc.longitude != 0) {
-      final newCenter = LatLng(loc.latitude, loc.longitude);
-      _updateState(_state.copyWith(
-        currentUserLocation: newCenter,
-        currentCenter: newCenter,
-        currentZoom: 12.0,
-      ));
-      await fetchStations();
-    }
-  }
-
-  void updateMapPosition(LatLng center, double zoom) {
-    _updateState(_state.copyWith(currentCenter: center, currentZoom: zoom));
-  }
-
-  // ─── Search ───────────────────────────────────────────────────────────────
-
-  Future<void> getSearchResults(String query) async {
-    final results = await page.getLocations(query);
-    _updateState(_state.copyWith(
-      searchResults: results,
-      lastSearchedText: query,
-    ));
-  }
-
-  void clearSearch() {
-    _updateState(_state.copyWith(
-      searchResults: [],
-      lastSearchedText: '',
-    ));
-  }
-
-  // ─── Ongoing journey ──────────────────────────────────────────────────────
-
-  Future<void> updateOngoingJourney() async {
-    List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
-    for (Savedjourney sj in journeys) {
-      if (DateTime.now().isAfter(sj.journey.plannedDepartureTime) &&
-          DateTime.now().isBefore(sj.journey.arrivalTime)) {
-        final refreshed = await page.service.refreshJourneyByToken(
-          sj.journey.refreshToken,
-        );
-        final newJ = Savedjourney(
-          journey: refreshed,
-          id: Localdatasaver.calculateJourneyID(sj.journey),
-        );
-        _updateState(_state.copyWith(ongoingJourney: newJ));
-        return;
-      }
-    }
-  }
-
-  Future<void> getOngoingJourneyTrips() async {
+  Future<void> _getOngoingJourneyTrips() async {
     if (_state.ongoingJourney == null) {
       print('DEBUG: No ongoing journey found');
       return;
@@ -176,8 +76,8 @@ class HomePageModel extends ChangeNotifier {
     ));
 
     Map<int, Trip> legIndexToTrip = {};
-    List<Leg> legs = _state.ongoingJourney!.journey.legs;
 
+    List<Leg> legs = _state.ongoingJourney!.journey.legs;
     for (int i = 0; i < legs.length; i++) {
       Leg leg = legs[i];
       print('DEBUG: Processing leg $i/${legs.length - 1}');
@@ -242,46 +142,76 @@ class HomePageModel extends ChangeNotifier {
       legIndexToTripMap: legIndexToTrip,
     ));
 
-    print(
-      'DEBUG: State updated - legIndexToTripMap has ${_state.legIndexToTripMap.length} entries',
-    );
+    print('DEBUG: State updated - legIndexToTripMap has ${_state.legIndexToTripMap.length} entries');
     _state.legIndexToTripMap.forEach((legIndex, trip) {
       print('DEBUG: Leg $legIndex -> Trip ${trip.id} with ${trip.stopovers.length} stopovers');
     });
   }
 
-  // ─── Ongoing journey line colours ─────────────────────────────────────────
-
-  void initializeOngoingJourneyLineColorListeners() {
+  void _initializeOngoingJourneyLineColorListener() {
     if (_state.ongoingJourney != null) {
       for (Leg l in _state.ongoingJourney!.journey.legs) {
-        l.lineColorNotifier.addListener(onLineColorChanged);
+        l.lineColorNotifier.addListener(_updateLineColor);
         l.initializeLineColor();
       }
     }
   }
 
-  void onLineColorChanged() {
-    updateOngoingJourneyPolylines();
+  void _updateLineColor() {
+    _updateOngoingJourneyPolylines();
   }
 
-  void disposeOngoingJourneyLineColorListeners() {
+  void _disposeOngoingJourneyLineColorListener() {
     if (_state.ongoingJourney != null) {
       for (Leg l in _state.ongoingJourney!.journey.legs) {
-        l.lineColorNotifier.removeListener(onLineColorChanged);
+        l.lineColorNotifier.removeListener(_updateLineColor);
       }
     }
   }
 
-  // ─── Ongoing journey polylines ────────────────────────────────────────────
+  Future<void> getFaves() async {
+    List<FavoriteLocation> f = await Localdatasaver.getFavouriteLocations();
+    _updateState(_state.copyWith(faves: f));
+  }
 
-  void updateOngoingJourneyPolylines() {
+  Future<void> saveFavoriteOrder(List<FavoriteLocation> reorderedFaves) async {
+    try {
+      for (FavoriteLocation fave in _state.faves) {
+        await Localdatasaver.removeFavouriteLocation(fave);
+      }
+      for (FavoriteLocation fave in reorderedFaves) {
+        await Localdatasaver.addLocationToFavourites(fave.location, fave.name);
+      }
+    } catch (e) {
+      print('Error saving favorite order: $e');
+    }
+  }
+
+  Future<void> _updateOngoingJourney() async {
+    List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
+    bool found = false;
+    for (Savedjourney sj in journeys) {
+      if (found) break;
+      if (DateTime.now().isAfter(sj.journey.plannedDepartureTime) &&
+          DateTime.now().isBefore(sj.journey.arrivalTime)) {
+        Savedjourney j = sj;
+        Savedjourney newJ = Savedjourney(
+          journey: await page.service.refreshJourneyByToken(j.journey.refreshToken),
+          id: Localdatasaver.calculateJourneyID(j.journey),
+        );
+        _updateState(_state.copyWith(ongoingJourney: newJ));
+        found = true;
+      }
+    }
+  }
+
+  void _updateOngoingJourneyPolylines() {
     _updateState(_state.copyWith(
-      ongoingJourneyPolylines: extractOngoingJourneyPolylines(),
+      ongoingJourneyPolylines: _extractOngoingJourneyPolylines(),
     ));
   }
 
-  List<LatLng> extractPointsFromLegPolyline(dynamic polylineData) {
+  List<LatLng> _extractPointsFromLegPolyline(dynamic polylineData) {
     List<LatLng> points = [];
     try {
       final Map<String, dynamic> geoJson = polylineData is Map<String, dynamic>
@@ -313,9 +243,10 @@ class HomePageModel extends ChangeNotifier {
     return points;
   }
 
-  List<Polyline> extractOngoingJourneyPolylines() {
+  List<Polyline> _extractOngoingJourneyPolylines() {
     if (_state.ongoingJourney == null) return [];
 
+    List<Polyline> polylines = [];
     final Map<String, Color> modeColors = {
       'train': const Color(0xFF9C27B0),
       'subway': const Color(0xFF0075BF),
@@ -326,9 +257,9 @@ class HomePageModel extends ChangeNotifier {
       'default': Colors.blue,
     };
 
-    List<Polyline> polylines = [];
-    // We need BuildContext for Theme — pass the cached color cache and current leg index from state.
-    // Color resolution that requires Theme is handled in the view; here we resolve what we can.
+    // We need a BuildContext for Theme — the view passes brightnessIsDark
+    // so we use a cached value set by the view via updateBrightness()
+    final bool isDark = _cachedIsDark;
 
     try {
       final colorCache = Map<String, Color>.from(_state.ongoingJourneyTransitLineColorCache);
@@ -337,10 +268,11 @@ class HomePageModel extends ChangeNotifier {
         final leg = _state.ongoingJourney!.journey.legs[i];
         if (leg.polyline == null) continue;
 
-        final List<LatLng> legPoints = extractPointsFromLegPolyline(leg.polyline);
+        final List<LatLng> legPoints = _extractPointsFromLegPolyline(leg.polyline);
         if (legPoints.isEmpty) continue;
 
         Color lineColor;
+
         if (leg.isWalking == true) {
           lineColor = modeColors['walking']!;
         } else {
@@ -355,12 +287,9 @@ class HomePageModel extends ChangeNotifier {
           if (!colorCache.containsKey(cacheKey)) {
             leg.lineColorNotifier.addListener(() {
               if (leg.lineColorNotifier.value != null) {
-                final updatedCache = Map<String, Color>.from(
-                    _state.ongoingJourneyTransitLineColorCache);
-                updatedCache[cacheKey] = leg.lineColorNotifier.value!;
-                _updateState(_state.copyWith(
-                  ongoingJourneyTransitLineColorCache: updatedCache,
-                ));
+                final updated = Map<String, Color>.from(_state.ongoingJourneyTransitLineColorCache);
+                updated[cacheKey] = leg.lineColorNotifier.value!;
+                _updateState(_state.copyWith(ongoingJourneyTransitLineColorCache: updated));
               }
             });
           }
@@ -372,18 +301,18 @@ class HomePageModel extends ChangeNotifier {
           strokeWidth = strokeWidth * 2;
         }
 
-        // Border colour is theme-dependent; the view will re-call this via
-        // updateOngoingJourneyPolylinesWithContext when it has a context.
-        polylines.add(Polyline(
-          borderColor: Colors.black, // default; overridden by view when context available
-          borderStrokeWidth: 5,
-          points: legPoints,
-          color: lineColor,
-          strokeWidth: strokeWidth,
-          pattern: leg.isWalking == true
-              ? StrokePattern.dotted()
-              : StrokePattern.solid(),
-        ));
+        polylines.add(
+          Polyline(
+            borderColor: isDark ? Colors.white : Colors.black,
+            borderStrokeWidth: 5,
+            points: legPoints,
+            color: lineColor,
+            strokeWidth: strokeWidth,
+            pattern: leg.isWalking == true
+                ? StrokePattern.dotted()
+                : StrokePattern.solid(),
+          ),
+        );
       }
     } catch (e) {
       print('Error creating ongoing journey polylines: $e');
@@ -392,91 +321,265 @@ class HomePageModel extends ChangeNotifier {
     return polylines;
   }
 
-  /// Called by the view (which has a BuildContext) so the border colour can
-  /// use the correct theme value.
-  List<Polyline> extractOngoingJourneyPolylinesWithContext(BuildContext context) {
-    final raw = extractOngoingJourneyPolylines();
-    final borderColor =
-        Theme.of(context).colorScheme.brightness == Brightness.dark
-            ? Colors.white
-            : Colors.black;
-    return raw
-        .map((p) => Polyline(
-              borderColor: borderColor,
-              borderStrokeWidth: p.borderStrokeWidth,
-              points: p.points,
-              color: p.color,
-              strokeWidth: p.strokeWidth,
-              pattern: p.pattern,
-            ))
-        .toList();
-  }
-
-  void updateOngoingJourneyPolylinesWithContext(BuildContext context) {
-    _updateState(_state.copyWith(
-      ongoingJourneyPolylines:
-          extractOngoingJourneyPolylinesWithContext(context),
-    ));
-  }
-
-  // ─── Current leg tracking ─────────────────────────────────────────────────
-
-  void updateCurrentLegIndex(int? index) {
-    _updateState(_state.copyWith(
-      ongoingJourneyCurrentLegIndex: index,
-      clearOngoingJourneyCurrentLegIndex: index == null,
-    ));
-  }
-
-  // ─── Favourites ───────────────────────────────────────────────────────────
-
-  Future<void> getFaves() async {
-    List<FavoriteLocation> f = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: f));
-  }
-
-  Future<void> saveFavoriteOrder(List<FavoriteLocation> reorderedFaves) async {
-    try {
-      for (FavoriteLocation fave in _state.faves) {
-        await Localdatasaver.removeFavouriteLocation(fave);
-      }
-      for (FavoriteLocation fave in reorderedFaves) {
-        await Localdatasaver.addLocationToFavourites(fave.location, fave.name);
-      }
-    } catch (e) {
-      print('Error saving favorite order: $e');
+  // Brightness cache so _extractOngoingJourneyPolylines doesn't need a context
+  bool _cachedIsDark = false;
+  void updateBrightness(bool isDark) {
+    if (_cachedIsDark != isDark) {
+      _cachedIsDark = isDark;
     }
   }
 
-  Future<void> renameFavorite(FavoriteLocation fave, String newName) async {
-    await Localdatasaver.removeFavouriteLocation(fave);
-    await Localdatasaver.addLocationToFavourites(fave.location, newName);
-    final updatedFaves = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: updatedFaves));
+  // ─── Map ─────────────────────────────────────────────────────────────────
+
+  void animatedMapMove(LatLng destLocation, double destZoom, TickerProvider vsync) {
+    final latTween = Tween<double>(
+      begin: _state.currentCenter.latitude,
+      end: destLocation.latitude,
+    );
+    final lngTween = Tween<double>(
+      begin: _state.currentCenter.longitude,
+      end: destLocation.longitude,
+    );
+    final zoomTween = Tween<double>(begin: _state.currentZoom, end: destZoom);
+
+    var controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: vsync,
+    );
+
+    Animation<double> animation = CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOut,
+    );
+
+    controller.addListener(() {
+      mapController.move(
+        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
+        zoomTween.evaluate(animation),
+      );
+    });
+
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        controller.dispose();
+      }
+    });
+
+    controller.forward();
   }
 
-  Future<void> removeFavorite(FavoriteLocation fave) async {
-    await Localdatasaver.removeFavouriteLocation(fave);
-    final updatedFaves = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: updatedFaves));
+  Future<void> setInitialUserLocation(TickerProvider vsync) async {
+    final loc = await page.service.getCurrentLocation();
+    if (loc.latitude != 0 && loc.longitude != 0) {
+      final newCenter = LatLng(loc.latitude, loc.longitude);
+      _updateState(_state.copyWith(currentUserLocation: newCenter));
+      animatedMapMove(newCenter, 12.0, vsync);
+      fetchStations();
+    }
   }
 
-  Future<void> addFavorite(Location location, String name) async {
-    await Localdatasaver.addLocationToFavourites(location, name);
-    final updatedFaves = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: updatedFaves));
-  }
-
-  // ─── UI toggles ───────────────────────────────────────────────────────────
-
-  void toggleIntermediateStops() {
+  void onPositionChanged(MapCamera camera, bool hasGesture) {
+    if (hasGesture && _state.alignPositionOnUpdate != AlignOnUpdate.never) {
+      _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.never));
+    }
     _updateState(_state.copyWith(
-      ongoingJourneyIntermediateStopsExpanded:
-          !_state.ongoingJourneyIntermediateStopsExpanded,
+      currentZoom: camera.zoom,
+      currentCenter: camera.center,
     ));
   }
 
-  void setMapOptions({
+  void recenterMap() {
+    _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.always));
+    alignPositionStreamController.add(18);
+  }
+
+  void focusMapOnLeg(Leg leg) {
+    print("Focusing map on leg: ${leg.origin.name} to ${leg.destination.name}");
+
+    final startLat = leg.origin.latitude;
+    final startLng = leg.origin.longitude;
+    final endLat = leg.destination.latitude;
+    final endLng = leg.destination.longitude;
+
+    final double north = math.max(startLat, endLat);
+    final double south = math.min(startLat, endLat);
+    final double east = math.max(startLng, endLng);
+    final double west = math.min(startLng, endLng);
+
+    final centerLat = (north + south) / 2;
+    final centerLng = (east + west) / 2;
+    final legCenter = LatLng(centerLat, centerLng);
+
+    final distanceKm = _calculateDistance(startLat, startLng, endLat, endLng);
+    final legZoom = _calculateLegZoom(distanceKm);
+
+    print("Leg center: $legCenter, zoom: $legZoom");
+
+    Future.microtask(() {
+      _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.never));
+      mapController.move(legCenter, legZoom);
+      _updateState(_state.copyWith(
+        currentCenter: legCenter,
+        currentZoom: legZoom,
+      ));
+    });
+  }
+
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double earthRadius = 6371;
+    final double dLat = _degreesToRadians(lat2 - lat1);
+    final double dLng = _degreesToRadians(lng2 - lng1);
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_degreesToRadians(lat1)) *
+            math.cos(_degreesToRadians(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _degreesToRadians(double degrees) => degrees * math.pi / 180;
+
+  double _calculateLegZoom(double distanceKm) {
+    if (distanceKm < 1) return 18.0;
+    if (distanceKm < 3) return 15.0;
+    if (distanceKm < 5) return 13.0;
+    if (distanceKm < 7) return 12.0;
+    if (distanceKm < 10) return 11.0;
+    if (distanceKm < 15) return 10.0;
+    if (distanceKm < 30) return 9.0;
+    if (distanceKm < 50) return 8.0;
+    if (distanceKm < 70) return 7.0;
+    if (distanceKm < 150) return 6.0;
+    if (distanceKm < 300) return 5.0;
+    return 4.0;
+  }
+
+  // ─── Stations & Lines ────────────────────────────────────────────────────
+
+  Future<void> initiateLines() async {
+    await page.service.refreshPolylines();
+    if (page.service.loadedSubwayLines.isNotEmpty) {
+      _updateState(_state.copyWith(
+        lines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty)
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 2.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+        subwayLines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty && l.type == 'subway')
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 2.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+        lightRailLines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty && l.type == 'light_rail')
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 2.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+        tramLines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty && l.type == 'tram')
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 2.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+        ferryLines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty && l.type == 'ferry')
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 1.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+        funicularLines: page.service.loadedSubwayLines
+            .where((l) => l.points.isNotEmpty && l.type == 'funicular')
+            .map((l) => Polyline(
+                  points: l.points,
+                  strokeWidth: 2.0,
+                  color: l.color,
+                  borderColor: l.color.withAlpha(60),
+                ))
+            .toList(),
+      ));
+    }
+  }
+
+  Future<void> fetchStations() async {
+    final location = await page.service.getCurrentLocation();
+    if (location.latitude != 0 && location.longitude != 0) {
+      try {
+        final fetchedStations = await page.service.overpass.fetchStationsByType(
+          lat: location.latitude,
+          lon: location.longitude,
+          radius: 50000,
+        );
+        _updateState(_state.copyWith(stations: fetchedStations));
+      } catch (e) {
+        print('Error fetching stations: $e');
+      }
+    }
+  }
+
+  // ─── Search ──────────────────────────────────────────────────────────────
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.isNotEmpty && query != _state.lastSearchedText) {
+        getSearchResults(query);
+        _updateState(_state.copyWith(lastSearchedText: query));
+      }
+    });
+  }
+
+  Future<void> getSearchResults(String query) async {
+    final results = await page.getLocations(query);
+    _updateState(_state.copyWith(searchResults: results));
+  }
+
+  void clearSearch() {
+    _updateState(_state.copyWith(searchResults: [], lastSearchedText: ''));
+    searchController.clear();
+  }
+
+  // ─── Favourites ──────────────────────────────────────────────────────────
+
+  Future<void> reloadFaves() async {
+    List<FavoriteLocation> updatedFaves = await Localdatasaver.getFavouriteLocations();
+    _updateState(_state.copyWith(faves: updatedFaves));
+  }
+
+  Future<void> addFavourite(Location location, String name) async {
+    await Localdatasaver.addLocationToFavourites(location, name);
+    await reloadFaves();
+  }
+
+  Future<void> removeFavourite(FavoriteLocation fave) async {
+    await Localdatasaver.removeFavouriteLocation(fave);
+    _updateState(_state.copyWith(
+      faves: List.from(_state.faves)..remove(fave),
+    ));
+  }
+
+  // ─── Map Options ─────────────────────────────────────────────────────────
+
+  void updateMapOptions({
     bool? showLightRail,
     bool? showStationLabelsLightRail,
     bool? showSubway,
@@ -502,9 +605,121 @@ class HomePageModel extends ChangeNotifier {
     ));
   }
 
+  // ─── Ongoing Journey UI ──────────────────────────────────────────────────
+
+  void toggleIntermediateStops() {
+    _updateState(_state.copyWith(
+      ongoingJourneyIntermediateStopsExpanded:
+          !_state.ongoingJourneyIntermediateStopsExpanded,
+    ));
+  }
+
+  void setOngoingJourneyCurrentLegIndex(int? index) {
+    if (index == null) {
+      _updateState(_state.copyWith(clearOngoingJourneyCurrentLegIndex: true));
+    } else {
+      _updateState(_state.copyWith(ongoingJourneyCurrentLegIndex: index));
+    }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  double getMinZoomForStation(Station station) {
+    if (station.national || station.nationalExpress) return 9.5;
+    if (station.regional || station.regionalExpress) return 10.5;
+    if (station.suburban || station.subway) return 12.5;
+    if (station.tram || station.ferry || station.bus || station.taxi) return 14.5;
+    return 16.5;
+  }
+
+  bool getShowLabels(String transportType) {
+    switch (transportType) {
+      case 'lightRail': return _state.showStationLabelsLightRail;
+      case 'subway': return _state.showStationLabelsSubway;
+      case 'tram': return _state.showStationLabelsTram;
+      case 'ferry': return _state.showStationLabelsFerry;
+      case 'funicular': return _state.showStationLabelsFunicular;
+      default: return false;
+    }
+  }
+
+  bool shouldShowStation(Station station, String transportType) {
+    if (station.national ||
+        station.nationalExpress ||
+        station.regional ||
+        station.regionalExpress) return true;
+    switch (transportType) {
+      case 'lightRail': return station.suburban;
+      case 'subway': return station.subway;
+      case 'tram': return station.tram;
+      case 'ferry': return station.ferry;
+      case 'funicular': return false;
+      default: return false;
+    }
+  }
+
+  String getLabelCollisionKey(Station station, double zoom) {
+    double gridSize = 100;
+    if (zoom > 16.5) gridSize = 150;
+    else if (zoom > 15.5) gridSize = 120;
+    final gridX = (station.latitude * 1000 / gridSize).round();
+    final gridY = (station.longitude * 1000 / gridSize).round();
+    return "$gridX:$gridY";
+  }
+
+  bool haveSameRil100Station(List<String> ril100Ids1, List<String> ril100Ids2) {
+    if (ril100Ids1.isEmpty || ril100Ids2.isEmpty) return false;
+    for (String id1 in ril100Ids1) {
+      for (String id2 in ril100Ids2) {
+        if (id1 == id2) return true;
+      }
+    }
+    return false;
+  }
+
+  String prettyPrintTime(DateTime time) {
+    String hour = '${time.hour}'.padLeft(2, '0');
+    String minute = '${time.minute}'.padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String generateStopoverTimeText(Stopover s) {
+    String timeText = '';
+    if (s.arrivalDateTime != null && s.departureDateTime != null) {
+      if (s.arrivalDateTime!.hour == s.departureDateTime!.hour &&
+          s.arrivalDateTime!.minute == s.departureDateTime!.minute) {
+        timeText = prettyPrintTime(s.arrivalDateTimeLocal!);
+      } else {
+        timeText =
+            '${prettyPrintTime(s.arrivalDateTimeLocal!)} - ${prettyPrintTime(s.departureDateTimeLocal!)}';
+      }
+    } else {
+      if (s.arrivalDateTime == null) {
+        timeText = prettyPrintTime(s.departureDateTimeLocal!);
+      } else {
+        timeText = prettyPrintTime(s.arrivalDateTimeLocal!);
+      }
+    }
+    return timeText;
+  }
+
+  IconData getTransportIcon(Station station) {
+    if (station.subway) return Icons.subway;
+    if (station.tram) return Icons.tram;
+    if (station.suburban) return Icons.directions_subway;
+    if (station.national || station.nationalExpress) return Icons.train;
+    if (station.regional || station.regionalExpress) return Icons.directions_railway;
+    if (station.ferry) return Icons.directions_ferry;
+    if (station.bus) return Icons.directions_bus;
+    return Icons.location_on;
+  }
+
   @override
   void dispose() {
-    disposeOngoingJourneyLineColorListeners();
+    _debounce?.cancel();
+    searchController.dispose();
+    alignPositionStreamController.close();
+    _disposeOngoingJourneyLineColorListener();
     if (_state.ongoingJourney != null) {
       for (final leg in _state.ongoingJourney!.journey.legs) {
         leg.lineColorNotifier.removeListener(() {});

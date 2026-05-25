@@ -1,25 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/favouriteLocation.dart';
-import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
-import 'package:navigator/models/savedJourney.dart';
-import 'package:navigator/models/stopover.dart';
-import 'package:navigator/pages/android/connections_page_android.dart';
-import 'package:navigator/pages/android/savedJourneys_page_android.dart';
-import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/trip.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:navigator/pages/android/connections_page_android.dart';
+import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/widgets/customWidgets/parent_child_checkboxes.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
-import 'package:navigator/widgets/homePage/homePageUIState.dart';
-import 'dart:math' as math;
 
 class HomePageView extends StatefulWidget {
   final HomePageModel model;
@@ -32,33 +27,18 @@ class HomePageView extends StatefulWidget {
 
 class _HomePageViewState extends State<HomePageView>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _controller = TextEditingController();
-  Timer? _debounce;
-  final MapController _mapController = MapController();
-
-  late AlignOnUpdate _alignPositionOnUpdate;
-  late final StreamController<double?> _alignPositionStreamController;
-
-  HomePageUIState get _state => widget.model.state;
 
   @override
   void initState() {
     super.initState();
-
-    _alignPositionOnUpdate = AlignOnUpdate.always;
-    _alignPositionStreamController = StreamController<double?>();
-
-    _controller.addListener(() {
-      _onSearchChanged(_controller.text.trim());
-    });
-
     widget.model.addListener(_onModelChanged);
 
-    widget.model.initialize().then((_) {
-      if (mounted && _state.currentUserLocation != null) {
-        animatedMapMove(_state.currentUserLocation!, 12.0);
-      }
-    });
+    // Kick off init that needs vsync (animatedMapMove)
+    widget.model.initiateLines();
+    widget.model.fetchStations();
+    widget.model.setInitialUserLocation(this);
+    widget.model.initializeOngoingJourney();
+    widget.model.getFaves();
   }
 
   void _onModelChanged() {
@@ -68,236 +48,50 @@ class _HomePageViewState extends State<HomePageView>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Re-build polylines once we have a context so border colour is correct.
-    if (_state.ongoingJourney != null) {
-      widget.model.updateOngoingJourneyPolylinesWithContext(context);
-    }
-  }
-
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (query.isNotEmpty && query != _state.lastSearchedText) {
-        widget.model.getSearchResults(query);
-      }
-    });
-  }
-
-  void animatedMapMove(LatLng destLocation, double destZoom) {
-    final latTween = Tween<double>(
-      begin: _state.currentCenter.latitude,
-      end: destLocation.latitude,
+    widget.model.updateBrightness(
+      Theme.of(context).colorScheme.brightness == Brightness.dark,
     );
-    final lngTween = Tween<double>(
-      begin: _state.currentCenter.longitude,
-      end: destLocation.longitude,
-    );
-    final zoomTween =
-        Tween<double>(begin: _state.currentZoom, end: destZoom);
-
-    var controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-
-    Animation<double> animation = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
-
-    controller.addListener(() {
-      _mapController.move(
-        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
-        zoomTween.evaluate(animation),
-      );
-    });
-
-    controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed ||
-          status == AnimationStatus.dismissed) {
-        controller.dispose();
-      }
-    });
-
-    controller.forward();
   }
 
-  void _focusMapOnLeg(Leg leg) {
-    if (!mounted) return;
-
-    print('Focusing map on leg: ${leg.origin.name} to ${leg.destination.name}');
-
-    final startLat = leg.origin.latitude;
-    final startLng = leg.origin.longitude;
-    final endLat = leg.destination.latitude;
-    final endLng = leg.destination.longitude;
-
-    final double north = math.max(startLat, endLat);
-    final double south = math.min(startLat, endLat);
-    final double east = math.max(startLng, endLng);
-    final double west = math.min(startLng, endLng);
-
-    final centerLat = (north + south) / 2;
-    final centerLng = (east + west) / 2;
-    final legCenter = LatLng(centerLat, centerLng);
-
-    final distanceKm =
-        _calculateDistance(startLat, startLng, endLat, endLng);
-    final legZoom = _calculateLegZoom(distanceKm);
-
-    print('Leg center: $legCenter, zoom: $legZoom');
-
-    Future.microtask(() {
-      setState(() {
-        _alignPositionOnUpdate = AlignOnUpdate.never;
-      });
-
-      _mapController.move(legCenter, legZoom);
-
-      widget.model.updateMapPosition(legCenter, legZoom);
-    });
+  @override
+  void dispose() {
+    widget.model.removeListener(_onModelChanged);
+    super.dispose();
   }
 
-  double _calculateDistance(
-      double lat1, double lng1, double lat2, double lng2) {
-    const double earthRadius = 6371;
-    final double dLat = _degreesToRadians(lat2 - lat1);
-    final double dLng = _degreesToRadians(lng2 - lng1);
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_degreesToRadians(lat1)) *
-            math.cos(_degreesToRadians(lat2)) *
-            math.sin(dLng / 2) *
-            math.sin(dLng / 2);
-    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return earthRadius * c;
-  }
-
-  double _degreesToRadians(double degrees) => degrees * math.pi / 180;
-
-  double _calculateLegZoom(double distanceKm) {
-    if (distanceKm < 1) return 18.0;
-    if (distanceKm < 3) return 15.0;
-    if (distanceKm < 5) return 13.0;
-    if (distanceKm < 7) return 12.0;
-    if (distanceKm < 10) return 11.0;
-    if (distanceKm < 15) return 10.0;
-    if (distanceKm < 30) return 9.0;
-    if (distanceKm < 50) return 8.0;
-    if (distanceKm < 70) return 7.0;
-    if (distanceKm < 150) return 6.0;
-    if (distanceKm < 300) return 5.0;
-    return 4.0;
-  }
-
-  // ─── Station helpers ──────────────────────────────────────────────────────
-
-  double _getMinZoomForStation(Station station) {
-    if (station.national || station.nationalExpress) return 9.5;
-    if (station.regional || station.regionalExpress) return 10.5;
-    if (station.suburban || station.subway) return 12.5;
-    if (station.tram || station.ferry || station.bus || station.taxi) return 14.5;
-    return 16.5;
-  }
-
-  bool _getShowLabels(String transportType) {
-    switch (transportType) {
-      case 'lightRail':
-        return _state.showStationLabelsLightRail;
-      case 'subway':
-        return _state.showStationLabelsSubway;
-      case 'tram':
-        return _state.showStationLabelsTram;
-      case 'ferry':
-        return _state.showStationLabelsFerry;
-      case 'funicular':
-        return _state.showStationLabelsFunicular;
-      default:
-        return false;
-    }
-  }
-
-  bool _shouldShowStation(Station station, String transportType) {
-    if (station.national ||
-        station.nationalExpress ||
-        station.regional ||
-        station.regionalExpress) {
-      return true;
-    }
-    switch (transportType) {
-      case 'lightRail':
-        return station.suburban;
-      case 'subway':
-        return station.subway;
-      case 'tram':
-        return station.tram;
-      case 'ferry':
-        return station.ferry;
-      case 'funicular':
-        return false;
-      default:
-        return false;
-    }
-  }
-
-  String _getLabelCollisionKey(Station station, double zoom) {
-    double gridSize = 100;
-    if (zoom > 16.5) {
-      gridSize = 150;
-    } else if (zoom > 15.5) {
-      gridSize = 120;
-    }
-    final gridX = (station.latitude * 1000 / gridSize).round();
-    final gridY = (station.longitude * 1000 / gridSize).round();
-    return '$gridX:$gridY';
-  }
-
-  IconData _getTransportIcon(Station station) {
-    if (station.subway) return Icons.subway;
-    if (station.tram) return Icons.tram;
-    if (station.suburban) return Icons.directions_subway;
-    if (station.national || station.nationalExpress) return Icons.train;
-    if (station.regional || station.regionalExpress)
-      return Icons.directions_railway;
-    if (station.ferry) return Icons.directions_ferry;
-    if (station.bus) return Icons.directions_bus;
-    return Icons.location_on;
-  }
+  // ─── Marker Layer ────────────────────────────────────────────────────────
 
   MarkerLayer? _createMarkerLayer(String transportType) {
-    if (!_getShowLabels(transportType) || _state.currentZoom <= 12) {
+    final state = widget.model.state;
+    if (!widget.model.getShowLabels(transportType) || state.currentZoom <= 12) {
       return null;
     }
-    final ColorScheme colors = Theme.of(context).colorScheme;
+    ColorScheme colors = Theme.of(context).colorScheme;
 
     return MarkerLayer(
-      markers: _state.stations
+      markers: state.stations
           .where((station) {
-            if (!_shouldShowStation(station, transportType)) return false;
-            final minZoom = _getMinZoomForStation(station);
-            if (_state.currentZoom < minZoom) return false;
+            if (!widget.model.shouldShowStation(station, transportType)) return false;
+            final minZoom = widget.model.getMinZoomForStation(station);
+            if (state.currentZoom < minZoom) return false;
             return true;
           })
           .fold<Map<String, Station>>({}, (map, station) {
-            if (_state.currentZoom <= 15.5 && !map.containsKey(station.name)) {
+            if (state.currentZoom <= 15.5 && !map.containsKey(station.name)) {
               map[station.name] = station;
-            } else if (_state.currentZoom > 15.5) {
-              map['${station.name}_${station.latitude}_${station.longitude}'] =
-                  station;
+            } else if (state.currentZoom > 15.5) {
+              map["${station.name}_${station.latitude}_${station.longitude}"] = station;
             }
             return map;
           })
           .values
           .fold<Map<String, List<Station>>>({}, (collisionMap, station) {
-            if (_state.currentZoom > 16.5) {
-              final uniqueKey =
-                  '${station.name}_${station.latitude}_${station.longitude}';
+            if (state.currentZoom > 16.5) {
+              final uniqueKey = "${station.name}_${station.latitude}_${station.longitude}";
               collisionMap[uniqueKey] = [station];
             } else {
-              final key = _getLabelCollisionKey(station, _state.currentZoom);
-              if (!collisionMap.containsKey(key)) {
-                collisionMap[key] = [];
-              }
+              final key = widget.model.getLabelCollisionKey(station, state.currentZoom);
+              if (!collisionMap.containsKey(key)) collisionMap[key] = [];
               collisionMap[key]!.add(station);
             }
             return collisionMap;
@@ -305,11 +99,9 @@ class _HomePageViewState extends State<HomePageView>
           .entries
           .expand((entry) {
             final stations = entry.value;
-            if (stations.length > 1 && _state.currentZoom <= 17) {
+            if (stations.length > 1 && state.currentZoom <= 17) {
               final uniqueByName = <String, Station>{};
-              for (final station in stations) {
-                uniqueByName[station.name] = station;
-              }
+              for (final s in stations) uniqueByName[s.name] = s;
               return uniqueByName.values;
             }
             return stations;
@@ -322,10 +114,9 @@ class _HomePageViewState extends State<HomePageView>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_state.currentZoom > 15.5)
+                  if (state.currentZoom > 15.5)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: colors.surfaceContainer,
                         borderRadius: BorderRadius.circular(8),
@@ -348,7 +139,7 @@ class _HomePageViewState extends State<HomePageView>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  if (_state.currentZoom > 14.5) const SizedBox(height: 2),
+                  if (state.currentZoom > 14.5) const SizedBox(height: 2),
                   Container(
                     decoration: BoxDecoration(
                       color: colors.primary,
@@ -361,11 +152,11 @@ class _HomePageViewState extends State<HomePageView>
                         ),
                       ],
                     ),
-                    padding: EdgeInsets.all(_state.currentZoom > 14 ? 4 : 3),
+                    padding: EdgeInsets.all(state.currentZoom > 14 ? 4 : 3),
                     child: Icon(
-                      _getTransportIcon(station),
+                      widget.model.getTransportIcon(station),
                       color: colors.onPrimary,
-                      size: _state.currentZoom > 14 ? 14 : 12,
+                      size: state.currentZoom > 14 ? 14 : 12,
                     ),
                   ),
                 ],
@@ -377,53 +168,45 @@ class _HomePageViewState extends State<HomePageView>
   }
 
   List<MarkerLayer> _buildMarkerLayers() {
+    final state = widget.model.state;
     final layers = <MarkerLayer>[];
-    if (_state.showLightRail) {
+    if (state.showLightRail) {
       final layer = _createMarkerLayer('lightRail');
       if (layer != null) layers.add(layer);
     }
-    if (_state.showSubway) {
+    if (state.showSubway) {
       final layer = _createMarkerLayer('subway');
       if (layer != null) layers.add(layer);
     }
-    if (_state.showTram) {
+    if (state.showTram) {
       final layer = _createMarkerLayer('tram');
       if (layer != null) layers.add(layer);
     }
-    if (_state.showFerry) {
+    if (state.showFerry) {
       final layer = _createMarkerLayer('ferry');
       if (layer != null) layers.add(layer);
     }
-    if (_state.showFunicular) {
+    if (state.showFunicular) {
       final layer = _createMarkerLayer('funicular');
       if (layer != null) layers.add(layer);
     }
     return layers;
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _controller.dispose();
-    _alignPositionStreamController.close();
-    widget.model.removeListener(_onModelChanged);
-    super.dispose();
-  }
-
-  // ─── Build ────────────────────────────────────────────────────────────────
+  // ─── Build ───────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final state = widget.model.state;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final hasResults = _state.searchResults.isNotEmpty;
+    final hasResults = state.searchResults.isNotEmpty;
     const bottomSheetHeight = 96.0;
 
     return WillPopScope(
       onWillPop: () async {
         if (hasResults) {
           widget.model.clearSearch();
-          _controller.clear();
           return false;
         }
         return true;
@@ -439,21 +222,18 @@ class _HomePageViewState extends State<HomePageView>
                   begin: const Offset(0.0, 1.0),
                   end: Offset.zero,
                 ).animate(anim);
-                return SlideTransition(
-                    position: offsetAnimation, child: child);
+                return SlideTransition(position: offsetAnimation, child: child);
               },
               child: hasResults
                   ? SafeArea(
                       child: ListView.builder(
                         key: const ValueKey('list'),
-                        padding: const EdgeInsets.fromLTRB(
-                            16, 8, 16, bottomSheetHeight + 16),
-                        itemCount: _state.searchResults.length,
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, bottomSheetHeight + 16),
+                        itemCount: state.searchResults.length,
                         itemBuilder: (context, i) {
-                          final r = _state.searchResults[i];
+                          final r = state.searchResults[i];
                           return Padding(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
                             child: r is Station
                                 ? _stationResult(context, r)
                                 : _locationResult(context, r),
@@ -462,11 +242,10 @@ class _HomePageViewState extends State<HomePageView>
                       ),
                     )
                   : FlutterMap(
-                      mapController: _mapController,
+                      mapController: widget.model.mapController,
                       options: MapOptions(
-                        initialCenter: _state.currentUserLocation ??
-                            _state.currentCenter,
-                        initialZoom: _state.currentZoom,
+                        initialCenter: state.currentUserLocation ?? state.currentCenter,
+                        initialZoom: state.currentZoom,
                         minZoom: 3.0,
                         maxZoom: 18.0,
                         interactionOptions: InteractionOptions(
@@ -479,17 +258,7 @@ class _HomePageViewState extends State<HomePageView>
                           pinchZoomThreshold: 0.5,
                           pinchMoveThreshold: 40.0,
                         ),
-                        onPositionChanged:
-                            (MapCamera camera, bool hasGesture) {
-                          if (hasGesture &&
-                              _alignPositionOnUpdate !=
-                                  AlignOnUpdate.never) {
-                            setState(() => _alignPositionOnUpdate =
-                                AlignOnUpdate.never);
-                          }
-                          widget.model.updateMapPosition(
-                              camera.center, camera.zoom);
-                        },
+                        onPositionChanged: widget.model.onPositionChanged,
                       ),
                       children: [
                         TileLayer(
@@ -497,34 +266,22 @@ class _HomePageViewState extends State<HomePageView>
                               'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.example.app',
                         ),
-                        if (_state.showSubway)
-                          PolylineLayer(polylines: _state.subwayLines),
-                        if (_state.showLightRail)
-                          PolylineLayer(polylines: _state.lightRailLines),
-                        if (_state.showTram)
-                          PolylineLayer(polylines: _state.tramLines),
-                        if (_state.showFerry)
-                          PolylineLayer(polylines: _state.ferryLines),
-                        if (_state.showFunicular)
-                          PolylineLayer(polylines: _state.funicularLines),
-                        if (_state.ongoingJourney != null &&
-                            _state.ongoingJourneyPolylines.isNotEmpty)
-                          PolylineLayer(
-                              polylines: _state.ongoingJourneyPolylines),
+                        if (state.showSubway) PolylineLayer(polylines: state.subwayLines),
+                        if (state.showLightRail) PolylineLayer(polylines: state.lightRailLines),
+                        if (state.showTram) PolylineLayer(polylines: state.tramLines),
+                        if (state.showFerry) PolylineLayer(polylines: state.ferryLines),
+                        if (state.showFunicular) PolylineLayer(polylines: state.funicularLines),
+                        if (state.ongoingJourney != null && state.ongoingJourneyPolylines.isNotEmpty)
+                          PolylineLayer(polylines: state.ongoingJourneyPolylines),
                         CurrentLocationLayer(
-                          alignPositionStream:
-                              _alignPositionStreamController.stream,
-                          alignPositionOnUpdate: _alignPositionOnUpdate,
+                          alignPositionStream: widget.model.alignPositionStreamController.stream,
+                          alignPositionOnUpdate: state.alignPositionOnUpdate,
                           style: LocationMarkerStyle(
-                            marker: DefaultLocationMarker(
-                              color: Colors.lightBlue[800]!,
-                            ),
+                            marker: DefaultLocationMarker(color: Colors.lightBlue[800]!),
                             markerSize: const Size(20, 20),
                             markerDirection: MarkerDirection.heading,
-                            accuracyCircleColor:
-                                Colors.blue[200]!.withAlpha(0x20),
-                            headingSectorColor:
-                                Colors.blue[400]!.withAlpha(0x90),
+                            accuracyCircleColor: Colors.blue[200]!.withAlpha(0x20),
+                            headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
                             headingSectorRadius: 60,
                           ),
                         ),
@@ -532,15 +289,10 @@ class _HomePageViewState extends State<HomePageView>
                         Align(
                           alignment: Alignment.bottomRight,
                           child: Padding(
-                            padding: const EdgeInsets.only(
-                                right: 20.0, bottom: 160.0),
+                            padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
                             child: FloatingActionButton(
                               shape: const CircleBorder(),
-                              onPressed: () {
-                                setState(() => _alignPositionOnUpdate =
-                                    AlignOnUpdate.always);
-                                _alignPositionStreamController.add(18);
-                              },
+                              onPressed: widget.model.recenterMap,
                               child: Icon(
                                 Icons.my_location,
                                 color: colors.tertiary.withValues(alpha: 0.5),
@@ -551,7 +303,7 @@ class _HomePageViewState extends State<HomePageView>
                       ],
                     ),
             ),
-            if (_state.ongoingJourney != null)
+            if (state.ongoingJourney != null)
               Positioned(
                 top: 0,
                 left: 0,
@@ -564,8 +316,7 @@ class _HomePageViewState extends State<HomePageView>
           color: colors.surfaceContainer,
           elevation: 8,
           shape: const RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -576,18 +327,15 @@ class _HomePageViewState extends State<HomePageView>
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: _controller,
-                        onChanged: _onSearchChanged,
-                        style:
-                            TextStyle(color: colors.onPrimaryContainer),
+                        controller: widget.model.searchController,
+                        onChanged: (v) {},
+                        style: TextStyle(color: colors.onPrimaryContainer),
                         decoration: InputDecoration(
                           hintText: 'Where do you want to go?',
-                          prefixIcon: Icon(Icons.location_pin,
-                              color: colors.primary),
+                          prefixIcon: Icon(Icons.location_pin, color: colors.primary),
                           filled: true,
                           fillColor: colors.primaryContainer,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
@@ -612,12 +360,12 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  // ─── Ongoing journey widget ───────────────────────────────────────────────
+  // ─── Ongoing Journey ─────────────────────────────────────────────────────
 
   Widget _buildOngoingJourney(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
-    final TextTheme texts = Theme.of(context).textTheme;
-
+    final state = widget.model.state;
+    ColorScheme colors = Theme.of(context).colorScheme;
+    TextTheme texts = Theme.of(context).textTheme;
     int situationUpperBox = 0;
     int situationLowerBox = 0;
     bool isWalkingInterchange = false;
@@ -625,8 +373,8 @@ class _HomePageViewState extends State<HomePageView>
     int leg = 0;
     bool afterArrival = false;
 
-    for (int i = 0; i < _state.ongoingJourney!.journey.legs.length; i++) {
-      Leg l = _state.ongoingJourney!.journey.legs[i];
+    for (int i = 0; i < state.ongoingJourney!.journey.legs.length; i++) {
+      final l = state.ongoingJourney!.journey.legs[i];
       if (DateTime.now().isAfter(l.plannedDepartureDateTime)) {
         afterArrival = false;
         leg = i;
@@ -636,20 +384,19 @@ class _HomePageViewState extends State<HomePageView>
       }
     }
 
-    widget.model.updateCurrentLegIndex(leg);
+    widget.model.setOngoingJourneyCurrentLegIndex(leg);
 
     if (!afterArrival) {
-      if (_state.ongoingJourney!.journey.legs[leg].isWalking == true) {
+      if (state.ongoingJourney!.journey.legs[leg].isWalking == true) {
         situationUpperBox = 2;
-        situationLowerBox =
-            leg == _state.ongoingJourney!.journey.legs.length - 1 ? 3 : 0;
+        situationLowerBox = leg == state.ongoingJourney!.journey.legs.length - 1 ? 3 : 0;
       } else {
         situationUpperBox = 1;
         situationLowerBox = 1;
       }
       isWalkingInterchange = false;
     } else {
-      if (leg == _state.ongoingJourney!.journey.legs.length - 1) {
+      if (leg == state.ongoingJourney!.journey.legs.length - 1) {
         situationUpperBox = 0;
         situationLowerBox = 3;
         isWalkingInterchange = false;
@@ -657,22 +404,18 @@ class _HomePageViewState extends State<HomePageView>
         situationUpperBox = 0;
 
         int nextActualLegIndex = leg + 1;
-        while (nextActualLegIndex <
-            _state.ongoingJourney!.journey.legs.length) {
-          final nextLeg =
-              _state.ongoingJourney!.journey.legs[nextActualLegIndex];
+        while (nextActualLegIndex < state.ongoingJourney!.journey.legs.length) {
+          final nextLeg = state.ongoingJourney!.journey.legs[nextActualLegIndex];
           bool isSameStationInterchange =
               nextLeg.origin.id == nextLeg.destination.id &&
-                  nextLeg.origin.name == nextLeg.destination.name;
+              nextLeg.origin.name == nextLeg.destination.name;
           if (!isSameStationInterchange) break;
           nextActualLegIndex++;
         }
 
-        if (nextActualLegIndex <
-            _state.ongoingJourney!.journey.legs.length) {
-          final currentLeg = _state.ongoingJourney!.journey.legs[leg];
-          final nextLeg =
-              _state.ongoingJourney!.journey.legs[nextActualLegIndex];
+        if (nextActualLegIndex < state.ongoingJourney!.journey.legs.length) {
+          final currentLeg = state.ongoingJourney!.journey.legs[leg];
+          final nextLeg = state.ongoingJourney!.journey.legs[nextActualLegIndex];
 
           isWalkingInterchange = false;
 
@@ -680,12 +423,9 @@ class _HomePageViewState extends State<HomePageView>
             for (int interchangeIndex = leg + 1;
                 interchangeIndex < nextActualLegIndex;
                 interchangeIndex++) {
-              final interchangeLeg =
-                  _state.ongoingJourney!.journey.legs[interchangeIndex];
-              if (interchangeLeg.origin.id ==
-                      interchangeLeg.destination.id &&
-                  interchangeLeg.origin.name ==
-                      interchangeLeg.destination.name) {
+              final interchangeLeg = state.ongoingJourney!.journey.legs[interchangeIndex];
+              if (interchangeLeg.origin.id == interchangeLeg.destination.id &&
+                  interchangeLeg.origin.name == interchangeLeg.destination.name) {
                 isWalkingInterchange = true;
                 break;
               }
@@ -695,19 +435,15 @@ class _HomePageViewState extends State<HomePageView>
           if (nextLeg.isWalking == true &&
               nextLeg.origin.ril100Ids.isNotEmpty &&
               nextLeg.destination.ril100Ids.isNotEmpty &&
-              _haveSameRil100Station(
-                nextLeg.origin.ril100Ids,
-                nextLeg.destination.ril100Ids,
-              )) {
+              widget.model.haveSameRil100Station(
+                  nextLeg.origin.ril100Ids, nextLeg.destination.ril100Ids)) {
             isWalkingInterchange = true;
           }
 
           if (currentLeg.destination.ril100Ids.isNotEmpty &&
               nextLeg.origin.ril100Ids.isNotEmpty &&
-              _haveSameRil100Station(
-                currentLeg.destination.ril100Ids,
-                nextLeg.origin.ril100Ids,
-              )) {
+              widget.model.haveSameRil100Station(
+                  currentLeg.destination.ril100Ids, nextLeg.origin.ril100Ids)) {
             isWalkingInterchange = true;
           }
 
@@ -726,7 +462,6 @@ class _HomePageViewState extends State<HomePageView>
     Widget upperBox = Container();
     Widget lowerBox = Container();
 
-    // ── Upper box ──
     switch (situationUpperBox) {
       case 0:
         upperBox = Container(
@@ -736,22 +471,19 @@ class _HomePageViewState extends State<HomePageView>
             color: colors.primary,
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
             child: Column(
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text('at station',
-                      style: texts.bodyMedium!
-                          .copyWith(color: colors.onPrimary)),
+                      style: texts.bodyMedium!.copyWith(color: colors.onPrimary)),
                 ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    _state.ongoingJourney!.journey.legs[leg].destination.name,
-                    style: texts.headlineMedium!
-                        .copyWith(color: colors.onPrimary),
+                    state.ongoingJourney!.journey.legs[leg].destination.name,
+                    style: texts.headlineMedium!.copyWith(color: colors.onPrimary),
                   ),
                 ),
               ],
@@ -759,17 +491,15 @@ class _HomePageViewState extends State<HomePageView>
           ),
         );
         break;
-
       case 1:
         Color lineColor =
-            _state.ongoingJourney!.journey.legs[leg].lineColorNotifier.value ??
-                Colors.grey;
+            state.ongoingJourney!.journey.legs[leg].lineColorNotifier.value ?? Colors.grey;
         Color onLineColor =
             ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark
                 ? Colors.white
                 : Colors.black;
 
-        Trip? t = _state.legIndexToTripMap[leg];
+        Trip? t = state.legIndexToTripMap[leg];
 
         List<Stopover> stopsBeforeCurrentPosition = [];
         List<Stopover> stopsBeforeInterchange = [];
@@ -779,8 +509,7 @@ class _HomePageViewState extends State<HomePageView>
           for (Stopover s in t.stopovers) {
             DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
             DateTime now = DateTime.now();
-            DateTime legArrival =
-                _state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
+            DateTime legArrival = state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
             if (arrivalTime != null) {
               if (arrivalTime.isBefore(now)) {
                 stopsBeforeCurrentPosition.add(s);
@@ -799,67 +528,53 @@ class _HomePageViewState extends State<HomePageView>
             color: colors.primary,
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'on the ${_state.ongoingJourney!.journey.legs[leg].product}',
-                    style: texts.bodyMedium!
-                        .copyWith(color: colors.onPrimary),
+                    'on the ${state.ongoingJourney!.journey.legs[leg].product}',
+                    style: texts.bodyMedium!.copyWith(color: colors.onPrimary),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    if (_state.ongoingJourney!.journey.legs[leg].lineName !=
-                        null)
+                    if (state.ongoingJourney!.journey.legs[leg].lineName != null)
                       Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
                           color: lineColor,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 4, horizontal: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                           child: Text(
-                            _state.ongoingJourney!.journey.legs[leg].lineName!,
-                            style: texts.labelMedium!
-                                .copyWith(color: onLineColor),
+                            state.ongoingJourney!.journey.legs[leg].lineName!,
+                            style: texts.labelMedium!.copyWith(color: onLineColor),
                           ),
                         ),
                       ),
-                    if (_state.ongoingJourney!.journey.legs[leg].direction !=
-                        null)
+                    if (state.ongoingJourney!.journey.legs[leg].direction != null)
                       const SizedBox(width: 8),
-                    if (_state.ongoingJourney!.journey.legs[leg].direction !=
-                        null)
+                    if (state.ongoingJourney!.journey.legs[leg].direction != null)
                       Text(
-                        _state.ongoingJourney!.journey.legs[leg].direction!,
-                        style: texts.titleLarge!
-                            .copyWith(color: colors.onPrimary),
+                        state.ongoingJourney!.journey.legs[leg].direction!,
+                        style: texts.titleLarge!.copyWith(color: colors.onPrimary),
                       ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 if (t == null)
-                  Text(
-                    'Loading trip details...',
-                    style: texts.bodyMedium!
-                        .copyWith(color: colors.onPrimary),
-                  )
+                  Text('Loading trip details...',
+                      style: texts.bodyMedium!.copyWith(color: colors.onPrimary))
                 else if (t.stopovers.isEmpty)
-                  Text(
-                    'No stops on this line',
-                    style: texts.bodyMedium!
-                        .copyWith(color: colors.onPrimary),
-                  )
+                  Text('No stops on this line',
+                      style: texts.bodyMedium!.copyWith(color: colors.onPrimary))
                 else
                   GestureDetector(
-                    onTap: () => widget.model.toggleIntermediateStops(),
+                    onTap: widget.model.toggleIntermediateStops,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       curve: Curves.easeInOutCubic,
@@ -871,15 +586,12 @@ class _HomePageViewState extends State<HomePageView>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 8.0, horizontal: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
                             child: Row(
                               children: [
-                                Text(
-                                  'Show Intermediate Stops',
-                                  style: texts.titleMedium!.copyWith(
-                                      color: colors.onPrimaryContainer),
-                                ),
+                                Text('Show Intermediate Stops',
+                                    style: texts.titleMedium!
+                                        .copyWith(color: colors.onPrimaryContainer)),
                                 const Spacer(),
                                 Container(
                                   decoration: BoxDecoration(
@@ -887,27 +599,20 @@ class _HomePageViewState extends State<HomePageView>
                                     borderRadius: BorderRadius.circular(24),
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        8, 2, 4, 2),
+                                    padding: const EdgeInsets.fromLTRB(8, 2, 4, 2),
                                     child: Row(
                                       children: [
-                                        Text(
-                                          '${stopsBeforeInterchange.length}',
-                                          style: texts.labelMedium!.copyWith(
-                                              color: colors.onPrimary),
-                                        ),
+                                        Text('${stopsBeforeInterchange.length}',
+                                            style: texts.labelMedium!
+                                                .copyWith(color: colors.onPrimary)),
                                         AnimatedRotation(
-                                          turns: _state
-                                                  .ongoingJourneyIntermediateStopsExpanded
+                                          turns: state.ongoingJourneyIntermediateStopsExpanded
                                               ? 0.5
                                               : 0,
-                                          duration: const Duration(
-                                              milliseconds: 300),
+                                          duration: const Duration(milliseconds: 300),
                                           curve: Curves.easeInOutCubic,
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down,
-                                            color: colors.onPrimary,
-                                          ),
+                                          child: Icon(Icons.keyboard_arrow_down,
+                                              color: colors.onPrimary),
                                         ),
                                       ],
                                     ),
@@ -924,80 +629,52 @@ class _HomePageViewState extends State<HomePageView>
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeInOutCubic,
-                              height: _state
-                                      .ongoingJourneyIntermediateStopsExpanded
-                                  ? 300.0
-                                  : 0,
-                              child: _state
-                                      .ongoingJourneyIntermediateStopsExpanded
+                              height: state.ongoingJourneyIntermediateStopsExpanded ? 300.0 : 0,
+                              child: state.ongoingJourneyIntermediateStopsExpanded
                                   ? SingleChildScrollView(
-                                      physics:
-                                          const AlwaysScrollableScrollPhysics(),
+                                      physics: const AlwaysScrollableScrollPhysics(),
                                       padding: const EdgeInsets.only(
-                                          left: 8.0,
-                                          right: 8.0,
-                                          bottom: 16.0),
+                                          left: 8.0, right: 8.0, bottom: 16.0),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          ...stopsBeforeInterchange
-                                              .map((s) {
+                                          ...stopsBeforeInterchange.map((s) {
                                             String timeText =
-                                                _generateStopoverTimeText(s);
+                                                widget.model.generateStopoverTimeText(s);
                                             return Padding(
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 4.0),
+                                                  const EdgeInsets.symmetric(vertical: 4.0),
                                               child: FilledButton(
-                                                style:
-                                                    FilledButton.styleFrom(
-                                                  backgroundColor: colors
-                                                      .tertiaryContainer,
-                                                ),
+                                                style: FilledButton.styleFrom(
+                                                    backgroundColor: colors.tertiaryContainer),
                                                 onPressed: () {},
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
+                                                      MainAxisAlignment.spaceBetween,
                                                   children: [
                                                     Expanded(
-                                                      child: Text(
-                                                        s.station.name,
-                                                        style: texts
-                                                            .titleMedium!
-                                                            .copyWith(
-                                                                color: colors
-                                                                    .onTertiaryContainer),
-                                                      ),
+                                                      child: Text(s.station.name,
+                                                          style: texts.titleMedium!.copyWith(
+                                                              color:
+                                                                  colors.onTertiaryContainer)),
                                                     ),
                                                     Padding(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                              vertical: 4.0,
-                                                              horizontal: 8),
+                                                      padding: const EdgeInsets.symmetric(
+                                                          vertical: 4.0, horizontal: 8),
                                                       child: Column(
                                                         crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
+                                                            CrossAxisAlignment.center,
                                                         children: [
-                                                          Text(
-                                                            timeText,
-                                                            style: texts
-                                                                .titleMedium!
-                                                                .copyWith(
-                                                                    color: colors
-                                                                        .onTertiaryContainer),
-                                                          ),
-                                                          if (s.arrivalPlatform !=
-                                                              null)
+                                                          Text(timeText,
+                                                              style: texts.titleMedium!.copyWith(
+                                                                  color: colors
+                                                                      .onTertiaryContainer)),
+                                                          if (s.arrivalPlatform != null)
                                                             Text(
                                                               'Platform ${s.arrivalPlatform!}',
-                                                              style: texts
-                                                                  .bodyMedium!
-                                                                  .copyWith(
-                                                                      color: colors
-                                                                          .onTertiaryContainer),
+                                                              style: texts.bodyMedium!.copyWith(
+                                                                  color: colors
+                                                                      .onTertiaryContainer),
                                                             ),
                                                         ],
                                                       ),
@@ -1007,69 +684,46 @@ class _HomePageViewState extends State<HomePageView>
                                               ),
                                             );
                                           }).toList(),
-                                          if (stopsAfterInterchange
-                                              .isNotEmpty)
+                                          if (stopsAfterInterchange.isNotEmpty)
                                             Padding(
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 4.0),
+                                                  const EdgeInsets.symmetric(vertical: 4.0),
                                               child: FilledButton(
-                                                style:
-                                                    FilledButton.styleFrom(
-                                                  backgroundColor:
-                                                      colors.tertiary,
-                                                ),
+                                                style: FilledButton.styleFrom(
+                                                    backgroundColor: colors.tertiary),
                                                 onPressed: () {},
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
+                                                      MainAxisAlignment.spaceBetween,
                                                   children: [
                                                     Expanded(
                                                       child: Text(
-                                                        stopsAfterInterchange
-                                                            .first
-                                                            .station
-                                                            .name,
-                                                        style: texts
-                                                            .titleMedium!
-                                                            .copyWith(
-                                                                color: colors
-                                                                    .onTertiary),
+                                                        stopsAfterInterchange.first.station.name,
+                                                        style: texts.titleMedium!
+                                                            .copyWith(color: colors.onTertiary),
                                                       ),
                                                     ),
                                                     Padding(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                              vertical: 4.0,
-                                                              horizontal: 8),
+                                                      padding: const EdgeInsets.symmetric(
+                                                          vertical: 4.0, horizontal: 8),
                                                       child: Column(
                                                         crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
+                                                            CrossAxisAlignment.center,
                                                         children: [
                                                           Text(
-                                                            _generateStopoverTimeText(
-                                                                stopsAfterInterchange
-                                                                    .first),
-                                                            style: texts
-                                                                .titleMedium!
+                                                            widget.model.generateStopoverTimeText(
+                                                                stopsAfterInterchange.first),
+                                                            style: texts.titleMedium!
                                                                 .copyWith(
-                                                                    color: colors
-                                                                        .onTertiary),
+                                                                    color: colors.onTertiary),
                                                           ),
                                                           if (stopsAfterInterchange
-                                                                  .first
-                                                                  .arrivalPlatform !=
+                                                                  .first.arrivalPlatform !=
                                                               null)
                                                             Text(
                                                               'Platform ${stopsAfterInterchange.first.arrivalPlatform}',
-                                                              style: texts
-                                                                  .bodyMedium!
-                                                                  .copyWith(
-                                                                      color: colors
-                                                                          .onTertiary),
+                                                              style: texts.bodyMedium!.copyWith(
+                                                                  color: colors.onTertiary),
                                                             ),
                                                         ],
                                                       ),
@@ -1078,60 +732,40 @@ class _HomePageViewState extends State<HomePageView>
                                                 ),
                                               ),
                                             ),
-                                          ...stopsAfterInterchange
-                                              .skip(1)
-                                              .map((s) {
+                                          ...stopsAfterInterchange.skip(1).map((s) {
                                             String timeText =
-                                                _generateStopoverTimeText(s);
+                                                widget.model.generateStopoverTimeText(s);
                                             return Padding(
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 4.0),
+                                                  const EdgeInsets.symmetric(vertical: 4.0),
                                               child: OutlinedButton(
                                                 onPressed: () {},
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
+                                                      MainAxisAlignment.spaceBetween,
                                                   children: [
                                                     Expanded(
-                                                      child: Text(
-                                                        s.station.name,
-                                                        style: texts
-                                                            .titleMedium!
-                                                            .copyWith(
-                                                                color: colors
-                                                                    .onPrimaryContainer),
-                                                      ),
+                                                      child: Text(s.station.name,
+                                                          style: texts.titleMedium!.copyWith(
+                                                              color: colors.onPrimaryContainer)),
                                                     ),
                                                     Padding(
-                                                      padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                              vertical: 4.0,
-                                                              horizontal: 8),
+                                                      padding: const EdgeInsets.symmetric(
+                                                          vertical: 4.0, horizontal: 8),
                                                       child: Column(
                                                         crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
+                                                            CrossAxisAlignment.center,
                                                         children: [
-                                                          Text(
-                                                            timeText,
-                                                            style: texts
-                                                                .titleMedium!
-                                                                .copyWith(
-                                                                    color: colors
-                                                                        .onPrimaryContainer),
-                                                          ),
-                                                          if (s.arrivalPlatform !=
-                                                              null)
+                                                          Text(timeText,
+                                                              style: texts.titleMedium!.copyWith(
+                                                                  color:
+                                                                      colors.onPrimaryContainer)),
+                                                          if (s.arrivalPlatform != null)
                                                             Text(
                                                               'Platform ${s.arrivalPlatform!}',
-                                                              style: texts
-                                                                  .bodyMedium!
-                                                                  .copyWith(
-                                                                      color: colors
-                                                                          .onPrimaryContainer),
+                                                              style: texts.bodyMedium!.copyWith(
+                                                                  color:
+                                                                      colors.onPrimaryContainer),
                                                             ),
                                                         ],
                                                       ),
@@ -1156,7 +790,6 @@ class _HomePageViewState extends State<HomePageView>
           ),
         );
         break;
-
       case 2:
         upperBox = Container(
           decoration: BoxDecoration(
@@ -1164,41 +797,32 @@ class _HomePageViewState extends State<HomePageView>
             color: colors.primary,
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Walk ${_state.ongoingJourney!.journey.legs[leg].distance}m (${_state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(_state.ongoingJourney!.journey.legs[leg].departureDateTime).inMinutes} minutes) towards',
-                    style: texts.bodyMedium!
-                        .copyWith(color: colors.onPrimary),
+                    'Walk ${state.ongoingJourney!.journey.legs[leg].distance}m (${state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(state.ongoingJourney!.journey.legs[leg].departureDateTime).inMinutes} minutes) towards',
+                    style: texts.bodyMedium!.copyWith(color: colors.onPrimary),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    _state.ongoingJourney!.journey.legs[leg].destination.name,
-                    style: texts.titleLarge!
-                        .copyWith(color: colors.onPrimary),
+                    state.ongoingJourney!.journey.legs[leg].destination.name,
+                    style: texts.titleLarge!.copyWith(color: colors.onPrimary),
                   ),
                 ),
                 FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.primaryContainer,
-                  ),
-                  onPressed: () {
-                    _focusMapOnLeg(
-                        _state.ongoingJourney!.journey.legs[leg]);
-                  },
+                  style: FilledButton.styleFrom(backgroundColor: colors.primaryContainer),
+                  onPressed: () =>
+                      widget.model.focusMapOnLeg(state.ongoingJourney!.journey.legs[leg]),
                   label: Text('Focus on Map',
-                      style: texts.bodyMedium!
-                          .copyWith(color: colors.onPrimaryContainer)),
-                  icon: Icon(Icons.map_outlined,
-                      color: colors.onPrimaryContainer),
+                      style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer)),
+                  icon: Icon(Icons.map_outlined, color: colors.onPrimaryContainer),
                 ),
               ],
             ),
@@ -1206,13 +830,10 @@ class _HomePageViewState extends State<HomePageView>
         );
     }
 
-    // ── Lower box ──
     switch (situationLowerBox) {
       case 0:
         Color lineColor =
-            _state.ongoingJourney!.journey.legs[leg + 1].lineColorNotifier
-                    .value ??
-                Colors.grey;
+            state.ongoingJourney!.journey.legs[leg + 1].lineColorNotifier.value ?? Colors.grey;
         Color onLineColor =
             ThemeData.estimateBrightnessForColor(lineColor) == Brightness.dark
                 ? Colors.white
@@ -1221,11 +842,10 @@ class _HomePageViewState extends State<HomePageView>
         lowerBox = Container(
           decoration: BoxDecoration(
             color: colors.primaryContainer,
-            borderRadius: _state.lowerBoxExpanded
+            borderRadius: state.lowerBoxExpanded
                 ? BorderRadius.circular(24)
                 : const BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24)),
+                    topLeft: Radius.circular(24), topRight: Radius.circular(24)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1239,18 +859,15 @@ class _HomePageViewState extends State<HomePageView>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Take the ${_state.ongoingJourney!.journey.legs[leg + 1].product}',
-                            style: texts.bodyMedium!.copyWith(
-                                color: colors.onPrimaryContainer),
+                            'Take the ${state.ongoingJourney!.journey.legs[leg + 1].product}',
+                            style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 2,
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              if (_state.ongoingJourney!.journey
-                                      .legs[leg + 1].lineName !=
-                                  null)
+                              if (state.ongoingJourney!.journey.legs[leg + 1].lineName != null)
                                 Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(24),
@@ -1260,26 +877,19 @@ class _HomePageViewState extends State<HomePageView>
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 4, horizontal: 8),
                                     child: Text(
-                                      _state.ongoingJourney!.journey
-                                          .legs[leg + 1].lineName!,
-                                      style: texts.labelMedium!
-                                          .copyWith(color: onLineColor),
+                                      state.ongoingJourney!.journey.legs[leg + 1].lineName!,
+                                      style: texts.labelMedium!.copyWith(color: onLineColor),
                                     ),
                                   ),
                                 ),
-                              if (_state.ongoingJourney!.journey
-                                      .legs[leg + 1].direction !=
-                                  null)
+                              if (state.ongoingJourney!.journey.legs[leg + 1].direction != null)
                                 const SizedBox(width: 8),
-                              if (_state.ongoingJourney!.journey
-                                      .legs[leg + 1].direction !=
-                                  null)
+                              if (state.ongoingJourney!.journey.legs[leg + 1].direction != null)
                                 Flexible(
                                   child: Text(
-                                    _state.ongoingJourney!.journey
-                                        .legs[leg + 1].direction!,
-                                    style: texts.titleLarge!.copyWith(
-                                        color: colors.onPrimaryContainer),
+                                    state.ongoingJourney!.journey.legs[leg + 1].direction!,
+                                    style: texts.titleLarge!
+                                        .copyWith(color: colors.onPrimaryContainer),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -1295,23 +905,21 @@ class _HomePageViewState extends State<HomePageView>
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                         child: Column(
                           children: [
                             Text(
-                              prettyPrintTime(_state.ongoingJourney!.journey
+                              widget.model.prettyPrintTime(state.ongoingJourney!.journey
                                   .legs[leg + 1].departureDateTime),
-                              style: texts.titleMedium!.copyWith(
-                                  color: colors.onTertiaryContainer),
+                              style:
+                                  texts.titleMedium!.copyWith(color: colors.onTertiaryContainer),
                             ),
-                            if (_state.ongoingJourney!.journey
-                                    .legs[leg + 1].arrivalPlatform !=
+                            if (state.ongoingJourney!.journey.legs[leg + 1].arrivalPlatform !=
                                 null)
                               Text(
-                                'Platform ${_state.ongoingJourney!.journey.legs[leg + 1].arrivalPlatform!}',
-                                style: texts.bodyMedium!.copyWith(
-                                    color: colors.onTertiaryContainer),
+                                'Platform ${state.ongoingJourney!.journey.legs[leg + 1].arrivalPlatform!}',
+                                style: texts.bodyMedium!
+                                    .copyWith(color: colors.onTertiaryContainer),
                               ),
                           ],
                         ),
@@ -1324,9 +932,9 @@ class _HomePageViewState extends State<HomePageView>
           ),
         );
         break;
-
       case 1:
-        Trip? t = _state.legIndexToTripMap[leg];
+        Trip? t = state.legIndexToTripMap[leg];
+
         List<Stopover> stopsBeforeCurrentPosition = [];
         List<Stopover> stopsBeforeInterchange = [];
         List<Stopover> stopsAfterInterchange = [];
@@ -1335,8 +943,7 @@ class _HomePageViewState extends State<HomePageView>
           for (Stopover s in t.stopovers) {
             DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
             DateTime now = DateTime.now();
-            DateTime legArrival =
-                _state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
+            DateTime legArrival = state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
             if (arrivalTime != null) {
               if (arrivalTime.isBefore(now)) {
                 stopsBeforeCurrentPosition.add(s);
@@ -1353,8 +960,7 @@ class _HomePageViewState extends State<HomePageView>
           decoration: BoxDecoration(
             color: colors.primaryContainer,
             borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24)),
+                topLeft: Radius.circular(24), topRight: Radius.circular(24)),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1367,15 +973,13 @@ class _HomePageViewState extends State<HomePageView>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Get off in ${_state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes(${stopsBeforeInterchange.length + 1} stops) at',
-                          style: texts.bodyMedium!.copyWith(
-                              color: colors.onPrimaryContainer),
+                          'Get off in ${state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes(${stopsBeforeInterchange.length + 1} stops) at',
+                          style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _state.ongoingJourney!.journey.legs[leg].destination.name,
-                          style: texts.titleLarge!.copyWith(
-                              color: colors.onPrimaryContainer),
+                          state.ongoingJourney!.journey.legs[leg].destination.name,
+                          style: texts.titleLarge!.copyWith(color: colors.onPrimaryContainer),
                         ),
                       ],
                     ),
@@ -1385,23 +989,20 @@ class _HomePageViewState extends State<HomePageView>
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                         child: Column(
                           children: [
                             Text(
-                              prettyPrintTime(_state.ongoingJourney!.journey
-                                  .legs[leg].arrivalDateTime),
-                              style: texts.titleMedium!.copyWith(
-                                  color: colors.onTertiaryContainer),
+                              widget.model.prettyPrintTime(
+                                  state.ongoingJourney!.journey.legs[leg].arrivalDateTime),
+                              style: texts.titleMedium!
+                                  .copyWith(color: colors.onTertiaryContainer),
                             ),
-                            if (_state.ongoingJourney!.journey
-                                    .legs[leg].arrivalPlatform !=
-                                null)
+                            if (state.ongoingJourney!.journey.legs[leg].arrivalPlatform != null)
                               Text(
-                                'Platform ${_state.ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
-                                style: texts.bodyMedium!.copyWith(
-                                    color: colors.onTertiaryContainer),
+                                'Platform ${state.ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
+                                style: texts.bodyMedium!
+                                    .copyWith(color: colors.onTertiaryContainer),
                               ),
                           ],
                         ),
@@ -1414,60 +1015,49 @@ class _HomePageViewState extends State<HomePageView>
           ),
         );
         break;
-
       case 2:
         lowerBox = Container(
           decoration: BoxDecoration(
             borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24)),
+                topLeft: Radius.circular(24), topRight: Radius.circular(24)),
             color: colors.primaryContainer,
           ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Walk ${_state.ongoingJourney!.journey.legs[leg + 1].distance}m (${_state.ongoingJourney!.journey.legs[leg + 1].arrivalDateTime.difference(_state.ongoingJourney!.journey.legs[leg + 1].departureDateTime).inMinutes} minutes) towards',
-                    style: texts.bodyMedium!
-                        .copyWith(color: colors.onPrimaryContainer),
+                    'Walk ${state.ongoingJourney!.journey.legs[leg + 1].distance}m (${state.ongoingJourney!.journey.legs[leg + 1].arrivalDateTime.difference(state.ongoingJourney!.journey.legs[leg + 1].departureDateTime).inMinutes} minutes) towards',
+                    style: texts.bodyMedium!.copyWith(color: colors.onPrimaryContainer),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    _state.ongoingJourney!.journey.legs[leg + 1].destination.name,
-                    style: texts.titleLarge!
-                        .copyWith(color: colors.onPrimaryContainer),
+                    state.ongoingJourney!.journey.legs[leg + 1].destination.name,
+                    style: texts.titleLarge!.copyWith(color: colors.onPrimaryContainer),
                   ),
                 ),
                 FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.primary,
-                  ),
-                  onPressed: () {
-                    _focusMapOnLeg(
-                        _state.ongoingJourney!.journey.legs[leg + 1]);
-                  },
+                  style: FilledButton.styleFrom(backgroundColor: colors.primary),
+                  onPressed: () => widget.model
+                      .focusMapOnLeg(state.ongoingJourney!.journey.legs[leg + 1]),
                   label: Text('Focus on Map',
-                      style: texts.bodyMedium!
-                          .copyWith(color: colors.onPrimary)),
-                  icon:
-                      Icon(Icons.map_outlined, color: colors.onPrimary),
+                      style: texts.bodyMedium!.copyWith(color: colors.onPrimary)),
+                  icon: Icon(Icons.map_outlined, color: colors.onPrimary),
                 ),
               ],
             ),
           ),
         );
         break;
-
       case 3:
-        Trip? t = _state.legIndexToTripMap[leg];
+        Trip? t = state.legIndexToTripMap[leg];
+
         List<Stopover> stopsBeforeCurrentPosition = [];
         List<Stopover> stopsBeforeInterchange = [];
         List<Stopover> stopsAfterInterchange = [];
@@ -1476,8 +1066,7 @@ class _HomePageViewState extends State<HomePageView>
           for (Stopover s in t.stopovers) {
             DateTime? arrivalTime = s.effectiveArrivalDateTimeLocal;
             DateTime now = DateTime.now();
-            DateTime legArrival =
-                _state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
+            DateTime legArrival = state.ongoingJourney!.journey.legs[leg].arrivalDateTime;
             if (arrivalTime != null) {
               if (arrivalTime.isBefore(now)) {
                 stopsBeforeCurrentPosition.add(s);
@@ -1498,8 +1087,7 @@ class _HomePageViewState extends State<HomePageView>
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 8, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 child: Column(
                   children: [
                     Row(
@@ -1510,15 +1098,15 @@ class _HomePageViewState extends State<HomePageView>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Arrive in ${_state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes at',
-                                style: texts.bodyMedium!.copyWith(
-                                    color: colors.onPrimaryContainer),
+                                'Arrive in ${state.ongoingJourney!.journey.legs[leg].arrivalDateTime.difference(DateTime.now()).inMinutes} minutes at',
+                                style: texts.bodyMedium!
+                                    .copyWith(color: colors.onPrimaryContainer),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _state.ongoingJourney!.journey.legs[leg].destination.name,
-                                style: texts.titleLarge!.copyWith(
-                                    color: colors.onPrimaryContainer),
+                                state.ongoingJourney!.journey.legs[leg].destination.name,
+                                style: texts.titleLarge!
+                                    .copyWith(color: colors.onPrimaryContainer),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
                               ),
@@ -1531,23 +1119,21 @@ class _HomePageViewState extends State<HomePageView>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 4, horizontal: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                             child: Column(
                               children: [
                                 Text(
-                                  prettyPrintTime(_state.ongoingJourney!
-                                      .journey.legs[leg].arrivalDateTime),
-                                  style: texts.titleMedium!.copyWith(
-                                      color: colors.onTertiaryContainer),
+                                  widget.model.prettyPrintTime(state
+                                      .ongoingJourney!.journey.legs[leg].arrivalDateTime),
+                                  style: texts.titleMedium!
+                                      .copyWith(color: colors.onTertiaryContainer),
                                 ),
-                                if (_state.ongoingJourney!.journey
-                                        .legs[leg].arrivalPlatform !=
+                                if (state.ongoingJourney!.journey.legs[leg].arrivalPlatform !=
                                     null)
                                   Text(
-                                    'Platform ${_state.ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
-                                    style: texts.bodyMedium!.copyWith(
-                                        color: colors.onTertiaryContainer),
+                                    'Platform ${state.ongoingJourney!.journey.legs[leg].arrivalPlatform!}',
+                                    style: texts.bodyMedium!
+                                        .copyWith(color: colors.onTertiaryContainer),
                                   ),
                               ],
                             ),
@@ -1593,11 +1179,8 @@ class _HomePageViewState extends State<HomePageView>
             child: Column(
               children: [
                 const SizedBox(height: 8),
-                Text(
-                  'ongoing Journey',
-                  style: texts.titleSmall!
-                      .copyWith(color: colors.onSurfaceVariant),
-                ),
+                Text('ongoing Journey',
+                    style: texts.titleSmall!.copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 upperBox,
                 const SizedBox(height: 8),
@@ -1610,45 +1193,10 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-
-  String prettyPrintTime(DateTime time) {
-    String hour = '${time.hour}'.padLeft(2, '0');
-    String minute = '${time.minute}'.padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  String _generateStopoverTimeText(Stopover s) {
-    if (s.arrivalDateTime != null && s.departureDateTime != null) {
-      if (s.arrivalDateTime!.hour == s.departureDateTime!.hour &&
-          s.arrivalDateTime!.minute == s.departureDateTime!.minute) {
-        return prettyPrintTime(s.arrivalDateTimeLocal!);
-      } else {
-        return '${prettyPrintTime(s.arrivalDateTimeLocal!)} - ${prettyPrintTime(s.departureDateTimeLocal!)}';
-      }
-    } else {
-      if (s.arrivalDateTime == null) {
-        return prettyPrintTime(s.departureDateTimeLocal!);
-      } else {
-        return prettyPrintTime(s.arrivalDateTimeLocal!);
-      }
-    }
-  }
-
-  bool _haveSameRil100Station(
-      List<String> ril100Ids1, List<String> ril100Ids2) {
-    if (ril100Ids1.isEmpty || ril100Ids2.isEmpty) return false;
-    for (String id1 in ril100Ids1) {
-      for (String id2 in ril100Ids2) {
-        if (id1 == id2) return true;
-      }
-    }
-    return false;
-  }
-
-  // ─── Map options modal ────────────────────────────────────────────────────
+  // ─── Map Options Modal ───────────────────────────────────────────────────
 
   void _showMapOptionsModal(BuildContext context) {
+    final state = widget.model.state;
     showModalBottomSheet(
       useSafeArea: true,
       sheetAnimationStyle: AnimationStyle(
@@ -1660,13 +1208,22 @@ class _HomePageViewState extends State<HomePageView>
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
+            // Local mirror so the modal UI can update instantly
+            bool localShowLightRail = widget.model.state.showLightRail;
+            bool localShowStationLabelsLightRail = widget.model.state.showStationLabelsLightRail;
+            bool localShowSubway = widget.model.state.showSubway;
+            bool localShowStationLabelsSubway = widget.model.state.showStationLabelsSubway;
+            bool localShowTram = widget.model.state.showTram;
+            bool localShowStationLabelsTram = widget.model.state.showStationLabelsTram;
+            bool localShowFerry = widget.model.state.showFerry;
+            bool localShowStationLabelsFerry = widget.model.state.showStationLabelsFerry;
+            bool localShowFunicular = widget.model.state.showFunicular;
+            bool localShowStationLabelsFunicular = widget.model.state.showStationLabelsFunicular;
+
             return Container(
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: SafeArea(
                 child: Column(
@@ -1677,9 +1234,7 @@ class _HomePageViewState extends State<HomePageView>
                       height: 4,
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -1687,13 +1242,8 @@ class _HomePageViewState extends State<HomePageView>
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         'Map Options',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium!
-                            .copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface,
+                        style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                       ),
                     ),
@@ -1707,22 +1257,16 @@ class _HomePageViewState extends State<HomePageView>
                             textColor: Theme.of(context).colorScheme.onSurface,
                             activeColor: Theme.of(context).colorScheme.primary,
                             parentLabel: 'S-Bahn',
-                            initialParentValue: _state.showLightRail &&
-                                _state.showStationLabelsLightRail,
-                            childrenLabels: const [
-                              'Lines(S-Bahn)',
-                              'Station Labels(S-Bahn)',
-                            ],
-                            initialChildrenValues: [
-                              _state.showLightRail,
-                              _state.showStationLabelsLightRail,
-                            ],
+                            initialParentValue: localShowLightRail && localShowStationLabelsLightRail,
+                            childrenLabels: ['Lines(S-Bahn)', 'Station Labels(S-Bahn)'],
+                            initialChildrenValues: [localShowLightRail, localShowStationLabelsLightRail],
                             onSelectionChanged: (p0, p1) {
-                              setModalState(() {});
-                              widget.model.setMapOptions(
-                                showLightRail: p1[0],
-                                showStationLabelsLightRail: p1[1],
-                              );
+                              setModalState(() {
+                                localShowLightRail = p1[0];
+                                localShowStationLabelsLightRail = p1[1];
+                              });
+                              widget.model.updateMapOptions(
+                                  showLightRail: p1[0], showStationLabelsLightRail: p1[1]);
                             },
                           ),
                           const Divider(),
@@ -1730,22 +1274,16 @@ class _HomePageViewState extends State<HomePageView>
                             textColor: Theme.of(context).colorScheme.onSurface,
                             activeColor: Theme.of(context).colorScheme.primary,
                             parentLabel: 'U-Bahn',
-                            initialParentValue: _state.showSubway &&
-                                _state.showStationLabelsSubway,
-                            childrenLabels: const [
-                              'Lines(U-Bahn)',
-                              'Station Labels(U-Bahn)',
-                            ],
-                            initialChildrenValues: [
-                              _state.showSubway,
-                              _state.showStationLabelsSubway,
-                            ],
+                            initialParentValue: localShowSubway && localShowStationLabelsSubway,
+                            childrenLabels: ['Lines(U-Bahn)', 'Station Labels(U-Bahn)'],
+                            initialChildrenValues: [localShowSubway, localShowStationLabelsSubway],
                             onSelectionChanged: (p0, p1) {
-                              setModalState(() {});
-                              widget.model.setMapOptions(
-                                showSubway: p1[0],
-                                showStationLabelsSubway: p1[1],
-                              );
+                              setModalState(() {
+                                localShowSubway = p1[0];
+                                localShowStationLabelsSubway = p1[1];
+                              });
+                              widget.model.updateMapOptions(
+                                  showSubway: p1[0], showStationLabelsSubway: p1[1]);
                             },
                           ),
                           const Divider(),
@@ -1753,22 +1291,16 @@ class _HomePageViewState extends State<HomePageView>
                             textColor: Theme.of(context).colorScheme.onSurface,
                             activeColor: Theme.of(context).colorScheme.primary,
                             parentLabel: 'Tram',
-                            initialParentValue:
-                                _state.showTram && _state.showStationLabelsTram,
-                            childrenLabels: const [
-                              'Lines(Tram)',
-                              'Station Labels(Tram)',
-                            ],
-                            initialChildrenValues: [
-                              _state.showTram,
-                              _state.showStationLabelsTram,
-                            ],
+                            initialParentValue: localShowTram && localShowStationLabelsTram,
+                            childrenLabels: ['Lines(Tram)', 'Station Labels(Tram)'],
+                            initialChildrenValues: [localShowTram, localShowStationLabelsTram],
                             onSelectionChanged: (p0, p1) {
-                              setModalState(() {});
-                              widget.model.setMapOptions(
-                                showTram: p1[0],
-                                showStationLabelsTram: p1[1],
-                              );
+                              setModalState(() {
+                                localShowTram = p1[0];
+                                localShowStationLabelsTram = p1[1];
+                              });
+                              widget.model.updateMapOptions(
+                                  showTram: p1[0], showStationLabelsTram: p1[1]);
                             },
                           ),
                           const Divider(),
@@ -1776,22 +1308,16 @@ class _HomePageViewState extends State<HomePageView>
                             textColor: Theme.of(context).colorScheme.onSurface,
                             activeColor: Theme.of(context).colorScheme.primary,
                             parentLabel: 'Ferry',
-                            initialParentValue: _state.showFerry &&
-                                _state.showStationLabelsFerry,
-                            childrenLabels: const [
-                              'Lines(Ferry)',
-                              'Station Labels(Ferry)',
-                            ],
-                            initialChildrenValues: [
-                              _state.showFerry,
-                              _state.showStationLabelsFerry,
-                            ],
+                            initialParentValue: localShowFerry && localShowStationLabelsFerry,
+                            childrenLabels: ['Lines(Ferry)', 'Station Labels(Ferry)'],
+                            initialChildrenValues: [localShowFerry, localShowStationLabelsFerry],
                             onSelectionChanged: (p0, p1) {
-                              setModalState(() {});
-                              widget.model.setMapOptions(
-                                showFerry: p1[0],
-                                showStationLabelsFerry: p1[1],
-                              );
+                              setModalState(() {
+                                localShowFerry = p1[0];
+                                localShowStationLabelsFerry = p1[1];
+                              });
+                              widget.model.updateMapOptions(
+                                  showFerry: p1[0], showStationLabelsFerry: p1[1]);
                             },
                           ),
                           const Divider(),
@@ -1799,22 +1325,16 @@ class _HomePageViewState extends State<HomePageView>
                             textColor: Theme.of(context).colorScheme.onSurface,
                             activeColor: Theme.of(context).colorScheme.primary,
                             parentLabel: 'Funicular',
-                            initialParentValue: _state.showFunicular &&
-                                _state.showStationLabelsFunicular,
-                            childrenLabels: const [
-                              'Lines(Funicular)',
-                              'Station Labels(Funicular)',
-                            ],
-                            initialChildrenValues: [
-                              _state.showFunicular,
-                              _state.showStationLabelsFunicular,
-                            ],
+                            initialParentValue: localShowFunicular && localShowStationLabelsFunicular,
+                            childrenLabels: ['Lines(Funicular)', 'Station Labels(Funicular)'],
+                            initialChildrenValues: [localShowFunicular, localShowStationLabelsFunicular],
                             onSelectionChanged: (p0, p1) {
-                              setModalState(() {});
-                              widget.model.setMapOptions(
-                                showFunicular: p1[0],
-                                showStationLabelsFunicular: p1[1],
-                              );
+                              setModalState(() {
+                                localShowFunicular = p1[0];
+                                localShowStationLabelsFunicular = p1[1];
+                              });
+                              widget.model.updateMapOptions(
+                                  showFunicular: p1[0], showStationLabelsFunicular: p1[1]);
                             },
                           ),
                         ],
@@ -1830,63 +1350,58 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  // ─── Favourites UI ────────────────────────────────────────────────────────
+  // ─── Faves ───────────────────────────────────────────────────────────────
 
   Widget _buildFaves(BuildContext context) {
+    final state = widget.model.state;
     return Row(
       children: [
-        if (_state.faves.isEmpty) const SizedBox(width: 16),
-        if (_state.faves.isEmpty)
+        if (state.faves.isEmpty) const SizedBox(width: 16),
+        if (state.faves.isEmpty)
           Text(
             'No saved Locations so far',
             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-        if (_state.faves.isEmpty) const Spacer(),
-        if (_state.faves.isNotEmpty)
+        if (state.faves.isEmpty) const Spacer(),
+        if (state.faves.isNotEmpty)
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: _state.faves
-                    .map((f) => Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: IntrinsicWidth(
-                            child: ActionChip(
-                              label: Text(
-                                f.name,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onTertiaryContainer,
-                                    ),
-                              ),
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .tertiaryContainer,
-                              onPressed: () => Navigator.of(context,
-                                      rootNavigator: false)
-                                  .push(MaterialPageRoute(
+                children: state.faves
+                    .map(
+                      (f) => Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: IntrinsicWidth(
+                          child: ActionChip(
+                            label: Text(
+                              f.name,
+                              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onTertiaryContainer,
+                                  ),
+                            ),
+                            backgroundColor:
+                                Theme.of(context).colorScheme.tertiaryContainer,
+                            onPressed: () => Navigator.of(context, rootNavigator: false).push(
+                              MaterialPageRoute(
                                 builder: (_) => ConnectionsPageAndroid(
                                   ConnectionsPage(
                                     from: Location(
-                                        id: '',
-                                        latitude: 0,
-                                        longitude: 0,
-                                        name: '',
-                                        type: ''),
+                                        id: '', latitude: 0, longitude: 0, name: '', type: ''),
                                     to: f.location,
                                     services: widget.model.page.service,
                                   ),
                                 ),
-                              )),
+                              ),
                             ),
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -1894,33 +1409,29 @@ class _HomePageViewState extends State<HomePageView>
         const SizedBox(width: 14),
         IconButton(
           onPressed: () => _showEditFavoritesModal(context),
-          icon: Icon(Icons.edit,
-              color: Theme.of(context).colorScheme.tertiary),
+          icon: Icon(Icons.edit, color: Theme.of(context).colorScheme.tertiary),
           tooltip: 'Edit Saved Locations',
         ),
       ],
     );
   }
 
-  // ─── Search result widgets ────────────────────────────────────────────────
+  // ─── Search Results ──────────────────────────────────────────────────────
 
   Widget _stationResult(BuildContext context, Station station) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-
     return Card(
       clipBehavior: Clip.hardEdge,
       color: colors.surfaceContainer,
       elevation: 0,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => Navigator.of(context, rootNavigator: false).push(
           MaterialPageRoute(
             builder: (_) => ConnectionsPageAndroid(
               ConnectionsPage(
-                from: Location(
-                    id: '', latitude: 0, longitude: 0, name: '', type: ''),
+                from: Location(id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: station,
                 services: widget.model.page.service,
               ),
@@ -1935,11 +1446,10 @@ class _HomePageViewState extends State<HomePageView>
                 radius: 20,
                 backgroundColor: colors.tertiaryContainer,
                 child: SvgPicture.asset(
-                  'assets/Icon/Train_Station_Icon.svg',
+                  "assets/Icon/Train_Station_Icon.svg",
                   width: 24,
                   height: 24,
-                  colorFilter: ColorFilter.mode(
-                      colors.onTertiaryContainer, BlendMode.srcIn),
+                  colorFilter: ColorFilter.mode(colors.onTertiaryContainer, BlendMode.srcIn),
                 ),
               ),
               const SizedBox(width: 16),
@@ -1948,8 +1458,7 @@ class _HomePageViewState extends State<HomePageView>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(station.name,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(color: colors.onSurfaceVariant)),
+                        style: theme.textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -1958,27 +1467,21 @@ class _HomePageViewState extends State<HomePageView>
                         if (station.national || station.nationalExpress)
                           Icon(Icons.train, size: 20, color: colors.tertiary),
                         if (station.regionalExpress)
-                          Icon(Icons.directions_railway,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.directions_railway, size: 20, color: colors.tertiary),
                         if (station.regional)
-                          Icon(Icons.directions_transit,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.directions_transit, size: 20, color: colors.tertiary),
                         if (station.suburban)
-                          Icon(Icons.directions_subway,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.directions_subway, size: 20, color: colors.tertiary),
                         if (station.bus)
-                          Icon(Icons.directions_bus,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.directions_bus, size: 20, color: colors.tertiary),
                         if (station.ferry)
-                          Icon(Icons.directions_ferry,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.directions_ferry, size: 20, color: colors.tertiary),
                         if (station.subway)
                           Icon(Icons.subway, size: 20, color: colors.tertiary),
                         if (station.tram)
                           Icon(Icons.tram, size: 20, color: colors.tertiary),
                         if (station.taxi)
-                          Icon(Icons.local_taxi,
-                              size: 20, color: colors.tertiary),
+                          Icon(Icons.local_taxi, size: 20, color: colors.tertiary),
                       ],
                     ),
                   ],
@@ -1996,20 +1499,17 @@ class _HomePageViewState extends State<HomePageView>
   Widget _locationResult(BuildContext context, Location location) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-
     return Card(
       clipBehavior: Clip.hardEdge,
       color: colors.surfaceContainer,
       elevation: 0,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: () => Navigator.of(context, rootNavigator: false).push(
           MaterialPageRoute(
             builder: (_) => ConnectionsPageAndroid(
               ConnectionsPage(
-                from: Location(
-                    id: '', latitude: 0, longitude: 0, name: '', type: ''),
+                from: Location(id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: location,
                 services: widget.model.page.service,
               ),
@@ -2023,14 +1523,12 @@ class _HomePageViewState extends State<HomePageView>
               CircleAvatar(
                 radius: 20,
                 backgroundColor: colors.tertiaryContainer,
-                child: Icon(Icons.house,
-                    size: 24, color: colors.onTertiaryContainer),
+                child: Icon(Icons.house, size: 24, color: colors.onTertiaryContainer),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(location.name,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: colors.onSurfaceVariant)),
+                    style: theme.textTheme.titleMedium?.copyWith(color: colors.onSurfaceVariant)),
               ),
               _buildFavouriteButton(context, location),
               Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
@@ -2042,19 +1540,20 @@ class _HomePageViewState extends State<HomePageView>
   }
 
   Widget _buildFavouriteButton(BuildContext context, Location location) {
+    final state = widget.model.state;
     bool alreadyFave = false;
     FavoriteLocation? thatFave;
-    for (int i = 0; i < _state.faves.length; i++) {
-      if (_state.faves[i].location.id == location.id) {
+    for (int i = 0; i < state.faves.length; i++) {
+      if (state.faves[i].location.id == location.id) {
         alreadyFave = true;
-        thatFave = _state.faves[i];
+        thatFave = state.faves[i];
       }
     }
 
     if (alreadyFave) {
       return IconButton(
         icon: const Icon(Icons.favorite),
-        onPressed: () => widget.model.removeFavorite(thatFave!),
+        onPressed: () => widget.model.removeFavourite(thatFave!),
       );
     }
 
@@ -2065,12 +1564,10 @@ class _HomePageViewState extends State<HomePageView>
         builder: (BuildContext context) {
           TextEditingController c = TextEditingController();
           return AlertDialog(
-            title: Text(
-              'Save Location',
-              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-            ),
+            title: Text('Save Location',
+                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    )),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -2095,7 +1592,7 @@ class _HomePageViewState extends State<HomePageView>
               ),
               TextButton(
                 onPressed: () async {
-                  await widget.model.addFavorite(location, c.text);
+                  await widget.model.addFavourite(location, c.text);
                   Navigator.of(context).pop();
                 },
                 child: const Text('Save'),
@@ -2107,7 +1604,7 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  // ─── Edit favourites modal ────────────────────────────────────────────────
+  // ─── Edit Favourites Modal ───────────────────────────────────────────────
 
   void _showEditFavoritesModal(BuildContext context) {
     showModalBottomSheet(
@@ -2123,17 +1620,12 @@ class _HomePageViewState extends State<HomePageView>
           builder: (BuildContext context, StateSetter setModalState) {
             final colors = Theme.of(context).colorScheme;
             final texts = Theme.of(context).textTheme;
-
-            // Keep modal in sync with model changes
-            widget.model.addListener(() {
-              if (context.mounted) setModalState(() {});
-            });
+            final faves = widget.model.state.faves;
 
             return Container(
               decoration: BoxDecoration(
                 color: colors.surfaceContainerHighest,
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SafeArea(
                 child: Column(
@@ -2152,63 +1644,47 @@ class _HomePageViewState extends State<HomePageView>
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                       child: Row(
                         children: [
-                          Icon(Icons.edit,
-                              color: colors.primary, size: 28),
+                          Icon(Icons.edit, color: colors.primary, size: 28),
                           const SizedBox(width: 16),
-                          Text(
-                            'Edit Saved Locations',
-                            style: texts.headlineSmall!.copyWith(
-                              color: colors.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          Text('Edit Saved Locations',
+                              style: texts.headlineSmall!.copyWith(
+                                  color: colors.onSurface, fontWeight: FontWeight.w600)),
                           const Spacer(),
-                          if (_state.faves.isNotEmpty)
+                          if (faves.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: colors.secondaryContainer,
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: Text(
-                                '${_state.faves.length}',
-                                style: texts.bodySmall!.copyWith(
-                                  color: colors.onSecondaryContainer,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              child: Text('${faves.length}',
+                                  style: texts.bodySmall!.copyWith(
+                                      color: colors.onSecondaryContainer,
+                                      fontWeight: FontWeight.w600)),
                             ),
                         ],
                       ),
                     ),
                     Flexible(
-                      child: _state.faves.isEmpty
+                      child: faves.isEmpty
                           ? Padding(
                               padding: const EdgeInsets.all(32),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    Icons.favorite_outline,
-                                    size: 64,
-                                    color: colors.onSurfaceVariant
-                                        .withOpacity(0.5),
-                                  ),
+                                  Icon(Icons.favorite_outline,
+                                      size: 64,
+                                      color: colors.onSurfaceVariant.withOpacity(0.5)),
                                   const SizedBox(height: 16),
-                                  Text(
-                                    'No saved locations yet',
-                                    style: texts.titleMedium!.copyWith(
-                                        color: colors.onSurfaceVariant),
-                                  ),
+                                  Text('No saved locations yet',
+                                      style: texts.titleMedium!
+                                          .copyWith(color: colors.onSurfaceVariant)),
                                   const SizedBox(height: 8),
                                   Text(
                                     'Add locations to favorites to manage them here. \n'
                                     'Do this by searching for a station or location and tapping the heart icon.',
                                     style: texts.bodyMedium!.copyWith(
-                                      color: colors.onSurfaceVariant
-                                          .withOpacity(0.7),
-                                    ),
+                                        color: colors.onSurfaceVariant.withOpacity(0.7)),
                                     textAlign: TextAlign.center,
                                   ),
                                 ],
@@ -2216,40 +1692,32 @@ class _HomePageViewState extends State<HomePageView>
                             )
                           : ReorderableListView.builder(
                               shrinkWrap: true,
-                              padding: const EdgeInsets.fromLTRB(
-                                  16, 0, 16, 24),
-                              itemCount: _state.faves.length,
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                              itemCount: faves.length,
                               onReorder: (oldIndex, newIndex) async {
                                 if (newIndex > oldIndex) newIndex -= 1;
-                                List<FavoriteLocation> reorderedFaves =
-                                    List.from(_state.faves);
-                                final item =
-                                    reorderedFaves.removeAt(oldIndex);
+                                List<FavoriteLocation> reorderedFaves = List.from(faves);
+                                final item = reorderedFaves.removeAt(oldIndex);
                                 reorderedFaves.insert(newIndex, item);
-                                await widget.model
-                                    .saveFavoriteOrder(reorderedFaves);
-                                await widget.model.getFaves();
+                                setModalState(() {});
+                                await widget.model.saveFavoriteOrder(reorderedFaves);
+                                await widget.model.reloadFaves();
+                                setModalState(() {});
                               },
                               itemBuilder: (context, index) {
-                                final fave = _state.faves[index];
+                                final fave = faves[index];
                                 return Padding(
-                                  key: ValueKey(
-                                      '${fave.location.id}_$index'),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4),
+                                  key: ValueKey('${fave.location.id}_$index'),
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
                                   child: Card(
                                     elevation: 2,
                                     shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(16)),
+                                        borderRadius: BorderRadius.circular(16)),
                                     child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 8),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 8),
                                       leading: CircleAvatar(
-                                        backgroundColor:
-                                            colors.primaryContainer,
+                                        backgroundColor: colors.primaryContainer,
                                         child: Icon(
                                           fave.location is Station
                                               ? Icons.train
@@ -2258,64 +1726,42 @@ class _HomePageViewState extends State<HomePageView>
                                           size: 20,
                                         ),
                                       ),
-                                      title: Text(
-                                        fave.name,
-                                        style: texts.titleMedium!.copyWith(
-                                          color: colors.onSurface,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      subtitle: Text(
-                                        fave.location.name,
-                                        style: texts.bodySmall!.copyWith(
-                                            color: colors.onSurfaceVariant),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                                      title: Text(fave.name,
+                                          style: texts.titleMedium!.copyWith(
+                                              color: colors.onSurface,
+                                              fontWeight: FontWeight.w500)),
+                                      subtitle: Text(fave.location.name,
+                                          style: texts.bodySmall!
+                                              .copyWith(color: colors.onSurfaceVariant),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           IconButton(
                                             icon: Icon(Icons.edit_outlined,
-                                                color: colors.primary,
-                                                size: 20),
-                                            onPressed: () =>
-                                                _showRenameFavoriteDialog(
-                                                    context,
-                                                    fave,
-                                                    setModalState),
+                                                color: colors.primary, size: 20),
+                                            onPressed: () => _showRenameFavoriteDialog(
+                                                context, fave, setModalState),
                                             tooltip: 'Rename',
                                           ),
                                           IconButton(
-                                            icon: Icon(
-                                                Icons.delete_outline,
-                                                color: colors.error,
-                                                size: 20),
-                                            onPressed: () =>
-                                                _showDeleteFavoriteDialog(
-                                                    context,
-                                                    fave,
-                                                    setModalState),
+                                            icon: Icon(Icons.delete_outline,
+                                                color: colors.error, size: 20),
+                                            onPressed: () => _showDeleteFavoriteDialog(
+                                                context, fave, setModalState),
                                             tooltip: 'Remove',
                                           ),
                                           ReorderableDragStartListener(
                                             index: index,
                                             child: Container(
-                                              padding:
-                                                  const EdgeInsets.all(8),
+                                              padding: const EdgeInsets.all(8),
                                               decoration: BoxDecoration(
-                                                color: colors.outline
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                        8),
+                                                color: colors.outline.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(8),
                                               ),
-                                              child: Icon(
-                                                Icons.drag_handle,
-                                                color:
-                                                    colors.onSurfaceVariant,
-                                                size: 20,
-                                              ),
+                                              child: Icon(Icons.drag_handle,
+                                                  color: colors.onSurfaceVariant, size: 20),
                                             ),
                                           ),
                                         ],
@@ -2336,10 +1782,9 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  void _showRenameFavoriteDialog(BuildContext context, FavoriteLocation fave,
-      StateSetter setModalState) {
-    final TextEditingController controller =
-        TextEditingController(text: fave.name);
+  void _showRenameFavoriteDialog(
+      BuildContext context, FavoriteLocation fave, StateSetter setModalState) {
+    final TextEditingController controller = TextEditingController(text: fave.name);
     final colors = Theme.of(context).colorScheme;
 
     showDialog(
@@ -2347,9 +1792,10 @@ class _HomePageViewState extends State<HomePageView>
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Rename Location',
-              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                    color: colors.onSurface,
-                  )),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall!
+                  .copyWith(color: colors.onSurface)),
           content: TextField(
             controller: controller,
             style: Theme.of(context)
@@ -2361,19 +1807,20 @@ class _HomePageViewState extends State<HomePageView>
               labelText: 'Location Name',
               hintText: 'Enter new name',
               hintStyle: TextStyle(color: colors.onSurfaceVariant),
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel')),
+                onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 if (controller.text.trim().isNotEmpty) {
-                  await widget.model
-                      .renameFavorite(fave, controller.text.trim());
+                  await Localdatasaver.removeFavouriteLocation(fave);
+                  await Localdatasaver.addLocationToFavourites(
+                      fave.location, controller.text.trim());
+                  await widget.model.reloadFaves();
+                  setModalState(() {});
                   Navigator.of(context).pop();
                 }
               },
@@ -2385,8 +1832,8 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  void _showDeleteFavoriteDialog(BuildContext context, FavoriteLocation fave,
-      StateSetter setModalState) {
+  void _showDeleteFavoriteDialog(
+      BuildContext context, FavoriteLocation fave, StateSetter setModalState) {
     final colors = Theme.of(context).colorScheme;
 
     showDialog(
@@ -2394,9 +1841,10 @@ class _HomePageViewState extends State<HomePageView>
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('Remove Location',
-              style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                    color: colors.onSurface,
-                  )),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall!
+                  .copyWith(color: colors.onSurface)),
           content: Text(
             'Are you sure you want to remove "${fave.name}" from your saved locations?',
             style: Theme.of(context)
@@ -2406,14 +1854,13 @@ class _HomePageViewState extends State<HomePageView>
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel')),
+                onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
             FilledButton(
               style: FilledButton.styleFrom(
-                  backgroundColor: colors.error,
-                  foregroundColor: colors.onError),
+                  backgroundColor: colors.error, foregroundColor: colors.onError),
               onPressed: () async {
-                await widget.model.removeFavorite(fave);
+                await widget.model.removeFavourite(fave);
+                setModalState(() {});
                 Navigator.of(context).pop();
               },
               child: const Text('Remove'),

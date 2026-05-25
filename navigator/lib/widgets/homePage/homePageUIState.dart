@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/trip.dart';
 
-/// Represents the UI state for the Home page
 class HomePageUIState {
   final List<Location> searchResults;
   final String lastSearchedText;
@@ -43,6 +43,7 @@ class HomePageUIState {
   final bool showStationLabelsFunicular;
   final List<Polyline> funicularLines;
 
+  final AlignOnUpdate alignPositionOnUpdate;
   final List<FavoriteLocation> faves;
   final bool ongoingJourneyOnMap;
 
@@ -50,7 +51,7 @@ class HomePageUIState {
     this.searchResults = const [],
     this.lastSearchedText = '',
     this.currentUserLocation,
-    this.currentCenter = const LatLng(52.513416, 13.412364),
+    LatLng? currentCenter,
     this.currentZoom = 10,
     this.lines = const [],
     this.stations = const [],
@@ -78,9 +79,10 @@ class HomePageUIState {
     this.showFunicular = false,
     this.showStationLabelsFunicular = false,
     this.funicularLines = const [],
+    this.alignPositionOnUpdate = AlignOnUpdate.always,
     this.faves = const [],
     this.ongoingJourneyOnMap = false,
-  });
+  }) : currentCenter = currentCenter ?? const LatLng(52.513416, 13.412364);
 
   HomePageUIState copyWith({
     List<Location>? searchResults,
@@ -116,6 +118,7 @@ class HomePageUIState {
     bool? showFunicular,
     bool? showStationLabelsFunicular,
     List<Polyline>? funicularLines,
+    AlignOnUpdate? alignPositionOnUpdate,
     List<FavoriteLocation>? faves,
     bool? ongoingJourneyOnMap,
   }) {
@@ -151,6 +154,7 @@ class HomePageUIState {
       showFunicular: showFunicular ?? this.showFunicular,
       showStationLabelsFunicular: showStationLabelsFunicular ?? this.showStationLabelsFunicular,
       funicularLines: funicularLines ?? this.funicularLines,
+      alignPositionOnUpdate: alignPositionOnUpdate ?? this.alignPositionOnUpdate,
       faves: faves ?? this.faves,
       ongoingJourneyOnMap: ongoingJourneyOnMap ?? this.ongoingJourneyOnMap,
     );

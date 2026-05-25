@@ -3,8 +3,6 @@ import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 import 'package:navigator/widgets/homePage/homePageView.dart';
 
-/// Main page widget for the Home page.
-/// Creates the model and passes it to the view — mirrors the SavedJourneys pattern.
 class HomePage extends StatefulWidget {
   final HomePageIni page;
 
