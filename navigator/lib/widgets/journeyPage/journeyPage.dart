@@ -6,17 +6,17 @@ import 'package:navigator/widgets/journeyPage/journeyPageView.dart';
 
 /// Entry point for the Journey page on Android.
 /// Creates the [JourneyPageAndroidModel] and hands it to [JourneyPageAndroidView].
-class JourneyPageAndroid extends StatefulWidget {
-  final JourneyPage page;
+class JourneyPage extends StatefulWidget {
+  final JourneyPageIni page;
   final Journey journey;
 
-  const JourneyPageAndroid(this.page, {super.key, required this.journey});
+  const JourneyPage(this.page, {super.key, required this.journey});
 
   @override
-  State<JourneyPageAndroid> createState() => _JourneyPageAndroidState();
+  State<JourneyPage> createState() => _JourneyPageState();
 }
 
-class _JourneyPageAndroidState extends State<JourneyPageAndroid> {
+class _JourneyPageState extends State<JourneyPage> {
   late JourneyPageAndroidModel _model;
 
   @override

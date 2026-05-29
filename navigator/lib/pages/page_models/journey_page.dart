@@ -1,10 +1,10 @@
 import 'package:navigator/models/journey.dart';
 
-class JourneyPage 
+class JourneyPageIni
 {
   Journey journey;
 
-  JourneyPage({required this.journey})
+  JourneyPageIni({required this.journey})
   {
     // Initialize line colors for all legs in the journey
     journey.initializeLineColors();

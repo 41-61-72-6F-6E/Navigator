@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
-import 'package:navigator/pages/android/connections_page_android.dart';
+import 'package:navigator/widgets/connectionsPage/connectionsPage.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 
@@ -29,8 +29,8 @@ class StationResultCardAndroid extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.of(context, rootNavigator: false).push(
           MaterialPageRoute(
-            builder: (_) => ConnectionsPageAndroid(
-              ConnectionsPage(
+            builder: (_) => ConnectionsPage(
+              ConnectionsPageIni(
                 from: Location(id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: station,
                 services: model.page.service,
@@ -123,8 +123,8 @@ class LocationResultCardAndroid extends StatelessWidget {
       child: InkWell(
         onTap: () => Navigator.of(context, rootNavigator: false).push(
           MaterialPageRoute(
-            builder: (_) => ConnectionsPageAndroid(
-              ConnectionsPage(
+            builder: (_) => ConnectionsPage(
+              ConnectionsPageIni(
                 from: Location(id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: location,
                 services: model.page.service,

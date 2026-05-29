@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/location.dart';
-import 'package:navigator/pages/android/connections_page_android.dart';
+import 'package:navigator/widgets/connectionsPage/connectionsPage.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/widgets/homePage/UIComponents/editFavoritesModal/editFavoritesModal.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
@@ -51,8 +51,8 @@ class FavesBarAndroid extends StatelessWidget {
                             onPressed: () =>
                                 Navigator.of(context, rootNavigator: false).push(
                               MaterialPageRoute(
-                                builder: (_) => ConnectionsPageAndroid(
-                                  ConnectionsPage(
+                                builder: (_) => ConnectionsPage(
+                                  ConnectionsPageIni(
                                     from: Location(
                                         id: '',
                                         latitude: 0,

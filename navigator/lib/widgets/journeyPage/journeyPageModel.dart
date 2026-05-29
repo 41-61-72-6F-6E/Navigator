@@ -12,7 +12,7 @@ import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/widgets/journeyPage/journeyPageUIState.dart';
 
 class JourneyPageAndroidModel extends ChangeNotifier {
-  final JourneyPage page;
+  final JourneyPageIni page;
   final Journey journey;
 
   // Controllers exposed to the view

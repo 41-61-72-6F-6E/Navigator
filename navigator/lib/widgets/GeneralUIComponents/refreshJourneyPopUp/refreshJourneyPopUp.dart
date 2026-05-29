@@ -30,8 +30,8 @@ class RefreshJourneyPopUp {
         Navigator.of(outerContext, rootNavigator: false)
             .push(
           MaterialPageRoute(
-            builder: (context) => JourneyPageAndroid(
-              JourneyPage(journey: refreshedJourney),
+            builder: (context) => JourneyPage(
+              JourneyPageIni(journey: refreshedJourney),
               journey: refreshedJourney,
             ),
           ),
