@@ -14,6 +14,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late HomePageModel _model;
+  final int design = 0;
 
   @override
   void initState() {
@@ -29,6 +30,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return HomePageView(model: _model);
+    return HomePageView(model: _model, design: design);
   }
 }

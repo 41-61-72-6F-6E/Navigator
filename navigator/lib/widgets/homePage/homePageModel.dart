@@ -25,7 +25,7 @@ class HomePageModel extends ChangeNotifier {
 
   final MapController mapController = MapController();
   final StreamController<double?> alignPositionStreamController =
-      StreamController<double?>();
+      StreamController<double?>.broadcast();
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
 
@@ -257,8 +257,6 @@ class HomePageModel extends ChangeNotifier {
       'default': Colors.blue,
     };
 
-    // We need a BuildContext for Theme — the view passes brightnessIsDark
-    // so we use a cached value set by the view via updateBrightness()
     final bool isDark = _cachedIsDark;
 
     try {
@@ -321,7 +319,6 @@ class HomePageModel extends ChangeNotifier {
     return polylines;
   }
 
-  // Brightness cache so _extractOngoingJourneyPolylines doesn't need a context
   bool _cachedIsDark = false;
   void updateBrightness(bool isDark) {
     if (_cachedIsDark != isDark) {
