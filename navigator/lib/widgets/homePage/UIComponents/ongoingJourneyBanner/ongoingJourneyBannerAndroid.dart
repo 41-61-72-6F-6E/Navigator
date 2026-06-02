@@ -3,7 +3,7 @@ import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/trip.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 
-class OngoingJourneyBannerAndroid extends StatelessWidget {
+class OngoingJourneyBannerAndroid extends StatefulWidget {
   final HomePageModel model;
 
   const OngoingJourneyBannerAndroid({
@@ -12,8 +12,15 @@ class OngoingJourneyBannerAndroid extends StatelessWidget {
   });
 
   @override
+  State<OngoingJourneyBannerAndroid> createState() =>
+      _OngoingJourneyBannerAndroidState();
+}
+
+class _OngoingJourneyBannerAndroidState
+    extends State<OngoingJourneyBannerAndroid> {
+  @override
   Widget build(BuildContext context) {
-    final state = model.state;
+    final state = widget.model.state;
     final colors = Theme.of(context).colorScheme;
     final texts = Theme.of(context).textTheme;
 
@@ -33,7 +40,10 @@ class OngoingJourneyBannerAndroid extends StatelessWidget {
       }
     }
 
-    model.setOngoingJourneyCurrentLegIndex(leg);
+    final int currentLeg = leg;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.model.setOngoingJourneyCurrentLegIndex(currentLeg);
+    });
 
     if (!afterArrival) {
       if (state.ongoingJourney!.journey.legs[leg].isWalking == true) {
@@ -90,14 +100,14 @@ class OngoingJourneyBannerAndroid extends StatelessWidget {
           if (nextLeg.isWalking == true &&
               nextLeg.origin.ril100Ids.isNotEmpty &&
               nextLeg.destination.ril100Ids.isNotEmpty &&
-              model.haveSameRil100Station(nextLeg.origin.ril100Ids,
+              widget.model.haveSameRil100Station(nextLeg.origin.ril100Ids,
                   nextLeg.destination.ril100Ids)) {
             isWalkingInterchange = true;
           }
 
           if (currentLeg.destination.ril100Ids.isNotEmpty &&
               nextLeg.origin.ril100Ids.isNotEmpty &&
-              model.haveSameRil100Station(currentLeg.destination.ril100Ids,
+              widget.model.haveSameRil100Station(currentLeg.destination.ril100Ids,
                   nextLeg.origin.ril100Ids)) {
             isWalkingInterchange = true;
           }
@@ -147,10 +157,10 @@ class OngoingJourneyBannerAndroid extends StatelessWidget {
                         .copyWith(color: colors.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 OngoingJourneyUpperBoxAndroid(
-                    model: model, leg: leg, situation: situationUpperBox),
+                    model: widget.model, leg: leg, situation: situationUpperBox),
                 const SizedBox(height: 8),
                 OngoingJourneyLowerBoxAndroid(
-                    model: model, leg: leg, situation: situationLowerBox),
+                    model: widget.model, leg: leg, situation: situationLowerBox),
               ],
             ),
           ),
