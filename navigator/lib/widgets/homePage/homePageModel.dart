@@ -5,7 +5,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/favouriteLocation.dart';
-import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
@@ -14,14 +13,23 @@ import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/trip.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
-import 'package:navigator/widgets/homePage/homePageUIState.dart';
+import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
+import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
+import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
+import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
 import 'dart:math' as math;
 
-class HomePageModel extends ChangeNotifier {
+class HomePageModel {
   final HomePageIni page;
 
-  HomePageUIState _state = const HomePageUIState();
-  HomePageUIState get state => _state;
+  // ─── Notifiers ───────────────────────────────────────────────────────────
+
+  final MapPositionNotifier position = MapPositionNotifier();
+  final MapLayersNotifier layers = MapLayersNotifier();
+  final OngoingJourneyNotifier journey = OngoingJourneyNotifier();
+  final FavesNotifier faves = FavesNotifier();
+
+  // ─── Controllers ─────────────────────────────────────────────────────────
 
   final MapController mapController = MapController();
   final StreamController<double?> alignPositionStreamController =
@@ -35,24 +43,18 @@ class HomePageModel extends ChangeNotifier {
     });
   }
 
-  void _updateState(HomePageUIState newState) {
-    _state = newState;
-    notifyListeners();
-  }
-
   // ─── Init ────────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
     initiateLines();
     fetchStations();
-    // vsync provided by view via setInitialUserLocation(vsync)
     await initializeOngoingJourney();
     await getFaves();
   }
 
   Future<void> initializeOngoingJourney() async {
     await _updateOngoingJourney();
-    if (_state.ongoingJourney != null) {
+    if (journey.ongoingJourney != null) {
       _initializeOngoingJourneyLineColorListener();
       await _getOngoingJourneyTrips();
       _updateOngoingJourneyPolylines();
@@ -60,24 +62,24 @@ class HomePageModel extends ChangeNotifier {
   }
 
   Future<void> _getOngoingJourneyTrips() async {
-    if (_state.ongoingJourney == null) {
+    if (journey.ongoingJourney == null) {
       print('DEBUG: No ongoing journey found');
       return;
     }
 
     print(
-      'DEBUG: Processing ${_state.ongoingJourney!.journey.legs.length} legs for ongoing journey',
+      'DEBUG: Processing ${journey.ongoingJourney!.journey.legs.length} legs for ongoing journey',
     );
 
-    _updateState(_state.copyWith(
+    journey.updateTrips(
+      legIndexToTripMap: {},
       legsOfOngoingJourneyThatHaveATrip: [],
       tripsForOngoingJourneyLegs: [],
-      legIndexToTripMap: {},
-    ));
+    );
 
     Map<int, Trip> legIndexToTrip = {};
+    List<Leg> legs = journey.ongoingJourney!.journey.legs;
 
-    List<Leg> legs = _state.ongoingJourney!.journey.legs;
     for (int i = 0; i < legs.length; i++) {
       Leg leg = legs[i];
       print('DEBUG: Processing leg $i/${legs.length - 1}');
@@ -136,21 +138,21 @@ class HomePageModel extends ChangeNotifier {
       'DEBUG: Successfully fetched ${legIndexToTrip.length} trips out of ${legs.length} legs',
     );
 
-    _updateState(_state.copyWith(
+    journey.updateTrips(
+      legIndexToTripMap: legIndexToTrip,
       legsOfOngoingJourneyThatHaveATrip: legIndexToTrip.keys.toList(),
       tripsForOngoingJourneyLegs: legIndexToTrip.values.toList(),
-      legIndexToTripMap: legIndexToTrip,
-    ));
+    );
 
-    print('DEBUG: State updated - legIndexToTripMap has ${_state.legIndexToTripMap.length} entries');
-    _state.legIndexToTripMap.forEach((legIndex, trip) {
+    print('DEBUG: journey.legIndexToTripMap has ${journey.legIndexToTripMap.length} entries');
+    journey.legIndexToTripMap.forEach((legIndex, trip) {
       print('DEBUG: Leg $legIndex -> Trip ${trip.id} with ${trip.stopovers.length} stopovers');
     });
   }
 
   void _initializeOngoingJourneyLineColorListener() {
-    if (_state.ongoingJourney != null) {
-      for (Leg l in _state.ongoingJourney!.journey.legs) {
+    if (journey.ongoingJourney != null) {
+      for (Leg l in journey.ongoingJourney!.journey.legs) {
         l.lineColorNotifier.addListener(_updateLineColor);
         l.initializeLineColor();
       }
@@ -162,8 +164,8 @@ class HomePageModel extends ChangeNotifier {
   }
 
   void _disposeOngoingJourneyLineColorListener() {
-    if (_state.ongoingJourney != null) {
-      for (Leg l in _state.ongoingJourney!.journey.legs) {
+    if (journey.ongoingJourney != null) {
+      for (Leg l in journey.ongoingJourney!.journey.legs) {
         l.lineColorNotifier.removeListener(_updateLineColor);
       }
     }
@@ -171,12 +173,12 @@ class HomePageModel extends ChangeNotifier {
 
   Future<void> getFaves() async {
     List<FavoriteLocation> f = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: f));
+    faves.updateFaves(f);
   }
 
   Future<void> saveFavoriteOrder(List<FavoriteLocation> reorderedFaves) async {
     try {
-      for (FavoriteLocation fave in _state.faves) {
+      for (FavoriteLocation fave in faves.faves) {
         await Localdatasaver.removeFavouriteLocation(fave);
       }
       for (FavoriteLocation fave in reorderedFaves) {
@@ -194,21 +196,18 @@ class HomePageModel extends ChangeNotifier {
       if (found) break;
       if (DateTime.now().isAfter(sj.journey.plannedDepartureTime) &&
           DateTime.now().isBefore(sj.journey.arrivalTime)) {
-        Savedjourney j = sj;
         Savedjourney newJ = Savedjourney(
-          journey: await page.service.refreshJourneyByToken(j.journey.refreshToken),
-          id: Localdatasaver.calculateJourneyID(j.journey),
+          journey: await page.service.refreshJourneyByToken(sj.journey.refreshToken),
+          id: Localdatasaver.calculateJourneyID(sj.journey),
         );
-        _updateState(_state.copyWith(ongoingJourney: newJ));
+        journey.updateJourney(newJ);
         found = true;
       }
     }
   }
 
   void _updateOngoingJourneyPolylines() {
-    _updateState(_state.copyWith(
-      ongoingJourneyPolylines: _extractOngoingJourneyPolylines(),
-    ));
+    journey.updatePolylines(_extractOngoingJourneyPolylines());
   }
 
   List<LatLng> _extractPointsFromLegPolyline(dynamic polylineData) {
@@ -244,7 +243,7 @@ class HomePageModel extends ChangeNotifier {
   }
 
   List<Polyline> _extractOngoingJourneyPolylines() {
-    if (_state.ongoingJourney == null) return [];
+    if (journey.ongoingJourney == null) return [];
 
     List<Polyline> polylines = [];
     final Map<String, Color> modeColors = {
@@ -260,10 +259,10 @@ class HomePageModel extends ChangeNotifier {
     final bool isDark = _cachedIsDark;
 
     try {
-      final colorCache = Map<String, Color>.from(_state.ongoingJourneyTransitLineColorCache);
+      final colorCache = Map<String, Color>.from(journey.transitLineColorCache);
 
-      for (int i = 0; i < _state.ongoingJourney!.journey.legs.length; i++) {
-        final leg = _state.ongoingJourney!.journey.legs[i];
+      for (int i = 0; i < journey.ongoingJourney!.journey.legs.length; i++) {
+        final leg = journey.ongoingJourney!.journey.legs[i];
         if (leg.polyline == null) continue;
 
         final List<LatLng> legPoints = _extractPointsFromLegPolyline(leg.polyline);
@@ -285,17 +284,16 @@ class HomePageModel extends ChangeNotifier {
           if (!colorCache.containsKey(cacheKey)) {
             leg.lineColorNotifier.addListener(() {
               if (leg.lineColorNotifier.value != null) {
-                final updated = Map<String, Color>.from(_state.ongoingJourneyTransitLineColorCache);
+                final updated = Map<String, Color>.from(journey.transitLineColorCache);
                 updated[cacheKey] = leg.lineColorNotifier.value!;
-                _updateState(_state.copyWith(ongoingJourneyTransitLineColorCache: updated));
+                journey.updateTransitLineColorCache(updated);
               }
             });
           }
         }
 
         double strokeWidth = leg.isWalking == true ? 1.0 : 3.0;
-        if (_state.ongoingJourneyCurrentLegIndex != null &&
-            _state.ongoingJourneyCurrentLegIndex == i) {
+        if (journey.currentLegIndex != null && journey.currentLegIndex == i) {
           strokeWidth = strokeWidth * 2;
         }
 
@@ -330,14 +328,17 @@ class HomePageModel extends ChangeNotifier {
 
   void animatedMapMove(LatLng destLocation, double destZoom, TickerProvider vsync) {
     final latTween = Tween<double>(
-      begin: _state.currentCenter.latitude,
+      begin: position.currentCenter.latitude,
       end: destLocation.latitude,
     );
     final lngTween = Tween<double>(
-      begin: _state.currentCenter.longitude,
+      begin: position.currentCenter.longitude,
       end: destLocation.longitude,
     );
-    final zoomTween = Tween<double>(begin: _state.currentZoom, end: destZoom);
+    final zoomTween = Tween<double>(
+      begin: position.currentZoom,
+      end: destZoom,
+    );
 
     var controller = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -370,24 +371,40 @@ class HomePageModel extends ChangeNotifier {
     final loc = await page.service.getCurrentLocation();
     if (loc.latitude != 0 && loc.longitude != 0) {
       final newCenter = LatLng(loc.latitude, loc.longitude);
-      _updateState(_state.copyWith(currentUserLocation: newCenter));
+      position.update(currentUserLocation: newCenter);
       animatedMapMove(newCenter, 12.0, vsync);
       fetchStations();
     }
   }
 
   void onPositionChanged(MapCamera camera, bool hasGesture) {
-    if (hasGesture && _state.alignPositionOnUpdate != AlignOnUpdate.never) {
-      _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.never));
+    if (hasGesture && position.alignPositionOnUpdate != AlignOnUpdate.never) {
+      position.update(alignPositionOnUpdate: AlignOnUpdate.never);
     }
-    _updateState(_state.copyWith(
-      currentZoom: camera.zoom,
-      currentCenter: camera.center,
-    ));
+
+    final newZoom = camera.zoom;
+    final oldZoom = position.currentZoom;
+
+    // Only notify marker layer listeners when zoom crosses a render threshold.
+    // For pure pan (no zoom change crossing a threshold), update silently.
+    if (_zoomCrossedThreshold(oldZoom, newZoom)) {
+      position.update(currentZoom: newZoom, currentCenter: camera.center);
+    } else {
+      position.currentZoom = newZoom;
+      position.currentCenter = camera.center;
+    }
+  }
+
+  bool _zoomCrossedThreshold(double oldZoom, double newZoom) {
+    const thresholds = [12.0, 14.0, 14.5, 15.5, 16.5, 17.0];
+    for (final t in thresholds) {
+      if ((oldZoom < t) != (newZoom < t)) return true;
+    }
+    return false;
   }
 
   void recenterMap() {
-    _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.always));
+    position.update(alignPositionOnUpdate: AlignOnUpdate.always);
     alignPositionStreamController.add(18);
   }
 
@@ -414,12 +431,12 @@ class HomePageModel extends ChangeNotifier {
     print("Leg center: $legCenter, zoom: $legZoom");
 
     Future.microtask(() {
-      _updateState(_state.copyWith(alignPositionOnUpdate: AlignOnUpdate.never));
-      mapController.move(legCenter, legZoom);
-      _updateState(_state.copyWith(
+      position.update(
+        alignPositionOnUpdate: AlignOnUpdate.never,
         currentCenter: legCenter,
         currentZoom: legZoom,
-      ));
+      );
+      mapController.move(legCenter, legZoom);
     });
   }
 
@@ -458,7 +475,7 @@ class HomePageModel extends ChangeNotifier {
   Future<void> initiateLines() async {
     await page.service.refreshPolylines();
     if (page.service.loadedSubwayLines.isNotEmpty) {
-      _updateState(_state.copyWith(
+      layers.updateLines(
         lines: page.service.loadedSubwayLines
             .where((l) => l.points.isNotEmpty)
             .map((l) => Polyline(
@@ -513,7 +530,7 @@ class HomePageModel extends ChangeNotifier {
                   borderColor: l.color.withAlpha(60),
                 ))
             .toList(),
-      ));
+      );
     }
   }
 
@@ -526,7 +543,7 @@ class HomePageModel extends ChangeNotifier {
           lon: location.longitude,
           radius: 50000,
         );
-        _updateState(_state.copyWith(stations: fetchedStations));
+        layers.updateStations(fetchedStations);
       } catch (e) {
         print('Error fetching stations: $e');
       }
@@ -538,20 +555,20 @@ class HomePageModel extends ChangeNotifier {
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (query.isNotEmpty && query != _state.lastSearchedText) {
+      if (query.isNotEmpty && query != faves.lastSearchedText) {
         getSearchResults(query);
-        _updateState(_state.copyWith(lastSearchedText: query));
+        faves.setLastSearchedText(query);
       }
     });
   }
 
   Future<void> getSearchResults(String query) async {
     final results = await page.getLocations(query);
-    _updateState(_state.copyWith(searchResults: results));
+    faves.updateSearchResults(results);
   }
 
   void clearSearch() {
-    _updateState(_state.copyWith(searchResults: [], lastSearchedText: ''));
+    faves.clearSearch();
     searchController.clear();
   }
 
@@ -559,7 +576,7 @@ class HomePageModel extends ChangeNotifier {
 
   Future<void> reloadFaves() async {
     List<FavoriteLocation> updatedFaves = await Localdatasaver.getFavouriteLocations();
-    _updateState(_state.copyWith(faves: updatedFaves));
+    faves.updateFaves(updatedFaves);
   }
 
   Future<void> addFavourite(Location location, String name) async {
@@ -569,9 +586,8 @@ class HomePageModel extends ChangeNotifier {
 
   Future<void> removeFavourite(FavoriteLocation fave) async {
     await Localdatasaver.removeFavouriteLocation(fave);
-    _updateState(_state.copyWith(
-      faves: List.from(_state.faves)..remove(fave),
-    ));
+    final updated = List<FavoriteLocation>.from(faves.faves)..remove(fave);
+    faves.updateFaves(updated);
   }
 
   // ─── Map Options ─────────────────────────────────────────────────────────
@@ -588,7 +604,7 @@ class HomePageModel extends ChangeNotifier {
     bool? showFunicular,
     bool? showStationLabelsFunicular,
   }) {
-    _updateState(_state.copyWith(
+    layers.updateVisibility(
       showLightRail: showLightRail,
       showStationLabelsLightRail: showStationLabelsLightRail,
       showSubway: showSubway,
@@ -599,24 +615,17 @@ class HomePageModel extends ChangeNotifier {
       showStationLabelsFerry: showStationLabelsFerry,
       showFunicular: showFunicular,
       showStationLabelsFunicular: showStationLabelsFunicular,
-    ));
+    );
   }
 
   // ─── Ongoing Journey UI ──────────────────────────────────────────────────
 
   void toggleIntermediateStops() {
-    _updateState(_state.copyWith(
-      ongoingJourneyIntermediateStopsExpanded:
-          !_state.ongoingJourneyIntermediateStopsExpanded,
-    ));
+    journey.toggleIntermediateStops();
   }
 
   void setOngoingJourneyCurrentLegIndex(int? index) {
-    if (index == null) {
-      _updateState(_state.copyWith(clearOngoingJourneyCurrentLegIndex: true));
-    } else {
-      _updateState(_state.copyWith(ongoingJourneyCurrentLegIndex: index));
-    }
+    journey.setCurrentLegIndex(index);
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -629,16 +638,7 @@ class HomePageModel extends ChangeNotifier {
     return 16.5;
   }
 
-  bool getShowLabels(String transportType) {
-    switch (transportType) {
-      case 'lightRail': return _state.showStationLabelsLightRail;
-      case 'subway': return _state.showStationLabelsSubway;
-      case 'tram': return _state.showStationLabelsTram;
-      case 'ferry': return _state.showStationLabelsFerry;
-      case 'funicular': return _state.showStationLabelsFunicular;
-      default: return false;
-    }
-  }
+  bool getShowLabels(String transportType) => layers.getShowLabels(transportType);
 
   bool shouldShowStation(Station station, String transportType) {
     if (station.national ||
@@ -711,17 +711,19 @@ class HomePageModel extends ChangeNotifier {
     return Icons.location_on;
   }
 
-  @override
   void dispose() {
     _debounce?.cancel();
     searchController.dispose();
     alignPositionStreamController.close();
     _disposeOngoingJourneyLineColorListener();
-    if (_state.ongoingJourney != null) {
-      for (final leg in _state.ongoingJourney!.journey.legs) {
+    if (journey.ongoingJourney != null) {
+      for (final leg in journey.ongoingJourney!.journey.legs) {
         leg.lineColorNotifier.removeListener(() {});
       }
     }
-    super.dispose();
+    position.dispose();
+    layers.dispose();
+    journey.dispose();
+    faves.dispose();
   }
 }

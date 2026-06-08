@@ -15,24 +15,30 @@ class MapOptionsModalAndroid {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            bool localShowLightRail = model.state.showLightRail;
+            // Initialise from the notifier once when the modal opens.
+            // setModalState keeps the modal's own checkboxes in sync instantly
+            // while model.updateMapOptions updates the map behind it.
+            bool localShowLightRail = model.layers.showLightRail;
             bool localShowStationLabelsLightRail =
-                model.state.showStationLabelsLightRail;
-            bool localShowSubway = model.state.showSubway;
+                model.layers.showStationLabelsLightRail;
+            bool localShowSubway = model.layers.showSubway;
             bool localShowStationLabelsSubway =
-                model.state.showStationLabelsSubway;
-            bool localShowTram = model.state.showTram;
-            bool localShowStationLabelsTram = model.state.showStationLabelsTram;
-            bool localShowFerry = model.state.showFerry;
+                model.layers.showStationLabelsSubway;
+            bool localShowTram = model.layers.showTram;
+            bool localShowStationLabelsTram =
+                model.layers.showStationLabelsTram;
+            bool localShowFerry = model.layers.showFerry;
             bool localShowStationLabelsFerry =
-                model.state.showStationLabelsFerry;
-            bool localShowFunicular = model.state.showFunicular;
+                model.layers.showStationLabelsFerry;
+            bool localShowFunicular = model.layers.showFunicular;
             bool localShowStationLabelsFunicular =
-                model.state.showStationLabelsFunicular;
+                model.layers.showStationLabelsFunicular;
 
             return Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
               ),
@@ -45,8 +51,9 @@ class MapOptionsModalAndroid {
                       height: 4,
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -58,16 +65,16 @@ class MapOptionsModalAndroid {
                             .textTheme
                             .headlineMedium!
                             .copyWith(
-                              color:
-                                  Theme.of(context).colorScheme.onSurface,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface,
                             ),
                       ),
                     ),
                     Flexible(
                       child: ListView(
                         shrinkWrap: true,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         children: [
                           const Divider(),
                           ParentChildCheckboxes(
@@ -84,7 +91,7 @@ class MapOptionsModalAndroid {
                             ],
                             initialChildrenValues: [
                               localShowLightRail,
-                              localShowStationLabelsLightRail
+                              localShowStationLabelsLightRail,
                             ],
                             onSelectionChanged: (p0, p1) {
                               setModalState(() {
@@ -92,8 +99,9 @@ class MapOptionsModalAndroid {
                                 localShowStationLabelsLightRail = p1[1];
                               });
                               model.updateMapOptions(
-                                  showLightRail: p1[0],
-                                  showStationLabelsLightRail: p1[1]);
+                                showLightRail: p1[0],
+                                showStationLabelsLightRail: p1[1],
+                              );
                             },
                           ),
                           const Divider(),
@@ -111,7 +119,7 @@ class MapOptionsModalAndroid {
                             ],
                             initialChildrenValues: [
                               localShowSubway,
-                              localShowStationLabelsSubway
+                              localShowStationLabelsSubway,
                             ],
                             onSelectionChanged: (p0, p1) {
                               setModalState(() {
@@ -119,8 +127,9 @@ class MapOptionsModalAndroid {
                                 localShowStationLabelsSubway = p1[1];
                               });
                               model.updateMapOptions(
-                                  showSubway: p1[0],
-                                  showStationLabelsSubway: p1[1]);
+                                showSubway: p1[0],
+                                showStationLabelsSubway: p1[1],
+                              );
                             },
                           ),
                           const Divider(),
@@ -138,7 +147,7 @@ class MapOptionsModalAndroid {
                             ],
                             initialChildrenValues: [
                               localShowTram,
-                              localShowStationLabelsTram
+                              localShowStationLabelsTram,
                             ],
                             onSelectionChanged: (p0, p1) {
                               setModalState(() {
@@ -146,8 +155,9 @@ class MapOptionsModalAndroid {
                                 localShowStationLabelsTram = p1[1];
                               });
                               model.updateMapOptions(
-                                  showTram: p1[0],
-                                  showStationLabelsTram: p1[1]);
+                                showTram: p1[0],
+                                showStationLabelsTram: p1[1],
+                              );
                             },
                           ),
                           const Divider(),
@@ -165,7 +175,7 @@ class MapOptionsModalAndroid {
                             ],
                             initialChildrenValues: [
                               localShowFerry,
-                              localShowStationLabelsFerry
+                              localShowStationLabelsFerry,
                             ],
                             onSelectionChanged: (p0, p1) {
                               setModalState(() {
@@ -173,8 +183,9 @@ class MapOptionsModalAndroid {
                                 localShowStationLabelsFerry = p1[1];
                               });
                               model.updateMapOptions(
-                                  showFerry: p1[0],
-                                  showStationLabelsFerry: p1[1]);
+                                showFerry: p1[0],
+                                showStationLabelsFerry: p1[1],
+                              );
                             },
                           ),
                           const Divider(),
@@ -192,7 +203,7 @@ class MapOptionsModalAndroid {
                             ],
                             initialChildrenValues: [
                               localShowFunicular,
-                              localShowStationLabelsFunicular
+                              localShowStationLabelsFunicular,
                             ],
                             onSelectionChanged: (p0, p1) {
                               setModalState(() {
@@ -200,8 +211,9 @@ class MapOptionsModalAndroid {
                                 localShowStationLabelsFunicular = p1[1];
                               });
                               model.updateMapOptions(
-                                  showFunicular: p1[0],
-                                  showStationLabelsFunicular: p1[1]);
+                                showFunicular: p1[0],
+                                showStationLabelsFunicular: p1[1],
+                              );
                             },
                           ),
                         ],
