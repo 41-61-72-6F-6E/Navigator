@@ -63,6 +63,7 @@ class FavesBarAndroid extends StatelessWidget {
                                     builder: (_) => ConnectionsPage(
                                       ConnectionsPageIni(
                                         from: Location(
+                                            backend: "dbRest",
                                             id: '',
                                             latitude: 0,
                                             longitude: 0,

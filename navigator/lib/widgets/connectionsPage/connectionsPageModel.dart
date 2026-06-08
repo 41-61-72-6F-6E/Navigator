@@ -32,6 +32,7 @@ class ConnectionsPageModel {
 
   // ── Journey preferences ───────────────────────────────────────────────────
   JourneySettings journeySettings = JourneySettings(
+    backend: "dbRest",
     nationalExpress: true,
     national: true,
     regionalExpress: true,

@@ -33,7 +33,7 @@ class StationResultCardAndroid extends StatelessWidget {
             builder: (_) => ConnectionsPage(
               ConnectionsPageIni(
                 from: Location(
-                    id: '', latitude: 0, longitude: 0, name: '', type: ''),
+                    backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: station,
                 services: model.page.service,
               ),
@@ -134,7 +134,7 @@ class LocationResultCardAndroid extends StatelessWidget {
             builder: (_) => ConnectionsPage(
               ConnectionsPageIni(
                 from: Location(
-                    id: '', latitude: 0, longitude: 0, name: '', type: ''),
+                    backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: ''),
                 to: location,
                 services: model.page.service,
               ),

@@ -1,4 +1,6 @@
-class JourneySettings {
+import 'package:navigator/models/baseModel.dart';
+
+class JourneySettings extends baseModel{
   bool? nationalExpress;
   bool? national;
   bool? regionalExpress;
@@ -14,6 +16,7 @@ class JourneySettings {
   int? transferTime;
 
   JourneySettings({
+    required super.backend,
     this.nationalExpress = true,
     this.national = true,
     this.regionalExpress = true,

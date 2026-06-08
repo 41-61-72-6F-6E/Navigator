@@ -1,4 +1,6 @@
-class Remark {
+import 'package:navigator/models/baseModel.dart';
+
+class Remark extends baseModel{
   final String? text;
   final String? type;
   final String? code;
@@ -7,6 +9,7 @@ class Remark {
   final String? modified;
 
   Remark({
+    required super.backend,
     this.text,
     this.type,
     this.code,
@@ -15,8 +18,9 @@ class Remark {
     this.modified,
   });
 
-  factory Remark.fromJson(Map<String, dynamic> json) {
+  factory Remark.fromJson(String backend, Map<String, dynamic> json) {
     return Remark(
+      backend: backend,
       text: json['text'] as String?,
       type: json['type'] as String?,
       code: json['code'] as String?,

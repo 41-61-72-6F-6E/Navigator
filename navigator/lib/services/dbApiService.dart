@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:navigator/models/dateAndTime.dart';
+import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/journeySettings.dart';
 import 'package:navigator/models/location.dart';
@@ -130,7 +131,7 @@ class DbApiService {
           laterRef = data['laterRef'];
         }
 
-        return Journey.parseAndSort(data['journeys']);
+        return Journey.parseAndSort("dbRest",data['journeys']);
       } else {
         print('HTTP Error: ${response.statusCode}');
         print('Response body: ${response.body}');
@@ -229,7 +230,7 @@ class DbApiService {
         earlierFrom = from;
         earlierTo = to;
 
-        return Journey.parseAndSort(data['journeys']);
+        return Journey.parseAndSort("dbRest", data['journeys']);
       } else {
         print('HTTP Error: ${response.statusCode}');
         print('Response body: ${response.body}');
@@ -255,7 +256,7 @@ class DbApiService {
 
         if (data is Map<String, dynamic>) {
           final journeyJson = data['journey'];
-          return Journey.parseSingleJourneyResponse(journeyJson);
+          return Journey.parseSingleJourneyResponse("dbRest", journeyJson);
         } else {
           throw FormatException('Unexpected response format: expected a JSON object.');
         }
@@ -315,7 +316,7 @@ class DbApiService {
           throw FormatException('Unexpected response format: expected trip object');
         }
 
-        Trip t = Trip.fromJson(tripData);
+        Trip t = Trip.fromJson("dbRest", tripData);
         t.debugPrintStopovers();
         return t;
       } else if (response.statusCode == 404) {
@@ -402,7 +403,7 @@ class DbApiService {
 
         if (data is Map<String, dynamic>) {
           final journeyJson = data['journey'];
-          return Journey.parseSingleJourneyResponse(journeyJson);
+          return Journey.parseSingleJourneyResponse("dbRest", journeyJson);
         } else {
           throw FormatException('Unexpected response format: expected a JSON object.');
         }
@@ -440,9 +441,9 @@ class DbApiService {
             .map<Location>((item) {
           try {
             if (item['type'] == 'station' || item['type'] == 'stop') {
-              return Station.fromJson(item);
+              return Station.fromJson("dbRest", item);
             } else {
-              return Location.fromJson(item);
+              return Location.fromJson("dbRest", item);
             }
           } catch (e) {
             print('Error parsing location item: $e');
@@ -461,6 +462,7 @@ class DbApiService {
                 }
 
                 return Station(
+                  backend: "dbRest",
                   id: item['id']?.toString() ?? '',
                   name: item['name']?.toString() ?? 'Unknown',
                   type: item['type']?.toString() ?? 'station',
@@ -485,6 +487,7 @@ class DbApiService {
               } catch (stationError) {
                 print('Failed to create Station fallback: $stationError');
                 return Location(
+                  backend: "dbRest",
                   id: item['id']?.toString() ?? '',
                   name: item['name']?.toString() ?? 'Unknown',
                   type: item['type']?.toString() ?? 'unknown',
@@ -497,6 +500,7 @@ class DbApiService {
               }
             } else {
               return Location(
+                backend: "dbRest",
                 id: item['id']?.toString() ?? '',
                 name: item['name']?.toString() ?? 'Unknown',
                 type: item['type']?.toString() ?? 'unknown',
@@ -517,4 +521,34 @@ class DbApiService {
       rethrow;
     }
   }
+
+  Future<List<DepartureArrival>> getDeparturesForStation(String stationId) async {
+  final url = 'http://$baseUrl/stops/$stationId/departures?';
+  final uri = Uri.parse(url);
+  print('Fetching departures for station ID: $stationId from URL: $url');
+  
+  try {
+    final response = await http.get(uri);
+    
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonData = json.decode(response.body);
+      final List<dynamic> departuresJson = jsonData['departures'] ?? [];
+      
+      return departuresJson
+          .where((d) => d['when'] != null && d['plannedWhen'] != null)
+          .map((departureJson) {
+            // The API returns 'stop' but our model expects 'station'
+            final normalized = Map<String, dynamic>.from(departureJson);
+            normalized['station'] = departureJson['stop'];
+            return DepartureArrival.fromJson("dbRest", normalized, isDeparture: true);
+          })
+          .toList();
+    } else {
+      throw HttpException('Failed to fetch departures: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error fetching departures for station $stationId: $e');
+    throw Exception('Failed to fetch departures: $e');
+  }
+}
 }

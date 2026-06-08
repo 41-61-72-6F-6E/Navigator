@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:navigator/models/baseModel.dart';
 
-class SubwayLine {
+class SubwayLine extends baseModel{
   final List<LatLng> points;
   final Color color;
   final String? lineName;
@@ -9,6 +10,7 @@ class SubwayLine {
   final String? type;
 
   SubwayLine({
+    required super.backend,
     required this.points,
     required this.color,
     this.lineName,

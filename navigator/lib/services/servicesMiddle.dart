@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/dateAndTime.dart';
+import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/services/dbApiService.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart' as myApp;
@@ -30,6 +31,13 @@ class ServicesMiddle {
   // Existing methods...
   Future<List<myApp.Location>> getLocations(String query) async {
     final results = await dbRest.fetchLocations(query);
+    return results;
+  }
+
+  Future<List<DepartureArrival>> getDeparturesForStation(String stationId) async {
+    final results = await dbRest.getDeparturesForStation(stationId);
+    print("Fetched ${results.length} departures for station ID: $stationId");
+    print("Sample departure: ${results.isNotEmpty ? results.first.station.name : 'No departures'} at ${results.isNotEmpty ? results.first.when : 'N/A'}");
     return results;
   }
 
@@ -251,10 +259,10 @@ class ServicesMiddle {
   Future<myApp.Location> getCurrentLocation() async {
     try {
       final pos = await geoService.determinePosition();
-      return myApp.Location.fromPosition(pos);
+      return myApp.Location.fromPosition("none",pos);
     } catch (err) {
       print('Error getting Location: $err');
-      return myApp.Location(type: '', id: '', name: '', latitude: 0, longitude: 0);
+      return myApp.Location(backend: "none", type: '', id: '', name: '', latitude: 0, longitude: 0);
     }
   }
   

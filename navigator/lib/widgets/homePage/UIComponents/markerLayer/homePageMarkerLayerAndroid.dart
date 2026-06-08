@@ -72,57 +72,60 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
                 point: LatLng(station.latitude, station.longitude),
                 width: 150,
                 height: 60,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (currentZoom > 15.5)
+                child: GestureDetector(
+                  onTap: () {model.getDeparturesForStation(station);},
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (currentZoom > 15.5)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            station.name,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: colors.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      if (currentZoom > 14.5) const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: colors.surfaceContainer,
-                          borderRadius: BorderRadius.circular(8),
+                          color: colors.primary,
+                          shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: colors.primary.withOpacity(0.3),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: Text(
-                          station.name,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: colors.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
+                        padding:
+                            EdgeInsets.all(currentZoom > 14 ? 4 : 3),
+                        child: Icon(
+                          model.getTransportIcon(station),
+                          color: colors.onPrimary,
+                          size: currentZoom > 14 ? 14 : 12,
                         ),
                       ),
-                    if (currentZoom > 14.5) const SizedBox(height: 2),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: colors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: colors.primary.withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      padding:
-                          EdgeInsets.all(currentZoom > 14 ? 4 : 3),
-                      child: Icon(
-                        model.getTransportIcon(station),
-                        color: colors.onPrimary,
-                        size: currentZoom > 14 ? 14 : 12,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             })

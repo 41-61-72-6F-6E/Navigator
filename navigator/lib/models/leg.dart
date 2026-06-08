@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:navigator/models/baseModel.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/stopover.dart';
 import 'package:navigator/services/overpassApi.dart';
 
-class Leg {
+class Leg extends baseModel{
   final String? tripID;
   final String? direction;
   final Station origin;
@@ -32,6 +33,7 @@ class Leg {
   final List<Stopover> stopovers;
 
   Leg({
+    required super.backend,
     this.tripID,
     this.direction,
     required this.origin,
@@ -56,7 +58,7 @@ class Leg {
     required this.stopovers
   });
 
-  factory Leg.fromJson(Map<String, dynamic> json) {
+  factory Leg.fromJson(String backend, Map<String, dynamic> json) {
   String? safeGetString(dynamic value) {
     if (value == null) return null;
     return value.toString();
@@ -72,7 +74,7 @@ class Leg {
   Station safeGetStation(dynamic stationJson) {
     if (stationJson == null) return Station.empty();
     try {
-      return Station.fromJson(stationJson);
+      return Station.fromJson(backend,stationJson);
     } catch (e) {
       print('Error parsing station: $e');
       return Station.empty();
@@ -86,7 +88,7 @@ class Leg {
 
 
   List<Remark>? remarks = (json['remarks'] as List<dynamic>?)
-      ?.map((item) => Remark.fromJson(item as Map<String, dynamic>))
+      ?.map((item) => Remark.fromJson(backend, item as Map<String, dynamic>))
       .toList();
 
   // Parse stopovers/intermediate stops
@@ -96,7 +98,7 @@ class Leg {
       
       for (var stopoverJson in stopoversJson) {
         try {
-          stopovers.add(Stopover.fromJson(stopoverJson));
+          stopovers.add(Stopover.fromJson(backend, stopoverJson));
         } catch (e) {
           print('Error parsing stopover: $e');
           // Continue with other stopovers even if one fails
@@ -105,6 +107,7 @@ class Leg {
     }
 
   return Leg(
+    backend: backend,
     tripID: tripId,
     direction: safeGetString(json['direction']),
     origin: safeGetStation(json['origin']),

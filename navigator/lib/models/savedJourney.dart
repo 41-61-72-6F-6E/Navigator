@@ -14,10 +14,10 @@ class Savedjourney
     };
   }
 
-  factory Savedjourney.fromJson(Map<String, dynamic> json) {
+  factory Savedjourney.fromJson(String backend, Map<String, dynamic> json) {
     return Savedjourney(
       id: json['id'] as String,
-      journey: Journey.fromJson(json['journey'] as Map<String, dynamic>),
+      journey: Journey.fromJson(backend, json['journey'] as Map<String, dynamic>),
     );
   }
 }

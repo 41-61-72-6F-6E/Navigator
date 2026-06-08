@@ -112,6 +112,7 @@ class Overpassapi {
             // Create separate polyline for each way segment
             if (wayPoints.length >= 2) {
               subwayLines.add(SubwayLine(
+                backend: "OSM",
                 points: wayPoints,
                 color: parseColorFromString(relationInfo['color']),
                 lineName: relationInfo['name'],
@@ -218,6 +219,7 @@ out body;
             (isRailStation && tags['station'] == 'rail');
 
         stations.add(Station(
+          backend: "OSM",
           type: 'station',
           id: element['id'].toString(),
           name: name,

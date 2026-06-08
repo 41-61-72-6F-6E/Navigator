@@ -1,8 +1,9 @@
 // New Stopover class to capture detailed intermediate stop information
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/baseModel.dart';
 
-class Stopover {
+class Stopover extends baseModel{
   final Station station;
   final String? arrival;
   final String? plannedArrival;
@@ -17,6 +18,7 @@ class Stopover {
   final List<Remark>? remarks;
 
   Stopover({
+    required super.backend,
     required this.station,
     this.arrival,
     this.plannedArrival,
@@ -31,7 +33,7 @@ class Stopover {
     this.remarks,
   });
 
-  factory Stopover.fromJson(Map<String, dynamic> json) {
+  factory Stopover.fromJson(String backend, Map<String, dynamic> json) {
     String? safeGetString(dynamic value) {
       if (value == null) return null;
       return value.toString();
@@ -39,17 +41,18 @@ class Stopover {
 
     Station station;
     try {
-      station = Station.fromJson(json['stop']);
+      station = Station.fromJson(backend, json['stop']);
     } catch (e) {
       print('Error parsing station in stopover: $e');
       station = Station.empty();
     }
 
     List<Remark>? remarks = (json['remarks'] as List<dynamic>?)
-        ?.map((item) => Remark.fromJson(item as Map<String, dynamic>))
+        ?.map((item) => Remark.fromJson(backend, item as Map<String, dynamic>))
         .toList();
 
     return Stopover(
+      backend: backend,
       station: station,
       arrival: safeGetString(json['arrival']),
       plannedArrival: safeGetString(json['plannedArrival']),

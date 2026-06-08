@@ -206,6 +206,7 @@ class _ConnectionsPageState
   Future<void> _getJourneys() async {
     try {
       final from = Location(
+        backend: "dbRest",
         id: widget.page.from.id,
         latitude: widget.page.from.latitude,
         longitude: widget.page.from.longitude,
@@ -214,6 +215,7 @@ class _ConnectionsPageState
         address: null,
       );
       final to = Location(
+        backend: "dbRest",
         id: widget.page.to.id,
         latitude: widget.page.to.latitude,
         longitude: widget.page.to.longitude,

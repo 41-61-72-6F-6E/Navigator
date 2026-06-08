@@ -14,6 +14,7 @@ class Station extends Location {
   final List<String> ril100Ids; // Added RIL100 IDs
 
   Station({
+    required super.backend,
     required super.type,
     required super.id,
     required super.name,
@@ -34,6 +35,7 @@ class Station extends Location {
 
   factory Station.empty() {
     return Station(
+      backend: "none",
       type: '',
       id: '',
       name: '',
@@ -54,7 +56,7 @@ class Station extends Location {
   }
 
   @override
-  factory Station.fromJson(Map<String, dynamic> json) {
+  factory Station.fromJson(String backend, Map<String, dynamic> json) {
     final location = json['location'];
     final products = json['products'];
     
@@ -71,6 +73,7 @@ class Station extends Location {
     }
 
     return Station(
+      backend: backend,
       type: json['type'] ?? '',
       id: json['id'] ?? location?['id'] ?? '',
       name: json['name'] ?? '',

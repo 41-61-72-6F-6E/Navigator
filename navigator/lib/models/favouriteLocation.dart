@@ -1,6 +1,6 @@
 import 'package:navigator/models/location.dart';
 
-class FavoriteLocation {
+class FavoriteLocation{
   final String name;
   final Location location;
 
@@ -13,10 +13,10 @@ class FavoriteLocation {
     };
   }
 
-  factory FavoriteLocation.fromJson(Map<String, dynamic> json) {
+  factory FavoriteLocation.fromJson(String backend, Map<String, dynamic> json) {
     return FavoriteLocation(
       name: json['name'] as String,
-      location: Location.fromJson(json['location'] as Map<String, dynamic>),
+      location: Location.fromJson(backend, json['location'] as Map<String, dynamic>),
     );
   }
 }

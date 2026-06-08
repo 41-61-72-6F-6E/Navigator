@@ -1,4 +1,6 @@
-class Line{
+import 'package:navigator/models/baseModel.dart';
+
+class Line extends baseModel{
   final String? type;
   final String? id;
   final String? fahrtNr;
@@ -9,6 +11,7 @@ class Line{
   final String? product;
   final String? operator;
   Line({
+    required super.backend,
     this.type,
     this.id,
     this.fahrtNr,
@@ -20,8 +23,9 @@ class Line{
     this.operator,
   });
 
-  factory Line.fromJson(Map<String, dynamic> json) {
+  factory Line.fromJson(String backend, Map<String, dynamic> json) {
     return Line(
+      backend: backend,
       type: json['type'],
       id: json['id'],
       fahrtNr: json['fahrtNr'],

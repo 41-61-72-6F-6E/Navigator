@@ -13,6 +13,7 @@ import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/trip.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
@@ -21,6 +22,7 @@ import 'dart:math' as math;
 
 class HomePageModel {
   final HomePageIni page;
+  final ServicesMiddle services;
 
   // ─── Notifiers ───────────────────────────────────────────────────────────
 
@@ -37,7 +39,7 @@ class HomePageModel {
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
 
-  HomePageModel({required this.page}) {
+  HomePageModel({required this.page, required this.services}) {
     searchController.addListener(() {
       _onSearchChanged(searchController.text.trim());
     });
@@ -547,6 +549,13 @@ class HomePageModel {
       } catch (e) {
         print('Error fetching stations: $e');
       }
+    }
+  }
+  Future<void> getDeparturesForStation(Station station) async {
+    try {
+      final departures = await page.service.getDeparturesForStation(station.id);
+    } catch (e) {
+      print('Error fetching departures for station ${station.name}: $e');
     }
   }
 

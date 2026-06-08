@@ -48,12 +48,12 @@ class Localdatasaver {
         
         // Handle both old format (just location) and new format (FavoriteLocation)
         if (json.containsKey('name') && json.containsKey('location')) {
-          faves.add(FavoriteLocation.fromJson(json));
+          faves.add(FavoriteLocation.fromJson("dbRest", json));
         } else {
           // Old format - create FavoriteLocation with default name
           faves.add(FavoriteLocation(
             name: 'Unnamed Location',
-            location: Location.fromJson(json),
+            location: Location.fromJson("dbRest", json),
           ));
         }
       }
@@ -88,7 +88,7 @@ class Localdatasaver {
   List<Savedjourney> savedJourneys = [];
   for(String s in savedJourneysJson)
   {
-    savedJourneys.add(Savedjourney.fromJson(jsonDecode(s))); // ← Added fromJson()
+    savedJourneys.add(Savedjourney.fromJson("dbRest",jsonDecode(s))); // ← Added fromJson()
   }
   String id = calculateJourneyID(journey);
   savedJourneys.removeWhere((sj) => sj.id == id);
@@ -106,7 +106,7 @@ class Localdatasaver {
     List<Savedjourney> journeys = [];
     for(String s in savedJourneysJson)
     {
-      journeys.add(Savedjourney.fromJson(jsonDecode(s)));
+      journeys.add(Savedjourney.fromJson("dbRest", jsonDecode(s)));
     }
     return journeys;
   }
@@ -118,7 +118,7 @@ class Localdatasaver {
     List<Savedjourney> journeys = [];
     for(String s in savedJourneysJson)
     {
-      journeys.add(Savedjourney.fromJson(jsonDecode(s)));
+      journeys.add(Savedjourney.fromJson("dbRest", jsonDecode(s)));
     }
     Savedjourney check = Savedjourney(journey: journey, id: calculateJourneyID(journey));
     for(Savedjourney sj in journeys)

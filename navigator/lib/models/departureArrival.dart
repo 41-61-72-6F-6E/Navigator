@@ -1,8 +1,9 @@
 import 'package:navigator/models/line.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/baseModel.dart';
 
-class DepartureArrival {
+class DepartureArrival extends baseModel{
   final Station station;
   final DateTime when;
   final DateTime plannedWhen;
@@ -18,6 +19,7 @@ class DepartureArrival {
   final bool isDeparture;
 
   DepartureArrival({
+    required super.backend,
     required this.station,
     required this.when,
     required this.plannedWhen,
@@ -33,9 +35,10 @@ class DepartureArrival {
     required this.isDeparture,
   });
 
-  factory DepartureArrival.fromJson(Map<String, dynamic> json, {required bool isDeparture}) {
+  factory DepartureArrival.fromJson(String backend,Map<String, dynamic> json, {required bool isDeparture}) {
     return DepartureArrival(
-      station: Station.fromJson(json['station']),
+      backend: backend,
+      station: Station.fromJson(backend, json['station']),
       when: DateTime.parse(json['when']),
       plannedWhen: DateTime.parse(json['plannedWhen']),
       delay: json['delay'],
@@ -43,14 +46,14 @@ class DepartureArrival {
       plannedPlatform: json['plannedPlatform'],
       direction: json['direction'],
       provenance: json['provenance'],
-      line: json['line'] != null ? Line.fromJson(json['line']) : null,
+      line: json['line'] != null ? Line.fromJson(backend, json['line']) : null,
       remarks: (json['remarks'] as List<dynamic>?)
-              ?.map((remarkJson) => Remark.fromJson(remarkJson))
+              ?.map((remarkJson) => Remark.fromJson(backend, remarkJson))
               .toList() ??
           [],
-      origin: json['origin'] != null ? Station.fromJson(json['origin']) : null,
+      origin: json['origin'] != null ? Station.fromJson(backend, json['origin']) : null,
       destination:
-          json['destination'] != null ? Station.fromJson(json['destination']) : null,
+          json['destination'] != null ? Station.fromJson(backend, json['destination']) : null,
       isDeparture: isDeparture,
     );
   }

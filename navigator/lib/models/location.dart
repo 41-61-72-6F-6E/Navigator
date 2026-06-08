@@ -1,7 +1,8 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:navigator/models/baseModel.dart';
 import 'package:navigator/models/station.dart';
 
-class Location {
+class Location extends baseModel{
   final String type;
   final String id;
   final String name;
@@ -10,6 +11,7 @@ class Location {
   String? address;
   
   Location({
+    required super.backend,
     required this.type,
     required this.id,
     required this.name,
@@ -18,13 +20,14 @@ class Location {
     this.address
   });
   
-  factory Location.fromJson(Map<String, dynamic> json) {
+  factory Location.fromJson(String backend, Map<String, dynamic> json) {
 
     if(json.containsKey('products') || json.containsKey('ril100Ids'))
     {
-      return Station.fromJson(json);
+      return Station.fromJson(backend,json);
     }
     return Location(
+      backend: backend,
       type: json['type'],
       id: json['id'],
       name: json['name'],
@@ -34,8 +37,9 @@ class Location {
     );
   }
   
-  factory Location.fromPosition(Position p) {
+  factory Location.fromPosition(String backend, Position p) {
     return Location(
+      backend: backend,
       type: 'Address', 
       id: '0', 
       name: 'emptyName', 

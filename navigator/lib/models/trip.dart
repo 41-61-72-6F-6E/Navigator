@@ -1,7 +1,8 @@
+import 'package:navigator/models/baseModel.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/stopover.dart';
 
-class Trip {
+class Trip extends baseModel{
   final String id;
   final String? name;
   final String? direction;
@@ -23,6 +24,7 @@ class Trip {
   final dynamic polyline;
 
   Trip({
+    required super.backend,
     required this.id,
     this.name,
     this.direction,
@@ -44,8 +46,9 @@ class Trip {
     this.polyline,
   });
 
-  factory Trip.fromJson(Map<String, dynamic> json) {
+  factory Trip.fromJson(String backend, Map<String, dynamic> json) {
     return Trip(
+      backend: backend,
       id: json['id'] ?? '',
       name: json['name'],
       direction: json['direction'],
@@ -64,10 +67,10 @@ class Trip {
       arrivalPlatform: json['arrivalPlatform'],
       plannedArrivalPlatform: json['plannedArrivalPlatform'],
       stopovers: json['stopovers'] != null 
-        ? (json['stopovers'] as List).map((s) => Stopover.fromJson(s)).toList()
+        ? (json['stopovers'] as List).map((s) => Stopover.fromJson(backend,s)).toList()
         : [],
       remarks: json['remarks'] != null 
-        ? (json['remarks'] as List).map((r) => Remark.fromJson(r)).toList()
+        ? (json['remarks'] as List).map((r) => Remark.fromJson(backend, r)).toList()
         : [],
       polyline: json['polyline'],
     );

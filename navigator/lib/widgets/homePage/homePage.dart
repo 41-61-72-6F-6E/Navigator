@@ -19,7 +19,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _model = HomePageModel(page: widget.page);
+    _model = HomePageModel(page: widget.page, services: widget.page.service);
   }
 
   @override

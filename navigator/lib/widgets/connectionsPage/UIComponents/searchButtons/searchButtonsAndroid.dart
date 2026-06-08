@@ -158,6 +158,7 @@ class SearchButtonsAndroid extends StatelessWidget {
 
   void _showSettingsDialog(BuildContext context, ColorScheme colors) async {
     JourneySettings tempSettings = JourneySettings(
+      backend: "dbRest",
       national: model.journeySettings.national,
       nationalExpress: model.journeySettings.nationalExpress,
       regional: model.journeySettings.regional,

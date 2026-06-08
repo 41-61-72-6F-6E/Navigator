@@ -1,6 +1,7 @@
+import 'package:navigator/models/baseModel.dart';
 import 'package:navigator/models/leg.dart';
 
-class Journey {
+class Journey extends baseModel{
   final List<Leg> legs;
   final String refreshToken;
 
@@ -8,12 +9,14 @@ class Journey {
   Journey({
     required this.legs,
     required this.refreshToken,
-
+    required super.backend,
   });
 
-  factory Journey.fromJson(Map<String, dynamic> json) {
-    Journey j = Journey(legs: (json['legs'] as List)
-        .map((legJson) => Leg.fromJson(legJson))
+  factory Journey.fromJson(String backend, Map<String, dynamic> json) {
+    Journey j = Journey(
+      backend: backend,
+      legs: (json['legs'] as List)
+          .map((legJson) => Leg.fromJson(backend, legJson))
         .toList(),
         refreshToken: json['refreshToken'] ?? '');
     return j; // Extract it safely
@@ -28,11 +31,11 @@ class Journey {
     }
   }
 
-  static Journey parseSingleJourneyResponse(Map<String, dynamic> json) {
+  static Journey parseSingleJourneyResponse(String backend, Map<String, dynamic> json) {
     if (!json.containsKey('legs')) {
       throw FormatException('Missing legs in single journey response');
     }
-    return Journey.fromJson(json);
+    return Journey.fromJson(backend, json);
   }
 
   Map<String, dynamic> toJson() {
@@ -42,10 +45,10 @@ class Journey {
     };
   }
 
-  static List<Journey> parseAndSort(List<dynamic> jsonJourneys) {
+  static List<Journey> parseAndSort(String backend, List<dynamic> jsonJourneys) {
     List<Journey> journeys = jsonJourneys
         .map((json) {
-      final journey = Journey.fromJson(json);
+      final journey = Journey.fromJson(backend, json);
       print('Parsed Journey with refreshToken: ${journey.refreshToken}');
       return journey;
     })
@@ -60,10 +63,10 @@ class Journey {
     return journeys;
   }
 
-  static List<Journey> parseAndSortByPlanned(List<dynamic> jsonJourneys) {
+  static List<Journey> parseAndSortByPlanned(String backend,List<dynamic> jsonJourneys) {
     List<Journey> journeys = jsonJourneys
         .map((json) {
-      final journey = Journey.fromJson(json);
+      final journey = Journey.fromJson(backend, json);
       print('Parsed Journey with refreshToken: ${journey.refreshToken}');
       return journey;
     })
