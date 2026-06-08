@@ -522,6 +522,101 @@ class DbApiService {
     }
   }
 
+  Future<List<Station>> fetchStations({
+  String? query,
+  int limit = 3,
+  bool fuzzy = false,
+  bool completion = true,
+}) async {
+  final queryParams = <String, String>{};
+
+  if (query != null && query.isNotEmpty) {
+    queryParams['query'] = query;
+    queryParams['limit'] = limit.toString();
+    queryParams['fuzzy'] = fuzzy.toString();
+    queryParams['completion'] = completion.toString();
+  }
+
+  final uri = Uri.http(baseUrl, '/stations', queryParams);
+
+  try {
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+
+      if (data is! Map<String, dynamic>) return [];
+
+      return data.values
+          .where((item) => item != null && item['id'] != null)
+          .map<Station?>((item) {
+            try {
+              final location = item['location'];
+              final products = item['products'];
+
+              List<String> ril100Ids = [];
+              if (item['ril100Ids'] != null) {
+                ril100Ids = List<String>.from(item['ril100Ids']);
+              } else if (item['ril100'] != null) {
+                ril100Ids = [item['ril100'].toString()];
+              }
+
+              return Station(
+                backend: "dbRest",
+                id: item['id']?.toString() ?? '',
+                name: item['name']?.toString() ?? 'Unknown',
+                type: item['type']?.toString() ?? 'station',
+                latitude: location?['latitude']?.toDouble() ?? 0.0,
+                longitude: location?['longitude']?.toDouble() ?? 0.0,
+                nationalExpress: products?['nationalExpress'] ?? false,
+                national: products?['national'] ?? false,
+                regional: products?['regional'] ?? false,
+                regionalExpress: products?['regionalExpress'] ?? false,
+                suburban: products?['suburban'] ?? false,
+                bus: products?['bus'] ?? false,
+                ferry: products?['ferry'] ?? false,
+                subway: products?['subway'] ?? false,
+                tram: products?['tram'] ?? false,
+                taxi: products?['taxi'] ?? false,
+                ril100Ids: ril100Ids,
+              );
+            } catch (e) {
+              print('Error parsing station: $e');
+              return null;
+            }
+          })
+          .whereType<Station>()
+          .toList();
+    } else {
+      throw Exception('Failed to load stations: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Exception in fetchStations: $e');
+    rethrow;
+  }
+}
+
+Future<Station?> convertStationToDbRest(Station station) async {
+  try {
+    final results = await fetchStations(
+      query: station.name,
+      limit: 1,
+      fuzzy: true,
+      completion: false,
+    );
+
+    if (results.isEmpty) {
+      print('No matching station found for: ${station.name}');
+      return null;
+    }
+
+    return results.first;
+  } catch (e) {
+    print('Exception in convertStationToDbRest: $e');
+    return null;
+  }
+}
+
   Future<List<DepartureArrival>> getDeparturesForStation(String stationId) async {
   final url = 'http://$baseUrl/stops/$stationId/departures?';
   final uri = Uri.parse(url);

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/dateAndTime.dart';
 import 'package:navigator/models/departureArrival.dart';
+import 'package:navigator/models/station.dart';
 import 'package:navigator/services/dbApiService.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart' as myApp;
@@ -264,6 +265,16 @@ class ServicesMiddle {
       print('Error getting Location: $err');
       return myApp.Location(backend: "none", type: '', id: '', name: '', latitude: 0, longitude: 0);
     }
+  }
+
+  Future<Station?> convertStationToDifferentBackend(Station station, String newBackend) async {
+    if(newBackend == station.backend) return station; // No conversion needed
+    if(newBackend == "dbRest")
+    {
+      return await dbRest.convertStationToDbRest(station);
+    }
+    print("Tried to convert station from ${station.backend} to unsupported backend: $newBackend");
+    return station;
   }
   
   Future<void> refreshPolylines() async {
