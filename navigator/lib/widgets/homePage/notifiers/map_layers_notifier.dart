@@ -10,6 +10,7 @@ class MapLayersNotifier extends ChangeNotifier {
   List<Polyline> ferryLines;
   List<Polyline> funicularLines;
   List<Station> stations;
+  Station? selectedStation;
 
   bool showSubway;
   bool showLightRail;
@@ -100,4 +101,11 @@ class MapLayersNotifier extends ChangeNotifier {
       default: return false;
     }
   }
+
+  void selectStation(Station station)
+  {
+    selectedStation = station;
+    notifyListeners();
+  }
+
 }

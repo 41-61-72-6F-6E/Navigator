@@ -7,11 +7,13 @@ import 'package:navigator/widgets/homePage/homePageModel.dart';
 class HomePageMarkerLayerAndroid extends StatelessWidget {
   final HomePageModel model;
   final String transportType;
+  final void Function(Station) onStationTap;
 
   const HomePageMarkerLayerAndroid({
     super.key,
     required this.model,
     required this.transportType,
+    required this.onStationTap,
   });
 
   @override
@@ -73,7 +75,7 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
                 width: 150,
                 height: 60,
                 child: GestureDetector(
-                  onTap: () {model.getDeparturesForStation(station);},
+                  onTap: () {onStationTap(station);},
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [

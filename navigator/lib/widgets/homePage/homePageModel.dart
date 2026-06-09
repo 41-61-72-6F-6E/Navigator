@@ -553,10 +553,21 @@ class HomePageModel {
   }
   Future<void> getDeparturesForStation(Station station) async {
     try {
-      final departures = await page.service.getDeparturesForStation(station.id);
+      final departures = await page.service.getDeparturesForStation(station);
     } catch (e) {
       print('Error fetching departures for station ${station.name}: $e');
     }
+  }
+
+  Future<void> selectStation(Station station) async
+  {
+    Station? convertedStation = await services.convertStationToDifferentBackend(station, "dbRest");
+    if(Station == null)
+    {
+      print("Error converting station ${station.name} to the current backend format");
+      return;
+    }
+    layers.selectStation(convertedStation!);
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────

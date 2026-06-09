@@ -9,6 +9,7 @@ import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMark
 import 'package:navigator/widgets/homePage/UIComponents/mapOptionsModal/mapOptionsModal.dart';
 import 'package:navigator/widgets/homePage/UIComponents/ongoingJourneyBanner/ongoingJourneyBanner.dart';
 import 'package:navigator/widgets/homePage/UIComponents/searchResultsCard/searchResultsCard.dart';
+import 'package:navigator/widgets/homePage/UIComponents/stationSheet/stationSheet.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 class HomePageView extends StatefulWidget {
@@ -261,30 +262,35 @@ class _HomePageViewState extends State<HomePageView>
                 design: widget.design,
                 model: widget.model,
                 transportType: 'lightRail',
+                onStationTap: (station) => onStationTap(station),
               ),
             if (lay.showSubway)
               HomePageMarkerLayer(
                 design: widget.design,
                 model: widget.model,
                 transportType: 'subway',
+                onStationTap: (station) => onStationTap(station),
               ),
             if (lay.showTram)
               HomePageMarkerLayer(
                 design: widget.design,
                 model: widget.model,
                 transportType: 'tram',
+                onStationTap: (station) => onStationTap(station),
               ),
             if (lay.showFerry)
               HomePageMarkerLayer(
                 design: widget.design,
                 model: widget.model,
                 transportType: 'ferry',
+                onStationTap: (station) => onStationTap(station),
               ),
             if (lay.showFunicular)
               HomePageMarkerLayer(
                 design: widget.design,
                 model: widget.model,
                 transportType: 'funicular',
+                onStationTap: (station) => onStationTap(station),
               ),
             Align(
               alignment: Alignment.bottomRight,
@@ -309,4 +315,10 @@ class _HomePageViewState extends State<HomePageView>
       },
     );
   }
+
+  void onStationTap(Station station) {
+    widget.model.selectStation(station);
+    StationSheet.show(context, widget.model, widget.design, station);
+  }
+
 }

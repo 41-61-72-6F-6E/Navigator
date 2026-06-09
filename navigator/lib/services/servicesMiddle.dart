@@ -35,9 +35,19 @@ class ServicesMiddle {
     return results;
   }
 
-  Future<List<DepartureArrival>> getDeparturesForStation(String stationId) async {
-    final results = await dbRest.getDeparturesForStation(stationId);
-    print("Fetched ${results.length} departures for station ID: $stationId");
+  Future<List<DepartureArrival>> getDeparturesForStation(Station station) async {
+    Station s = station;
+    if(station.backend != "dbRest") {
+      print("Station backend (${station.backend}) is not dbRest. Attempting conversion...");
+      Station? convertedStation = await convertStationToDifferentBackend(station, "dbRest");
+      if (convertedStation == null) {
+        print("Failed to convert station ${station.name} to dbRest backend. Returning empty departures.");
+        return [];
+      }
+      s = convertedStation;
+    }
+    final results = await dbRest.getDeparturesForStation(s.id);
+    print("Fetched ${results.length} departures for station ID: ${s.id}");
     print("Sample departure: ${results.isNotEmpty ? results.first.station.name : 'No departures'} at ${results.isNotEmpty ? results.first.when : 'N/A'}");
     return results;
   }
