@@ -12,9 +12,9 @@ import 'package:navigator/widgets/journeyPage/UIComponents/interchangeComponent/
 import 'package:navigator/widgets/journeyPage/UIComponents/legWidget/legWidget.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/locationButton/locationButton.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/originComponent/originComponent.dart';
-import 'package:navigator/widgets/journeyPage/UIComponents/sheetHandle/sheetHandle.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/walkingLeg/walkingLeg.dart';
 import 'package:navigator/widgets/journeyPage/journeyPageModel.dart';
+import 'package:navigator/widgets/GeneralUIComponents/sheetHandle/sheetHandle.dart';
 
 /// Renders all UI for the Journey page.
 /// Owns the sheet controller and map-animation controller (both require vsync /
