@@ -1,6 +1,7 @@
 import 'package:navigator/models/baseModel.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/stopover.dart';
+import 'package:navigator/models/line.dart';
 
 class Trip extends baseModel{
   final String id;
@@ -52,7 +53,7 @@ class Trip extends baseModel{
       id: json['id'] ?? '',
       name: json['name'],
       direction: json['direction'],
-      line: json['line'] != null ? Line.fromJson(json['line']) : null,
+      line: json['line'] != null ? Line.fromJson(backend, json['line']) : null,
       // Fix: Extract name from origin/destination objects
       origin: json['origin'] is Map ? json['origin']['name'] : json['origin'],
       destination: json['destination'] is Map ? json['destination']['name'] : json['destination'],
@@ -105,89 +106,5 @@ class Trip extends baseModel{
     for(Stopover s in stopovers) {
       print(s.station.name);
     }
-  }
-}
-
-class Line {
-  final String type;
-  final String? id;
-  final String? fahrtNr;
-  final String name;
-  final bool public;
-  final String? adminCode;
-  final String? productName;
-  final String mode;
-  final String product;
-  final Operator? operator;
-
-  Line({
-    required this.type,
-    this.id,
-    this.fahrtNr,
-    required this.name,
-    required this.public,
-    this.adminCode,
-    this.productName,
-    required this.mode,
-    required this.product,
-    this.operator,
-  });
-
-  factory Line.fromJson(Map<String, dynamic> json) {
-    return Line(
-      type: json['type'] ?? '',
-      id: json['id'],
-      fahrtNr: json['fahrtNr'],
-      name: json['name'] ?? '',
-      public: json['public'] ?? true,
-      adminCode: json['adminCode'],
-      productName: json['productName'],
-      mode: json['mode'] ?? '',
-      product: json['product'] ?? '',
-      operator: json['operator'] != null ? Operator.fromJson(json['operator']) : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'id': id,
-      'fahrtNr': fahrtNr,
-      'name': name,
-      'public': public,
-      'adminCode': adminCode,
-      'productName': productName,
-      'mode': mode,
-      'product': product,
-      'operator': operator?.toJson(),
-    };
-  }
-}
-
-class Operator {
-  final String type;
-  final String id;
-  final String name;
-
-  Operator({
-    required this.type,
-    required this.id,
-    required this.name,
-  });
-
-  factory Operator.fromJson(Map<String, dynamic> json) {
-    return Operator(
-      type: json['type'] ?? '',
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'type': type,
-      'id': id,
-      'name': name,
-    };
   }
 }

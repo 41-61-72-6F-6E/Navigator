@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/stopover.dart';
+import 'package:navigator/widgets/GeneralUIComponents/lineChip/lineChip.dart';
 
 class LegWidget extends StatefulWidget {
   final Leg leg;
@@ -116,21 +117,11 @@ class _LegWidgetState extends State<LegWidget> {
                                     widget.leg.lineName!.isNotEmpty)
                                   Row(
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: lineColor,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          widget.leg.lineName!,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelLarge!
-                                              .copyWith(color: onLineColor),
-                                        ),
+                                      LineChip(
+                                        design: 0,
+                                        lineName: widget.leg.lineName!,
+                                        lineColor: lineColor,
+                                        onLineColor: onLineColor,
                                       ),
                                       if (widget.leg.direction != null &&
                                           widget.leg.direction!.isNotEmpty)

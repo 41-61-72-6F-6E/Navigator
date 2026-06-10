@@ -21,6 +21,7 @@ import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
+import 'package:navigator/widgets/homePage/notifiers/station_sheet_notifier.dart';
 import 'dart:math' as math;
 
 typedef TransitLinesLoader =
@@ -58,6 +59,7 @@ class HomePageModel {
   final MapLayersNotifier layers = MapLayersNotifier();
   final OngoingJourneyNotifier journey = OngoingJourneyNotifier();
   final FavesNotifier faves = FavesNotifier();
+  final StationSheetNotifier stationSheetNotifier = StationSheetNotifier();
 
   // ─── Controllers ─────────────────────────────────────────────────────────
 
@@ -837,30 +839,26 @@ class HomePageModel {
     }
   }
 
-  Future<List<DepartureArrival>> getDeparturesForStation(
-    Station station,
-  ) async {
-    return services.getDeparturesForStation(station);
+  Future<void> getDeparturesForStation(Station station) async {
+    try {
+      final departures = await page.service.getDeparturesForStation(station);
+      stationSheetNotifier.updateDepartureArrivals(departures);
+    } catch (e) {
+      print('Error fetching departures for station ${station.name}: $e');
+    }
   }
 
-  Future<Station?> selectStation(Station station) async {
-    try {
-      final convertedStation = await services.convertStationToDifferentBackend(
-        station,
-        "dbRest",
-      );
-      if (convertedStation == null) {
-        debugPrint(
-          "Error converting station ${station.name} to the current backend format",
-        );
-        return null;
-      }
-      layers.selectStation(convertedStation);
-      return convertedStation;
-    } catch (error) {
-      debugPrint('Error selecting station ${station.name}: $error');
-      return null;
+  Future<void> selectStation(Station station) async {
+    final convertedStation = await services.convertStationToDifferentBackend(
+      station,
+      "dbRest",
+    );
+    if (convertedStation == null) {
+      print("Error converting station ${station.name} to the current backend format");
+      return;
     }
+    stationSheetNotifier.selectStation(convertedStation);
+    await getDeparturesForStation(convertedStation);
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────

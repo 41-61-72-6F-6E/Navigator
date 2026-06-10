@@ -47,6 +47,8 @@ dependencies:
   shared_preferences: ^2.5.3
   intl: ^0.19.0
   flutter_map_vector_tiles: ^2.8.1
+  m3e_core: ^0.1.0
+  material3_expressive_loading_indicator: ^0.1.2
 
 dev_dependencies:
   flutter_test:
