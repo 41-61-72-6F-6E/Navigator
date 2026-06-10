@@ -18,7 +18,7 @@ class DepartureArrivalArea extends StatelessWidget {
       case 0:
         return DepartureArrivalAreaAndroid(layers: layers,);
       default:
-        return DepartureArrivalAreaAndroid(layers: layers);
+        return DepartureArrivalAreaAndroid(layers: layers,);
     }
   }
 }

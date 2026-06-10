@@ -26,6 +26,7 @@ class StationSheetNotifier extends ChangeNotifier {
   void deselectStation()
   {
     selectedStation = null;
+    clearDepartureArrivals();
     notifyListeners();
   }
 
@@ -53,6 +54,12 @@ class StationSheetNotifier extends ChangeNotifier {
   void updateDepartureArrivals(List<DepartureArrival> list)
   {
     loadedDepartureArrivals = list;
+    notifyListeners();
+  }
+
+  void clearDepartureArrivals()
+  {
+    loadedDepartureArrivals.clear();
     notifyListeners();
   }
 

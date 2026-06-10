@@ -45,6 +45,7 @@ class StationSheet {
       // Future designs can be added here
       default:
         return showModalBottomSheet<T>(
+          showDragHandle: true,
           context: context,
           isScrollControlled: true, // allows full height control
           builder: (context) => DraggableScrollableSheet(
@@ -62,6 +63,6 @@ class StationSheet {
             ),
           ),
         );
-    }
-  }
+  
 }
+  }}
