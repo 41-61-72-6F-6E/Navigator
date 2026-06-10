@@ -10,16 +10,16 @@ class StationDepartureArrivals extends StatelessWidget {
     super.key,
     required this.design,
     required this.onTripSelected,
-    required this.data
+    required this.data,
   });
 
   @override
   Widget build(BuildContext context) {
     switch (design) {
       case 0:
-        return StationDepartureArrivalsAndroid(onTripSelected: onTripSelected, data: data);
+        return StationDepartureArrivalsAndroid(onTripSelected: onTripSelected, data: data,);
       default:
-        return StationDepartureArrivalsAndroid(onTripSelected: onTripSelected, data: data);
+        return StationDepartureArrivalsAndroid(onTripSelected: onTripSelected, data: data,);
     }
   }
 }
