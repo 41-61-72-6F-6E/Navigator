@@ -15,20 +15,53 @@ class StationSheet {
   });
 
   @override
-  static Future<T?> show<T>(BuildContext context, HomePageModel model, int design, Station station) {
+  static Future<T?> show<T>(
+    BuildContext context,
+    HomePageModel model,
+    int design,
+    Station station,
+  ) {
     switch (design) {
       case 0:
         return showModalBottomSheet<T>(
+          showDragHandle: true,
           context: context,
-          builder: (context) => StationSheetAndroid(model: model, station: station),
+          isScrollControlled: true, // allows full height control
+          builder: (context) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.5,
+            minChildSize: 0.25,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) => ListenableBuilder(
+              listenable: model.layers,
+              builder: (context, child) => StationSheetAndroid(
+                model: model,
+                station: station,
+                scrollController: scrollController, // pass it down
+              ),
+            ),
+          ),
         );
       // Future designs can be added here
       default:
         return showModalBottomSheet<T>(
           context: context,
-          builder: (context) => StationSheetAndroid(model: model, station: station),
+          isScrollControlled: true, // allows full height control
+          builder: (context) => DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.5,
+            minChildSize: 0.25,
+            maxChildSize: 0.9,
+            builder: (context, scrollController) => ListenableBuilder(
+              listenable: model.layers,
+              builder: (context, child) => StationSheetAndroid(
+                model: model,
+                station: station,
+                scrollController: scrollController, // pass it down
+              ),
+            ),
+          ),
         );
     }
   }
 }
-

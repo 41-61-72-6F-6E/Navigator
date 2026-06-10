@@ -20,6 +20,8 @@ import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart'
 import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
 import 'dart:math' as math;
 
+import 'package:navigator/widgets/homePage/notifiers/station_sheet_notifier.dart';
+
 class HomePageModel {
   final HomePageIni page;
   final ServicesMiddle services;
@@ -30,6 +32,7 @@ class HomePageModel {
   final MapLayersNotifier layers = MapLayersNotifier();
   final OngoingJourneyNotifier journey = OngoingJourneyNotifier();
   final FavesNotifier faves = FavesNotifier();
+  final StationSheetNotifier stationSheetNotifier = StationSheetNotifier();
 
   // ─── Controllers ─────────────────────────────────────────────────────────
 
@@ -554,6 +557,7 @@ class HomePageModel {
   Future<void> getDeparturesForStation(Station station) async {
     try {
       final departures = await page.service.getDeparturesForStation(station);
+      stationSheetNotifier.updateDepartureArrivals(departures);
     } catch (e) {
       print('Error fetching departures for station ${station.name}: $e');
     }
@@ -562,12 +566,13 @@ class HomePageModel {
   Future<void> selectStation(Station station) async
   {
     Station? convertedStation = await services.convertStationToDifferentBackend(station, "dbRest");
-    if(Station == null)
+    if(convertedStation == null)
     {
       print("Error converting station ${station.name} to the current backend format");
       return;
     }
-    layers.selectStation(convertedStation!);
+    stationSheetNotifier.selectStation(convertedStation);
+    await getDeparturesForStation(convertedStation);
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────
