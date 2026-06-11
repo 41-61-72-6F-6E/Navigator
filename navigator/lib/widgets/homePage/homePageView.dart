@@ -316,9 +316,10 @@ class _HomePageViewState extends State<HomePageView>
     );
   }
 
-  void onStationTap(Station station) {
-    widget.model.selectStation(station);
-    StationSheet.show(context, widget.model, widget.design, station);
-  }
+  Future<void> onStationTap(Station station) async {
+  widget.model.selectStation(station);
+  await StationSheet.show(context, widget.model, widget.design, station);
+  if (mounted) widget.model.deselectStation();
+}
 
 }

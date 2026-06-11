@@ -52,6 +52,23 @@ class ServicesMiddle {
     return results;
   }
 
+  Future<List<DepartureArrival>> getArrivalsForStation(Station station) async {
+    Station s = station;
+    if(station.backend != "dbRest") {
+      print("Station backend (${station.backend}) is not dbRest. Attempting conversion...");
+      Station? convertedStation = await convertStationToDifferentBackend(station, "dbRest");
+      if (convertedStation == null) {
+        print("Failed to convert station ${station.name} to dbRest backend. Returning empty arrivals.");
+        return [];
+      }
+      s = convertedStation;
+    }
+    final results = await dbRest.getArrivalsForStation(s.id);
+    print("Fetched ${results.length} arrivals for station ID: ${s.id}");
+    print("Sample arrival: ${results.isNotEmpty ? results.first.station.name : 'No arrivals'} at ${results.isNotEmpty ? results.first.when : 'N/A'}");
+    return results;
+  }
+
   Future<String> getAddressFromLatLng(double latitude, double longitude) async {
     try {
       List<geo.Placemark> placemarks = await geo.placemarkFromCoordinates(latitude, longitude);

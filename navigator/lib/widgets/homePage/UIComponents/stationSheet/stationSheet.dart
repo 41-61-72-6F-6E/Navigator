@@ -33,7 +33,7 @@ class StationSheet {
             minChildSize: 0.25,
             maxChildSize: 0.9,
             builder: (context, scrollController) => ListenableBuilder(
-              listenable: model.layers,
+              listenable: model.stationSheetNotifier,
               builder: (context, child) => StationSheetAndroid(
                 model: model,
                 station: station,

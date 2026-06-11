@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/loadingCircle/loadingCircle.dart';
 import 'package:navigator/widgets/homePage/UIComponents/stationSheet/subComponents/departureArrivalArea/departureArrivalArea.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 import 'package:navigator/widgets/GeneralUIComponents/sheetHandle/sheetHandle.dart';
@@ -21,7 +22,8 @@ class StationSheetAndroid extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       controller: scrollController,
-  child: Column(
+  child: 
+  Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Center(child: Text(station.name, style: Theme.of(context).textTheme.headlineMedium)),
@@ -29,7 +31,7 @@ class StationSheetAndroid extends StatelessWidget {
       SizedBox(height: 8),
       Divider(indent: 16, endIndent: 16),
       SizedBox(height: 8),
-      DepartureArrivalArea(design: 0, layers: model.stationSheetNotifier),
+      DepartureArrivalArea(design: 0, layers: model.stationSheetNotifier, model: model),
     ],
   ),
 ); // Placeholder content, replace with actual UI
