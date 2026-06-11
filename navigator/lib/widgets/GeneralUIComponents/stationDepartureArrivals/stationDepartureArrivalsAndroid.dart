@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:m3e_core/m3e_core.dart';
+import 'package:material3_expressive_loading_indicator/material3_expressive_loading_indicator.dart';
 import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/widgets/GeneralUIComponents/generalUiUtilities.dart';
 import 'package:navigator/widgets/GeneralUIComponents/lineChip/lineChip.dart';
@@ -8,11 +9,16 @@ import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/d
 class StationDepartureArrivalsAndroid extends StatelessWidget {
   final ValueChanged<String> onTripSelected; // This takes a trip id;
   final List<DepartureArrival> data;
+  final bool isLoading;
 
-  const StationDepartureArrivalsAndroid({super.key, required this.onTripSelected, required this.data});
+  const StationDepartureArrivalsAndroid({super.key, required this.onTripSelected, required this.data, required this.isLoading});
 
   @override
   Widget build(BuildContext context) {
+    if(isLoading)
+    {
+      return ExpressiveLoadingIndicator();
+    }
     if(data.isEmpty)
     {
       return Center(child: Text("No Arrivals/Departures for this station", style: Theme.of(context).textTheme.titleMedium));

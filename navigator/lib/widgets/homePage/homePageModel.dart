@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
@@ -840,25 +841,47 @@ class HomePageModel {
   }
 
   Future<void> getDeparturesForStation(Station station) async {
+    stationSheetNotifier.setLoading(true);
     try {
       final departures = await page.service.getDeparturesForStation(station);
-      stationSheetNotifier.updateDepartureArrivals(departures);
+      stationSheetNotifier.updateDepartures(departures);
     } catch (e) {
       print('Error fetching departures for station ${station.name}: $e');
     }
+    stationSheetNotifier.setLoading(false);
+  }
+
+  Future<void> getarrivalsForStation(Station station) async {
+    stationSheetNotifier.setLoading(true);
+    try {
+      final arrivals = await page.service.getArrivalsForStation(station);
+      stationSheetNotifier.updateArrivals(arrivals);
+    } catch (e) {
+      print('Error fetching arrivals for station ${station.name}: $e');
+    }
+    stationSheetNotifier.setLoading(false);
   }
 
   Future<void> selectStation(Station station) async {
+    stationSheetNotifier.setLoading(true);
     final convertedStation = await services.convertStationToDifferentBackend(
       station,
       "dbRest",
     );
     if (convertedStation == null) {
       print("Error converting station ${station.name} to the current backend format");
+      stationSheetNotifier.setLoading(false);
       return;
     }
     stationSheetNotifier.selectStation(convertedStation);
     await getDeparturesForStation(convertedStation);
+  }
+
+  void deselectStation()
+  {
+    print("deselecting");
+    stationSheetNotifier.selectedStation = null;
+    stationSheetNotifier.clearDeparturesAndArrivals();
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────

@@ -7,6 +7,11 @@ class LoadingCircleAndroid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ExpressiveLoadingIndicator();
+    return ExpressiveLoadingIndicator(constraints: BoxConstraints(
+    minWidth: 64.0,
+    minHeight: 64.0,
+    maxWidth: 64.0,
+    maxHeight: 64.0,
+      ),);
   }
 }

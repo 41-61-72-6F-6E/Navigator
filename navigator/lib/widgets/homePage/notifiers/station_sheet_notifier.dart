@@ -5,15 +5,22 @@ import 'package:navigator/models/station.dart';
 
 class StationSheetNotifier extends ChangeNotifier {
   List<DepartureArrival> loadedDepartureArrivals;
+  List<DepartureArrival> loadedDepartures;
+  List<DepartureArrival> loadedArrivals;
   Station? selectedStation;
 
   bool showDepartures;
   bool showArrivals;
 
+  bool loading;
+
   StationSheetNotifier({
     this.loadedDepartureArrivals = const [],
     this.showDepartures = true,
     this.showArrivals = false,
+    this.loadedArrivals = const [],
+    this.loadedDepartures = const [],
+    this.loading = true
   });
 
 
@@ -26,7 +33,8 @@ class StationSheetNotifier extends ChangeNotifier {
   void deselectStation()
   {
     selectedStation = null;
-    clearDepartureArrivals();
+    clearDepartures();
+    clearArrivals();
     notifyListeners();
   }
 
@@ -51,15 +59,46 @@ class StationSheetNotifier extends ChangeNotifier {
     return showArrivals;
   }
 
-  void updateDepartureArrivals(List<DepartureArrival> list)
+  void updateDepartures(List<DepartureArrival> list)
   {
-    loadedDepartureArrivals = list;
+    loadedDepartures = list;
+    loadedDepartureArrivals = loadedDepartures;
     notifyListeners();
   }
 
-  void clearDepartureArrivals()
+  void clearDepartures()
   {
-    loadedDepartureArrivals.clear();
+    loadedDepartureArrivals = [];
+    loadedDepartures = [];
+    notifyListeners();
+  }
+
+  void updateArrivals(List<DepartureArrival> list)
+  {
+    loadedArrivals = list;
+    loadedDepartureArrivals = loadedArrivals;
+    notifyListeners();
+  }
+
+  void clearArrivals()
+  {
+    loadedDepartureArrivals = [];
+    loadedArrivals = [];
+    notifyListeners();
+  }
+
+  void clearDeparturesAndArrivals()
+  {
+    loadedDepartures = [];
+    loadedArrivals = [];
+    loadedDepartureArrivals = [];
+    showDepartures = true;
+    showArrivals = false;
+  }
+
+  void setLoading(bool value)
+  {
+    loading = value;
     notifyListeners();
   }
 

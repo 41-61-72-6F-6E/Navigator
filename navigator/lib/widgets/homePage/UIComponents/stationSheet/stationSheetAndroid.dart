@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/loadingCircle/loadingCircle.dart';
 import 'package:navigator/widgets/homePage/UIComponents/stationSheet/subComponents/departureArrivalArea/departureArrivalArea.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 import 'package:navigator/widgets/homePage/UIComponents/stationSheet/subComponents/originDestinationButtons/originDestinationButtons.dart';
@@ -40,6 +41,7 @@ class StationSheetAndroid extends StatelessWidget {
           DepartureArrivalArea(
             design: 0,
             layers: model.stationSheetNotifier,
+            model: model,
           ),
         ],
       ),
