@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:m3e_core/m3e_core.dart';
 import 'package:navigator/models/departureArrival.dart';
+import 'package:navigator/widgets/GeneralUIComponents/generalUiUtilities.dart';
 import 'package:navigator/widgets/GeneralUIComponents/lineChip/lineChip.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/departureChip/departureChip.dart';
 
 class StationDepartureArrivalsAndroid extends StatelessWidget {
   final ValueChanged<String> onTripSelected; // This takes a trip id;
@@ -19,30 +21,50 @@ class StationDepartureArrivalsAndroid extends StatelessWidget {
       itemCount: data.length, 
       itemBuilder: (context, index) {
         bool showLineChip = false;
+        Icon icon = Icon(Icons.directions_walk);
         if(data[index].line != null)
         {
           showLineChip = true;
+          icon = GeneralUIUtilities().getIconFromLine(data[index].line!);
         }
-        return Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children:[
-              Row(
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children:[
+            Flexible(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                Icon(Icons.train),
+                icon,
                 SizedBox(width: 8),
                 if(showLineChip)
-                LineChip(design: 0, lineName: data[index].line!.name, lineColor: Colors.grey, onLineColor: Colors.black,)
+                LineChip(
+                  design: 0, 
+                  lineName: data[index].line!.name, 
+                  lineColor: Colors.grey, 
+                  onLineColor: Colors.black,
+                  ),
+                SizedBox(width: 8,),
+                if(data[index].direction != null)
+                Flexible(child: Text(data[index].direction!, overflow: TextOverflow.ellipsis, maxLines: 5,))
               ],),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                Text("Trip $index"),
-                SizedBox(width: 8),
-              ],)
-            ]
-          )); // Placeholder, replace with actual UI
-      }) ;// Placeholder, replace with actual UI
+            ),
+            SizedBox(width: 8,),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+              DepartureChip(
+                design: 0, 
+                newTime: data[index].when, 
+                origTime: data[index].plannedWhen,
+                newPlatform: data[index].platform,
+                origPlatform: data[index].plannedPlatform,
+                ),
+              //Departure Chip
+              if(data[index].remarks.isNotEmpty)
+              IconButton(onPressed: (){}, icon: Icon(Icons.error))
+            ],)
+          ]
+        );
+      });
   }
 }
