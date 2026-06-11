@@ -14,30 +14,24 @@ class StationSheetAndroid extends StatelessWidget {
     super.key,
     required this.model,
     required this.station,
-    required this.scrollController
+    required this.scrollController,
   });
 
   @override
-Widget build(BuildContext context) {
-  return CustomScrollView(
-    controller: scrollController,
-    slivers: [
-      SliverToBoxAdapter(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(child: Text(station.name, style: Theme.of(context).textTheme.headlineMedium)),
-            originDestinationButtons(design: 0, onOriginPressed: () {}, onDestinationPressed: () {}),
-            const SizedBox(height: 16),
-            const Divider(indent: 16, endIndent: 16),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-      SliverFillRemaining(
-        child: DepartureArrivalArea(design: 0, layers: model.stationSheetNotifier),
-      ),
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      controller: scrollController,
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Center(child: Text(station.name, style: Theme.of(context).textTheme.headlineMedium)),
+      originDestinationButtons(design: 0, onOriginPressed: () {}, onDestinationPressed: (){}),
+      SizedBox(height: 8),
+      Divider(indent: 16, endIndent: 16),
+      SizedBox(height: 8),
+      DepartureArrivalArea(design: 0, layers: model.stationSheetNotifier),
     ],
-  );
-}
+  ),
+); // Placeholder content, replace with actual UI
+  }
 }
