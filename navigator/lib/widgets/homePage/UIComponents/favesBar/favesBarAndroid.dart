@@ -56,7 +56,7 @@ class FavesBarAndroid extends StatelessWidget {
                                 backgroundColor: Theme.of(context)
                                     .colorScheme
                                     .tertiaryContainer,
-                                onPressed: () => model.navigateLocation(context, f.location)
+                                onPressed: () => model.navigateLocation(context, f.location, false)
                               ),
                             ),
                           ),

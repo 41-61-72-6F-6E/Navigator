@@ -32,7 +32,7 @@ class StationSheetAndroid extends StatelessWidget {
           ),
           originDestinationButtons(
             design: 0,
-            onOriginPressed: () {},
+            model: model,
             onDestinationPressed: () {},
           ),
           const SizedBox(height: 8),

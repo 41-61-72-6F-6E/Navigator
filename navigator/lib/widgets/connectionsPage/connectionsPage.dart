@@ -48,8 +48,8 @@ void initState() {
 
   _fromFocusNode = FocusNode();
   _toFocusNode = FocusNode();
-  _toController = TextEditingController(text: widget.page.to.name);
-  _fromController = TextEditingController(text: 'Current Location');
+  _toController = TextEditingController(text: '');
+  _fromController = TextEditingController(text: '');
   _scrollController = ScrollController();
 
   _fromFocusNode.addListener(() {
@@ -88,7 +88,14 @@ void initState() {
       () => _onSearchChanged(_fromController.text.trim(), true));
 
   _getFaves();
-  _updateLocationWithCurrentPosition(true, true);
+  if(widget.page.from.id == '')
+  {
+    _updateLocationWithCurrentPosition(true, true);
+  }
+  else
+  {
+    _updateLocationWithCurrentPosition(false, true);
+  }
 }
 
 
@@ -125,8 +132,12 @@ void initState() {
       setState(() {
         if (from) {
           widget.page.from = l;
+          _toController.text = widget.page.to.name;
+          _fromController.text = 'Current Location';
         } else {
           widget.page.to = l;
+          _toController.text = 'Current Location';
+          _fromController.text = widget.page.from.name;
         }
       });
       if (startSearchWhenFinished) _search();

@@ -28,7 +28,7 @@ class StationResultCardAndroid extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => model.navigateLocation(context, station),
+        onTap: () => model.navigateLocation(context, station, false),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -139,7 +139,7 @@ class LocationResultCardAndroid extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => model.navigateLocation(context, location),
+        onTap: () => model.navigateLocation(context, location, false),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
