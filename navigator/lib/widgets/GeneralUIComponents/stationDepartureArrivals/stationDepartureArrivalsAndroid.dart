@@ -51,7 +51,10 @@ class StationDepartureArrivalsAndroid extends StatelessWidget {
                   ),
                 SizedBox(width: 8,),
                 if(data[index].direction != null)
-                Flexible(child: Text(data[index].direction!, overflow: TextOverflow.ellipsis, maxLines: 5,))
+                Flexible(child: Text(data[index].direction!, overflow: TextOverflow.ellipsis, maxLines: 5,)),
+                if(data[index].provenance != null)
+                Flexible(child: Text("from ${data[index].provenance!}", overflow: TextOverflow.ellipsis, maxLines: 5,))
+
               ],),
             ),
             SizedBox(width: 8,),
