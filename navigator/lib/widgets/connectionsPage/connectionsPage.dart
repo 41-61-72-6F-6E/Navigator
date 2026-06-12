@@ -6,6 +6,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/dateAndTime.dart';
+import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
 import 'package:navigator/widgets/journeyPage/journeyPage.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
@@ -346,65 +347,13 @@ void initState() {
   }
 
   void _handleJourneyTap(Journey j) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text(
-              'Refreshing journey information...',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final refreshedJourney = await _model.refreshJourney(j);
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (context) => JourneyPage(
-              JourneyPageIni(journey: refreshedJourney),
-              journey: refreshedJourney,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not refresh journey: ${e.toString()}'),
-            backgroundColor:
-                Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (context) => JourneyPage(
-              JourneyPageIni(journey: j),
-              journey: j,
-            ),
-          ),
-        );
-      }
-    }
-  }
+  RefreshJourneyPopUp.navigateToJourney(
+    context,
+    j,
+    null, // no model needed here
+    (_) async {}, // nothing to do after navigation on this page
+  );
+}
 
   void _handleResetToNow() {
     setState(() {
