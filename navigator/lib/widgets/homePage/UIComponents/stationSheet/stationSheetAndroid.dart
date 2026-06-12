@@ -27,7 +27,7 @@ class StationSheetAndroid extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Center(child: Text(station.name, style: Theme.of(context).textTheme.headlineMedium)),
-      originDestinationButtons(design: 0, onOriginPressed: () {}, onDestinationPressed: (){}),
+      originDestinationButtons(design: 0, model: model, onDestinationPressed: (){}),
       SizedBox(height: 8),
       Divider(indent: 16, endIndent: 16),
       SizedBox(height: 8),

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/widgets/homePage/UIComponents/stationSheet/subComponents/originDestinationButtons/originDestinationButtonsAndroid.dart';
+import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 class originDestinationButtons extends StatelessWidget {
   final int design;
-  final VoidCallback onOriginPressed;
+  final HomePageModel model;
   final VoidCallback onDestinationPressed;
 
   const originDestinationButtons({
     super.key,
     required this.design,
-    required this.onOriginPressed,
+    required this.model,
     required this.onDestinationPressed,
   });
 
@@ -17,9 +18,9 @@ class originDestinationButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (design) {
       case 0:
-        return originDestinationButtonsAndroid(onOriginPressed: onOriginPressed, onDestinationPressed: onDestinationPressed);
+        return originDestinationButtonsAndroid(model: model, onDestinationPressed: onDestinationPressed);
       default:
-        return originDestinationButtonsAndroid(onOriginPressed: onOriginPressed, onDestinationPressed: onDestinationPressed);
+        return originDestinationButtonsAndroid(model: model, onDestinationPressed: onDestinationPressed);
     }
   }
 }

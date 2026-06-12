@@ -579,15 +579,26 @@ class HomePageModel {
     stationSheetNotifier.setLoading(false);
   }
 
-  void navigateLocation(BuildContext context, Location destination) {
+  void navigateLocation(BuildContext context, Location location, bool useAsOrigin) {
   //clearSearch();
+  Location destination;
+  Location origin;
+  if(useAsOrigin)
+  {
+    destination = Location(backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: '',);
+    origin = location;
+  }
+  else
+  {
+    origin = Location(backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: '',);
+    destination = location;
+  }
+  print(destination.name);
   Navigator.of(context, rootNavigator: false).push(
     MaterialPageRoute(
       builder: (_) => ConnectionsPage(
         ConnectionsPageIni(
-          from: Location(
-            backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: '',
-          ),
+          from: origin,
           to: destination,
           services: page.service,
         ),
