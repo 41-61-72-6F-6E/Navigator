@@ -1,47 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:m3e_core/m3e_core.dart';
-import 'package:navigator/widgets/homePage/homePageModel.dart';
-import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
+import 'package:navigator/models/station.dart';
 import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/stationDepartureArrivals.dart';
-import 'package:navigator/widgets/homePage/notifiers/station_sheet_notifier.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/station_sheet_notifier.dart';
 
 class DepartureArrivalAreaAndroid extends StatelessWidget {
 
-  final StationSheetNotifier layers;
-  final HomePageModel model;
+  final StationSheetNotifier notifier;
+  final void Function(Station station) getDeparturesForStation;
+  final void Function(Station station) getArrivalsForStation;
 
   const DepartureArrivalAreaAndroid({
-    required this.layers,
-    required this.model,
+    required this.notifier,
+    required this.getArrivalsForStation,
+    required this.getDeparturesForStation,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: layers,
+      listenable: notifier,
       builder: (context, _) =>
       Column(
         children: [
           M3EToggleButtonGroup(
             type: M3EButtonGroupType.connected,
             size: M3EButtonSize.md,
-            selectedIndex: layers.getShowArrivals() ? 1 : 0,
+            selectedIndex: notifier.getShowArrivals() ? 1 : 0,
             onSelectedIndexChanged: (index) {
               if(index == 0)
               {
-                layers.setShowDepartures(true);
-                if(layers.selectedStation != null)
+                notifier.setShowDepartures(true);
+                if(notifier.selectedStation != null)
                 {
-                  model.getDeparturesForStation(layers.selectedStation!);
+                  getDeparturesForStation(notifier.selectedStation!);
                 }
               }
               else
               {
-                layers.setShowArrivals(true);
-                if(layers.selectedStation != null)
+                notifier.setShowArrivals(true);
+                if(notifier.selectedStation != null)
                 {
-                  model.getarrivalsForStation(layers.selectedStation!);
+                  getArrivalsForStation(notifier.selectedStation!);
                 }
               }
             },
@@ -52,12 +53,12 @@ class DepartureArrivalAreaAndroid extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
             child: StationDepartureArrivals(
-              data: layers.loadedDepartureArrivals,
+              data: notifier.loadedDepartureArrivals,
               design: 0,
               onTripSelected: (tripId) {
                 // Handle trip selection
               },
-              isLoading: layers.loading,
+              isLoading: notifier.loading,
             ),
           ),
         ],

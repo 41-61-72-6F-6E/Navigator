@@ -10,7 +10,7 @@ import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMark
 import 'package:navigator/widgets/homePage/UIComponents/mapOptionsModal/mapOptionsModal.dart';
 import 'package:navigator/widgets/homePage/UIComponents/ongoingJourneyBanner/ongoingJourneyBanner.dart';
 import 'package:navigator/widgets/homePage/UIComponents/searchResultsCard/searchResultsCard.dart';
-import 'package:navigator/widgets/homePage/UIComponents/stationSheet/stationSheet.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/stationSheet/stationSheet.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 class HomePageView extends StatefulWidget {
@@ -396,7 +396,15 @@ class _HomePageViewState extends State<HomePageView>
   Future<void> onStationTap(Station station) async {
     await widget.model.selectStation(station);
     if (!mounted) return;
-    await StationSheet.show(context, widget.model, widget.design, station);
+    await StationSheet.show(
+      context,
+      widget.model.stationSheetNotifier,
+      widget.design,
+      station,
+      widget.model.navigateLocation,
+      widget.model.getDeparturesForStation,
+      widget.model.getarrivalsForStation,
+    );
     if (mounted) widget.model.deselectStation();
   }
 }
