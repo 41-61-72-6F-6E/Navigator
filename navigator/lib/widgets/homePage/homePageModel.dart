@@ -23,7 +23,7 @@ import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart'
 import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
 import 'dart:math' as math;
 
-import 'package:navigator/widgets/homePage/notifiers/station_sheet_notifier.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/station_sheet_notifier.dart';
 
 class HomePageModel {
   final HomePageIni page;

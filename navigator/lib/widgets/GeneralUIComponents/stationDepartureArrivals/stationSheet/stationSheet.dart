@@ -1,25 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/station.dart';
-import 'package:navigator/widgets/homePage/homePageModel.dart';
-import 'package:navigator/widgets/homePage/UIComponents/stationSheet/stationSheetAndroid.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/station_sheet_notifier.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/stationSheet/stationSheetAndroid.dart';
 
 class StationSheet {
   final int design;
-  final HomePageModel model;
+  final StationSheetNotifier notifier;
   final Station station;
+  final void Function(BuildContext context, Station station, bool value) onStationTapped;
+  final void Function(Station station) getDeparturesForStation;
+  final void Function(Station station) getArrivalsForStation;
 
   const StationSheet({
     required this.design,
-    required this.model,
+    required this.notifier,
     required this.station,
+    required this.onStationTapped,
+    required this.getArrivalsForStation,
+    required this.getDeparturesForStation
   });
 
   @override
   static Future<T?> show<T>(
     BuildContext context,
-    HomePageModel model,
+    StationSheetNotifier notifier,
     int design,
     Station station,
+    final void Function(BuildContext context, Station station, bool value) onStationTapped,
+    final void Function(Station station) getDeparturesForStation,
+    final void Function(Station station) getArrivalsForStation
   ) {
     switch (design) {
       case 0:
@@ -33,9 +42,12 @@ class StationSheet {
             minChildSize: 0.25,
             maxChildSize: 0.9,
             builder: (context, scrollController) => ListenableBuilder(
-              listenable: model.stationSheetNotifier,
+              listenable: notifier,
               builder: (context, child) => StationSheetAndroid(
-                model: model,
+                notifier: notifier,
+                onStationTapped: onStationTapped,
+                getArrivalsForStation: getArrivalsForStation,
+                getDeparturesForStation: getDeparturesForStation,
                 station: station,
                 scrollController: scrollController, // pass it down
               ),
@@ -54,9 +66,12 @@ class StationSheet {
             minChildSize: 0.25,
             maxChildSize: 0.9,
             builder: (context, scrollController) => ListenableBuilder(
-              listenable: model.layers,
+              listenable: notifier,
               builder: (context, child) => StationSheetAndroid(
-                model: model,
+                notifier: notifier,
+                onStationTapped: onStationTapped,
+                getArrivalsForStation: getArrivalsForStation,
+                getDeparturesForStation: getDeparturesForStation,
                 station: station,
                 scrollController: scrollController, // pass it down
               ),

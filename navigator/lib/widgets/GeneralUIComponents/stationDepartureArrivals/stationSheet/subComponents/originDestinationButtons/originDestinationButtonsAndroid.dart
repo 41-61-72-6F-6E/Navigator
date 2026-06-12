@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:m3e_core/m3e_core.dart';
-import 'package:navigator/widgets/homePage/homePageModel.dart';
+import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/station_sheet_notifier.dart';
 
 class originDestinationButtonsAndroid extends StatelessWidget {
-  final HomePageModel model;
-  final VoidCallback onDestinationPressed;
+  final StationSheetNotifier notifier;
+  final void Function(BuildContext context, Station station, bool value) onTapped;
 
   const originDestinationButtonsAndroid({
     super.key,
-    required this.model,
-    required this.onDestinationPressed,
+    required this.notifier,
+    required this.onTapped,
   });
 
   @override
@@ -23,7 +24,7 @@ class originDestinationButtonsAndroid extends StatelessWidget {
             shape: M3EButtonShape.square,
             size: M3EButtonSize.sm,
             semanticLabel: "Set as Origin",
-            onPressed: () => model.navigateLocation(context, model.stationSheetNotifier.selectedStation!, true),
+            onPressed: () => onTapped(context, notifier.selectedStation!, true),
             child: Text("Use as Origin"),
           ),
         ),
@@ -32,7 +33,7 @@ class originDestinationButtonsAndroid extends StatelessWidget {
           child: M3EFilledButton.tonal(
             shape: M3EButtonShape.square,
             size: M3EButtonSize.sm,
-            onPressed: () => model.navigateLocation(context, model.stationSheetNotifier.selectedStation!, false),
+            onPressed: () => onTapped(context, notifier.selectedStation!, false),
             child: Text("Use as Destination"),
           ),
         ),
