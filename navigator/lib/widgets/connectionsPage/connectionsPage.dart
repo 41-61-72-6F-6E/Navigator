@@ -41,58 +41,57 @@ class _ConnectionsPageState
   Timer? _debounce;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
-
   @override
-  void initState() {
-    super.initState();
-    _model.page = widget.page;
+void initState() {
+  super.initState();
+  _model.page = widget.page;
 
-    _fromFocusNode = FocusNode();
-    _toFocusNode = FocusNode();
-    _toController =
-        TextEditingController(text: widget.page.to.name);
-    _fromController =
-        TextEditingController(text: 'Current Location');
-    _scrollController = ScrollController();
+  _fromFocusNode = FocusNode();
+  _toFocusNode = FocusNode();
+  _toController = TextEditingController(text: widget.page.to.name);
+  _fromController = TextEditingController(text: 'Current Location');
+  _scrollController = ScrollController();
 
-    _fromFocusNode.addListener(() {
-      if (!_fromFocusNode.hasFocus) {
-        setState(() {
-          _model.searchResultsFrom.clear();
-          _uiState.searching = false;
-        });
-      }
-      if (_fromFocusNode.hasFocus) {
-        setState(() {
-          _uiState.searching = true;
-          _uiState.searchingFrom = true;
-        });
-      }
-    });
+  _fromFocusNode.addListener(() {
+    if (!_fromFocusNode.hasFocus) {
+      setState(() {
+        _model.searchResultsFrom.clear();
+        _uiState.searching = false;
+      });
+    }
+    if (_fromFocusNode.hasFocus) {
+      setState(() {
+        _uiState.searching = true;
+        _uiState.searchingFrom = true;
+      });
+    }
+  });
 
-    _toFocusNode.addListener(() {
-      if (!_toFocusNode.hasFocus) {
-        setState(() {
-          _model.searchResultsTo.clear();
-          _uiState.searching = false;
-        });
-      }
-      if (_toFocusNode.hasFocus) {
-        setState(() {
-          _uiState.searching = true;
-          _uiState.searchingFrom = false;
-        });
-      }
-    });
+  _toFocusNode.addListener(() {
+    if (!_toFocusNode.hasFocus) {
+      setState(() {
+        _model.searchResultsTo.clear();
+        _uiState.searching = false;
+      });
+    }
+    if (_toFocusNode.hasFocus) {
+      setState(() {
+        _uiState.searching = true;
+        _uiState.searchingFrom = false;
+      });
+    }
+  });
 
-    _toController.addListener(
-        () => _onSearchChanged(_toController.text.trim(), false));
-    _fromController.addListener(
-        () => _onSearchChanged(_fromController.text.trim(), true));
+  _toController.addListener(
+      () => _onSearchChanged(_toController.text.trim(), false));
+  _fromController.addListener(
+      () => _onSearchChanged(_fromController.text.trim(), true));
 
-    _getFaves();
-    _updateLocationWithCurrentPosition(true, true);
-  }
+  _getFaves();
+  _updateLocationWithCurrentPosition(true, true);
+}
+
+
 
   @override
   void dispose() {
@@ -411,6 +410,10 @@ class _ConnectionsPageState
   }
 
   void _search() async {
+  setState(() {
+    _uiState.inJourneySearchAnimation = true;
+    // ... rest unchanged
+  });
     setState(() {
       _uiState.inJourneySearchAnimation = true;
       _uiState.rotatingSearchIconTurns++;

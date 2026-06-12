@@ -28,18 +28,7 @@ class StationResultCardAndroid extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (_) => ConnectionsPage(
-              ConnectionsPageIni(
-                from: Location(
-                    backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: ''),
-                to: station,
-                services: model.page.service,
-              ),
-            ),
-          ),
-        ),
+        onTap: () => model.navigateLocation(context, station),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -52,7 +41,9 @@ class StationResultCardAndroid extends StatelessWidget {
                   width: 24,
                   height: 24,
                   colorFilter: ColorFilter.mode(
-                      colors.onTertiaryContainer, BlendMode.srcIn),
+                    colors.onTertiaryContainer,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -62,8 +53,9 @@ class StationResultCardAndroid extends StatelessWidget {
                   children: [
                     Text(
                       station.name,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(color: colors.onSurfaceVariant),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -73,27 +65,45 @@ class StationResultCardAndroid extends StatelessWidget {
                         if (station.national || station.nationalExpress)
                           Icon(Icons.train, size: 20, color: colors.tertiary),
                         if (station.regionalExpress)
-                          Icon(Icons.directions_railway,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.directions_railway,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                         if (station.regional)
-                          Icon(Icons.directions_transit,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.directions_transit,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                         if (station.suburban)
-                          Icon(Icons.directions_subway,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.directions_subway,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                         if (station.bus)
-                          Icon(Icons.directions_bus,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.directions_bus,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                         if (station.ferry)
-                          Icon(Icons.directions_ferry,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.directions_ferry,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                         if (station.subway)
                           Icon(Icons.subway, size: 20, color: colors.tertiary),
                         if (station.tram)
                           Icon(Icons.tram, size: 20, color: colors.tertiary),
                         if (station.taxi)
-                          Icon(Icons.local_taxi,
-                              size: 20, color: colors.tertiary),
+                          Icon(
+                            Icons.local_taxi,
+                            size: 20,
+                            color: colors.tertiary,
+                          ),
                       ],
                     ),
                   ],
@@ -129,18 +139,7 @@ class LocationResultCardAndroid extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
-        onTap: () => Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (_) => ConnectionsPage(
-              ConnectionsPageIni(
-                from: Location(
-                    backend: "dbRest", id: '', latitude: 0, longitude: 0, name: '', type: ''),
-                to: location,
-                services: model.page.service,
-              ),
-            ),
-          ),
-        ),
+        onTap: () => model.navigateLocation(context, location),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -148,15 +147,19 @@ class LocationResultCardAndroid extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: colors.tertiaryContainer,
-                child: Icon(Icons.house,
-                    size: 24, color: colors.onTertiaryContainer),
+                child: Icon(
+                  Icons.house,
+                  size: 24,
+                  color: colors.onTertiaryContainer,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   location.name,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(color: colors.onSurfaceVariant),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
               FavouriteButton(model: model, location: location),
@@ -210,27 +213,23 @@ class FavouriteButton extends StatelessWidget {
                 title: Text(
                   'Save Location',
                   style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'Give the location a name so you can better remember it',
-                      style:
-                          Theme.of(context).textTheme.bodyMedium!.copyWith(
-                                color:
-                                    Theme.of(context).colorScheme.onSurface,
-                              ),
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                     TextField(
                       controller: c,
-                      style:
-                          Theme.of(context).textTheme.bodyLarge!.copyWith(
-                                color:
-                                    Theme.of(context).colorScheme.onSurface,
-                              ),
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),

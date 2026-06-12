@@ -15,9 +15,11 @@ import 'package:navigator/models/station.dart';
 import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/subway_line.dart';
 import 'package:navigator/models/trip.dart';
+import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/services/servicesMiddle.dart';
+import 'package:navigator/widgets/connectionsPage/connectionsPage.dart';
 import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
@@ -860,6 +862,27 @@ class HomePageModel {
       print('Error fetching arrivals for station ${station.name}: $e');
     }
     stationSheetNotifier.setLoading(false);
+  }
+
+  void navigateLocation(BuildContext context, Location destination) {
+    Navigator.of(context, rootNavigator: false).push(
+      MaterialPageRoute(
+        builder: (_) => ConnectionsPage(
+          ConnectionsPageIni(
+            from: Location(
+              backend: "dbRest",
+              id: '',
+              latitude: 0,
+              longitude: 0,
+              name: '',
+              type: '',
+            ),
+            to: destination,
+            services: page.service,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> selectStation(Station station) async {
