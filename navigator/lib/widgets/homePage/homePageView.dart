@@ -27,16 +27,32 @@ class HomePageView extends StatefulWidget {
 }
 
 class _HomePageViewState extends State<HomePageView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.model.initiateLines();
     widget.model.fetchStations();
     widget.model.setInitialUserLocation(this);
     widget.model.initializeOngoingJourney();
     widget.model.getFaves();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      widget.model.resumeOngoingJourneySync();
+    } else {
+      widget.model.pauseOngoingJourneySync();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
