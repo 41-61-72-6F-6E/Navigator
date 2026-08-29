@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/favouriteLocation.dart';
+import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
@@ -38,8 +39,28 @@ class HomePageModel {
       StreamController<double?>.broadcast();
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
+  Timer? _ongoingJourneySyncTimer;
+  bool _ongoingJourneySyncInProgress = false;
+  bool _ongoingJourneySyncPaused = false;
+  bool _disposed = false;
 
-  HomePageModel({required this.page, required this.services}) {
+  final Duration ongoingJourneySyncInterval;
+  late final Future<List<Savedjourney>> Function() _loadSavedJourneys;
+  late final Future<Journey> Function(String) _refreshJourneyByToken;
+  late final DateTime Function() _now;
+
+  HomePageModel({
+    required this.page,
+    required this.services,
+    this.ongoingJourneySyncInterval = const Duration(minutes: 1),
+    Future<List<Savedjourney>> Function()? loadSavedJourneys,
+    Future<Journey> Function(String)? refreshJourneyByToken,
+    DateTime Function()? now,
+  }) : assert(ongoingJourneySyncInterval > Duration.zero) {
+    _loadSavedJourneys = loadSavedJourneys ?? Localdatasaver.getSavedJourneys;
+    _refreshJourneyByToken =
+        refreshJourneyByToken ?? services.refreshJourneyByToken;
+    _now = now ?? DateTime.now;
     searchController.addListener(() {
       _onSearchChanged(searchController.text.trim());
     });
@@ -55,16 +76,136 @@ class HomePageModel {
   }
 
   Future<void> initializeOngoingJourney() async {
-    await _updateOngoingJourney();
-    if (journey.ongoingJourney != null) {
-      _initializeOngoingJourneyLineColorListener();
-      await _getOngoingJourneyTrips();
+    await syncOngoingJourney();
+    _startOngoingJourneySync();
+  }
+
+  void _startOngoingJourneySync() {
+    _ongoingJourneySyncTimer?.cancel();
+    if (_disposed || _ongoingJourneySyncPaused) return;
+
+    _ongoingJourneySyncTimer = Timer.periodic(
+      ongoingJourneySyncInterval,
+      (_) => unawaited(syncOngoingJourney()),
+    );
+  }
+
+  void pauseOngoingJourneySync() {
+    _ongoingJourneySyncPaused = true;
+    _ongoingJourneySyncTimer?.cancel();
+    _ongoingJourneySyncTimer = null;
+  }
+
+  void resumeOngoingJourneySync() {
+    if (_disposed) return;
+    _ongoingJourneySyncPaused = false;
+    unawaited(syncOngoingJourney());
+    _startOngoingJourneySync();
+  }
+
+  Future<void> syncOngoingJourney() async {
+    if (_disposed || _ongoingJourneySyncInProgress) return;
+
+    _ongoingJourneySyncInProgress = true;
+    try {
+      final savedJourneys = await _loadSavedJourneys();
+      if (_disposed) return;
+
+      final activeJourney = await _findOngoingJourney(savedJourneys);
+      if (_disposed) return;
+
+      if (activeJourney == null) {
+        _clearOngoingJourney();
+        return;
+      }
+
+      await _showOngoingJourney(activeJourney);
+    } catch (error) {
+      // A temporary storage or network failure should not make an otherwise
+      // active journey disappear. The next timer tick will retry the sync.
+      if (!_disposed) {
+        journey.notifyCurrentTimeChanged();
+        debugPrint('Error syncing ongoing journey: $error');
+      }
+    } finally {
+      _ongoingJourneySyncInProgress = false;
+    }
+  }
+
+  Future<Savedjourney?> _findOngoingJourney(
+    List<Savedjourney> savedJourneys,
+  ) async {
+    final current = journey.ongoingJourney;
+    Savedjourney? savedCurrent;
+
+    if (current != null) {
+      for (final savedJourney in savedJourneys) {
+        if (savedJourney.id == current.id) {
+          savedCurrent = savedJourney;
+          break;
+        }
+      }
+    }
+
+    final candidates = <Savedjourney>[
+      if (savedCurrent != null) savedCurrent,
+      ...savedJourneys.where(
+        (savedJourney) =>
+            savedJourney.id != savedCurrent?.id &&
+            _isOngoing(savedJourney.journey, _now()),
+      ),
+    ];
+
+    for (final candidate in candidates) {
+      final isCurrent = current != null && candidate.id == current.id;
+      final journeyToRefresh = isCurrent ? current.journey : candidate.journey;
+
+      try {
+        final refreshed =
+            await _refreshJourneyByToken(journeyToRefresh.refreshToken);
+        if (_disposed) return null;
+
+        if (_isOngoing(refreshed, _now())) {
+          return Savedjourney(journey: refreshed, id: candidate.id);
+        }
+      } catch (error) {
+        final fallback = isCurrent ? current.journey : candidate.journey;
+        if (_isOngoing(fallback, _now())) {
+          debugPrint('Error refreshing ongoing journey: $error');
+          return Savedjourney(journey: fallback, id: candidate.id);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  bool _isOngoing(Journey candidate, DateTime now) {
+    if (candidate.legs.isEmpty) return false;
+    return !now.isBefore(candidate.plannedDepartureTime) &&
+        now.isBefore(candidate.arrivalTime);
+  }
+
+  Future<void> _showOngoingJourney(Savedjourney activeJourney) async {
+    _disposeOngoingJourneyLineColorListener();
+    journey.updateJourney(activeJourney);
+    _initializeOngoingJourneyLineColorListener();
+    await _getOngoingJourneyTrips();
+
+    if (!_disposed && journey.ongoingJourney == activeJourney) {
       _updateOngoingJourneyPolylines();
     }
   }
 
+  void _clearOngoingJourney() {
+    if (journey.ongoingJourney == null) return;
+    _disposeOngoingJourneyLineColorListener();
+    journey.clearJourney();
+  }
+
   Future<void> _getOngoingJourneyTrips() async {
-    if (journey.ongoingJourney == null) {
+    final ongoingJourney = journey.ongoingJourney;
+    if (ongoingJourney == null || _disposed) {
       print('DEBUG: No ongoing journey found');
       return;
     }
@@ -80,7 +221,7 @@ class HomePageModel {
     );
 
     Map<int, Trip> legIndexToTrip = {};
-    List<Leg> legs = journey.ongoingJourney!.journey.legs;
+    List<Leg> legs = ongoingJourney.journey.legs;
 
     for (int i = 0; i < legs.length; i++) {
       Leg leg = legs[i];
@@ -100,11 +241,13 @@ class HomePageModel {
         );
 
         try {
-          Trip? trip = await page.service.getTripFromLeg(
+          Trip? trip = await services.getTripFromLeg(
             leg,
             includeRemarks: true,
             includePolyline: false,
           );
+
+          if (_disposed || journey.ongoingJourney != ongoingJourney) return;
 
           if (trip != null) {
             print('DEBUG: Successfully fetched trip for leg $i');
@@ -140,11 +283,13 @@ class HomePageModel {
       'DEBUG: Successfully fetched ${legIndexToTrip.length} trips out of ${legs.length} legs',
     );
 
-    journey.updateTrips(
-      legIndexToTripMap: legIndexToTrip,
-      legsOfOngoingJourneyThatHaveATrip: legIndexToTrip.keys.toList(),
-      tripsForOngoingJourneyLegs: legIndexToTrip.values.toList(),
-    );
+    if (!_disposed && journey.ongoingJourney == ongoingJourney) {
+      journey.updateTrips(
+        legIndexToTripMap: legIndexToTrip,
+        legsOfOngoingJourneyThatHaveATrip: legIndexToTrip.keys.toList(),
+        tripsForOngoingJourneyLegs: legIndexToTrip.values.toList(),
+      );
+    }
 
     print('DEBUG: journey.legIndexToTripMap has ${journey.legIndexToTripMap.length} entries');
     journey.legIndexToTripMap.forEach((legIndex, trip) {
@@ -155,15 +300,35 @@ class HomePageModel {
   void _initializeOngoingJourneyLineColorListener() {
     if (journey.ongoingJourney != null) {
       for (Leg l in journey.ongoingJourney!.journey.legs) {
+        final cachedColor = journey.transitLineColorCache[_lineColorCacheKey(l)];
+        if (cachedColor != null) {
+          l.lineColorNotifier.value = cachedColor;
+        }
         l.lineColorNotifier.addListener(_updateLineColor);
-        l.initializeLineColor();
+        if (cachedColor == null) {
+          l.initializeLineColor();
+        }
       }
     }
   }
 
   void _updateLineColor() {
+    if (_disposed) return;
+
+    final updatedColors =
+        Map<String, Color>.from(journey.transitLineColorCache);
+    for (final leg in journey.ongoingJourney?.journey.legs ?? <Leg>[]) {
+      final color = leg.lineColorNotifier.value;
+      if (color != null) {
+        updatedColors[_lineColorCacheKey(leg)] = color;
+      }
+    }
+    journey.updateTransitLineColorCache(updatedColors);
     _updateOngoingJourneyPolylines();
   }
+
+  String _lineColorCacheKey(Leg leg) =>
+      '${leg.lineName ?? ''}-${leg.productName ?? ''}';
 
   void _disposeOngoingJourneyLineColorListener() {
     if (journey.ongoingJourney != null) {
@@ -188,23 +353,6 @@ class HomePageModel {
       }
     } catch (e) {
       print('Error saving favorite order: $e');
-    }
-  }
-
-  Future<void> _updateOngoingJourney() async {
-    List<Savedjourney> journeys = await Localdatasaver.getSavedJourneys();
-    bool found = false;
-    for (Savedjourney sj in journeys) {
-      if (found) break;
-      if (DateTime.now().isAfter(sj.journey.plannedDepartureTime) &&
-          DateTime.now().isBefore(sj.journey.arrivalTime)) {
-        Savedjourney newJ = Savedjourney(
-          journey: await page.service.refreshJourneyByToken(sj.journey.refreshToken),
-          id: Localdatasaver.calculateJourneyID(sj.journey),
-        );
-        journey.updateJourney(newJ);
-        found = true;
-      }
     }
   }
 
@@ -275,7 +423,7 @@ class HomePageModel {
         if (leg.isWalking == true) {
           lineColor = modeColors['walking']!;
         } else {
-          final String cacheKey = '${leg.lineName ?? ''}-${leg.productName ?? ''}';
+          final String cacheKey = _lineColorCacheKey(leg);
           String productType = leg.productName?.toLowerCase() ?? 'default';
 
           lineColor = colorCache[cacheKey] ??
@@ -283,15 +431,6 @@ class HomePageModel {
               modeColors[productType] ??
               modeColors['default']!;
 
-          if (!colorCache.containsKey(cacheKey)) {
-            leg.lineColorNotifier.addListener(() {
-              if (leg.lineColorNotifier.value != null) {
-                final updated = Map<String, Color>.from(journey.transitLineColorCache);
-                updated[cacheKey] = leg.lineColorNotifier.value!;
-                journey.updateTransitLineColorCache(updated);
-              }
-            });
-          }
         }
 
         double strokeWidth = leg.isWalking == true ? 1.0 : 3.0;
@@ -732,6 +871,8 @@ class HomePageModel {
   }
 
   void dispose() {
+    _disposed = true;
+    pauseOngoingJourneySync();
     _debounce?.cancel();
     searchController.dispose();
     alignPositionStreamController.close();

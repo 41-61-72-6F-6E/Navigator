@@ -31,6 +31,23 @@ class OngoingJourneyNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  void notifyCurrentTimeChanged() {
+    notifyListeners();
+  }
+
+  void clearJourney() {
+    ongoingJourney = null;
+    legIndexToTripMap = {};
+    legsOfOngoingJourneyThatHaveATrip = [];
+    tripsForOngoingJourneyLegs = [];
+    polylines = [];
+    transitLineColorCache = {};
+    intermediateStopsExpanded = false;
+    currentLegIndex = null;
+    lowerBoxExpanded = false;
+    notifyListeners();
+  }
+
   void updateTrips({
     required Map<int, Trip> legIndexToTripMap,
     required List<int> legsOfOngoingJourneyThatHaveATrip,
