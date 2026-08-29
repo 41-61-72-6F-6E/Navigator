@@ -23,7 +23,7 @@ class DbApiService {
   // Public getter to access the singleton
   static DbApiService get instance => _instance;
 
-  final String baseUrl = Env.api_url;
+  final String baseUrl = Env.apiUrl;
 
   String? earlierRef;
   String? laterRef;
