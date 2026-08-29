@@ -182,7 +182,7 @@ class HomePageModel {
 
   bool _isOngoing(Journey candidate, DateTime now) {
     if (candidate.legs.isEmpty) return false;
-    return !now.isBefore(candidate.plannedDepartureTime) &&
+    return !now.isBefore(candidate.departureTime) &&
         now.isBefore(candidate.arrivalTime);
   }
 

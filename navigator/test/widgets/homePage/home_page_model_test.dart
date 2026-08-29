@@ -85,24 +85,115 @@ void main() {
 
       expect(model.journey.ongoingJourney?.journey, same(savedJourney.journey));
     });
+
+    test('does not start a journey before its real-time departure', () async {
+      final now = DateTime.utc(2026, 8, 29, 12);
+      final savedJourney = Savedjourney(
+        journey: _journey(
+          departure: now.add(const Duration(minutes: 5)),
+          plannedDeparture: now.subtract(const Duration(minutes: 10)),
+          arrival: now.add(const Duration(minutes: 30)),
+        ),
+        id: 'delayed-journey',
+      );
+
+      final model = HomePageModel(
+        page: HomePageIni(),
+        services: ServicesMiddle(),
+        ongoingJourneySyncInterval: const Duration(hours: 1),
+        loadSavedJourneys: () async => [savedJourney],
+        refreshJourneyByToken: (_) async => savedJourney.journey,
+        now: () => now,
+      );
+      addTearDown(model.dispose);
+
+      await model.initializeOngoingJourney();
+
+      expect(model.journey.ongoingJourney, isNull);
+    });
+  });
+
+  group('ongoing journey progress', () {
+    test('uses real-time leg times across a delayed interchange', () {
+      final journey = Journey(
+        backend: 'dbRest',
+        refreshToken: 'refresh-token',
+        legs: [
+          _leg(
+            id: 'first',
+            plannedDeparture: DateTime.utc(2026, 8, 29, 11),
+            departure: DateTime.utc(2026, 8, 29, 11, 10),
+            plannedArrival: DateTime.utc(2026, 8, 29, 11, 30),
+            arrival: DateTime.utc(2026, 8, 29, 11, 50),
+          ),
+          _leg(
+            id: 'second',
+            plannedDeparture: DateTime.utc(2026, 8, 29, 11, 35),
+            departure: DateTime.utc(2026, 8, 29, 11, 55),
+            plannedArrival: DateTime.utc(2026, 8, 29, 12),
+            arrival: DateTime.utc(2026, 8, 29, 12, 20),
+          ),
+        ],
+      );
+
+      final onFirstLeg = journey.progressAt(DateTime.utc(2026, 8, 29, 11, 40));
+      expect(onFirstLeg.currentLegIndex, 0);
+      expect(onFirstLeg.isAfterCurrentLegArrival, isFalse);
+
+      final atInterchange = journey.progressAt(
+        DateTime.utc(2026, 8, 29, 11, 52),
+      );
+      expect(atInterchange.currentLegIndex, 0);
+      expect(atInterchange.isAfterCurrentLegArrival, isTrue);
+
+      final onSecondLeg = journey.progressAt(DateTime.utc(2026, 8, 29, 11, 56));
+      expect(onSecondLeg.currentLegIndex, 1);
+      expect(onSecondLeg.isAfterCurrentLegArrival, isFalse);
+    });
   });
 }
 
-Journey _journey({required DateTime departure, required DateTime arrival}) {
+Journey _journey({
+  required DateTime departure,
+  DateTime? plannedDeparture,
+  required DateTime arrival,
+}) {
   return Journey(
     backend: 'dbRest',
     refreshToken: 'refresh-token',
     legs: [
-      Leg(
-        backend: 'dbRest',
-        origin: _station('origin', 'Origin'),
-        plannedDeparture: departure.toIso8601String(),
-        destination: _station('destination', 'Destination'),
-        plannedArrival: arrival.toIso8601String(),
+      _leg(
+        id: 'journey',
+        departure: departure,
+        plannedDeparture: plannedDeparture ?? departure,
+        arrival: arrival,
+        plannedArrival: arrival,
         isWalking: true,
-        stopovers: const [],
       ),
     ],
+  );
+}
+
+Leg _leg({
+  required String id,
+  required DateTime plannedDeparture,
+  required DateTime plannedArrival,
+  DateTime? departure,
+  DateTime? arrival,
+  bool? isWalking,
+}) {
+  return Leg(
+    backend: 'dbRest',
+    origin: _station('$id-origin', '$id Origin'),
+    departure: departure?.toIso8601String(),
+    plannedDeparture: plannedDeparture.toIso8601String(),
+    destination: _station('$id-destination', '$id Destination'),
+    arrival: arrival?.toIso8601String(),
+    plannedArrival: plannedArrival.toIso8601String(),
+    lineName: id,
+    product: 'train',
+    isWalking: isWalking,
+    stopovers: const [],
   );
 }
 

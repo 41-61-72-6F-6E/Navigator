@@ -88,4 +88,40 @@ class Journey extends baseModel{
   DateTime get arrivalTime => legs.last.arrivalDateTime;
   DateTime get plannedDepartureTime => legs.first.plannedDepartureDateTime;
   DateTime get plannedArrivalTime => legs.last.plannedArrivalDateTime;
+
+  JourneyProgress progressAt(DateTime now) {
+    if (legs.isEmpty) {
+      throw StateError('Cannot determine progress for a journey without legs');
+    }
+
+    var currentLegIndex = 0;
+    var isAfterCurrentLegArrival = false;
+
+    for (var index = 0; index < legs.length; index++) {
+      final leg = legs[index];
+
+      if (now.isAfter(leg.departureDateTime)) {
+        currentLegIndex = index;
+        isAfterCurrentLegArrival = false;
+      }
+      if (now.isAfter(leg.arrivalDateTime)) {
+        isAfterCurrentLegArrival = true;
+      }
+    }
+
+    return JourneyProgress(
+      currentLegIndex: currentLegIndex,
+      isAfterCurrentLegArrival: isAfterCurrentLegArrival,
+    );
+  }
+}
+
+class JourneyProgress {
+  final int currentLegIndex;
+  final bool isAfterCurrentLegArrival;
+
+  const JourneyProgress({
+    required this.currentLegIndex,
+    required this.isAfterCurrentLegArrival,
+  });
 }

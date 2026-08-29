@@ -29,19 +29,10 @@ class _OngoingJourneyBannerAndroidState
 
         int situationUpperBox = 0;
         int situationLowerBox = 0;
-        int leg = 0;
-        bool afterArrival = false;
-
-        for (int i = 0; i < jrn.ongoingJourney!.journey.legs.length; i++) {
-          final l = jrn.ongoingJourney!.journey.legs[i];
-          if (DateTime.now().isAfter(l.plannedDepartureDateTime)) {
-            afterArrival = false;
-            leg = i;
-          }
-          if (DateTime.now().isAfter(l.plannedArrivalDateTime)) {
-            afterArrival = true;
-          }
-        }
+        final progress =
+            jrn.ongoingJourney!.journey.progressAt(DateTime.now());
+        final leg = progress.currentLegIndex;
+        final afterArrival = progress.isAfterCurrentLegArrival;
 
         final int currentLeg = leg;
         WidgetsBinding.instance.addPostFrameCallback((_) {
