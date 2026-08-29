@@ -13,6 +13,20 @@ class Station extends Location {
   final bool taxi;
   final List<String> ril100Ids; // Added RIL100 IDs
 
+  int get transitProductCount => [
+        nationalExpress,
+        national,
+        regional,
+        regionalExpress,
+        suburban,
+        bus,
+        ferry,
+        subway,
+        tram,
+      ].where((isAvailable) => isAvailable).length;
+
+  bool get isTransferStation => transitProductCount > 1;
+
   Station({
     required super.backend,
     required super.type,

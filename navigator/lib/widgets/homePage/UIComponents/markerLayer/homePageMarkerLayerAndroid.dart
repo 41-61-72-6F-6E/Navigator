@@ -106,25 +106,10 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
                           ),
                         ),
                       if (currentZoom > 14.5) const SizedBox(height: 2),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: colors.primary,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.primary.withOpacity(0.3),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding:
-                            EdgeInsets.all(currentZoom > 14 ? 4 : 3),
-                        child: Icon(
-                          model.getTransportIcon(station),
-                          color: colors.onPrimary,
-                          size: currentZoom > 14 ? 14 : 12,
-                        ),
+                      HomePageStationMarkerSymbol(
+                        station: station,
+                        transportIcon: model.getTransportIcon(station),
+                        currentZoom: currentZoom,
                       ),
                     ],
                   ),
@@ -135,6 +120,66 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
 
         return MarkerLayer(markers: markers);
       },
+    );
+  }
+}
+
+class HomePageStationMarkerSymbol extends StatelessWidget {
+  static const regularMarkerKey =
+      ValueKey<String>('home-page-regular-stop-marker');
+  static const transferMarkerKey =
+      ValueKey<String>('home-page-transfer-station-marker');
+
+  final Station station;
+  final IconData transportIcon;
+  final double currentZoom;
+
+  const HomePageStationMarkerSymbol({
+    super.key,
+    required this.station,
+    required this.transportIcon,
+    required this.currentZoom,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isTransferStation = station.isTransferStation;
+    final diameter = isTransferStation
+        ? (currentZoom > 14 ? 26.0 : 22.0)
+        : (currentZoom > 14 ? 12.0 : 10.0);
+
+    return Semantics(
+      label: isTransferStation
+          ? '${station.name}, transfer station'
+          : '${station.name}, stop',
+      child: Container(
+        key: isTransferStation ? transferMarkerKey : regularMarkerKey,
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          color: isTransferStation ? colors.surface : colors.primary,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isTransferStation ? colors.primary : colors.surface,
+            width: isTransferStation ? 3 : 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withAlpha(isTransferStation ? 90 : 60),
+              blurRadius: isTransferStation ? 5 : 3,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: isTransferStation
+            ? Icon(
+                transportIcon,
+                color: colors.primary,
+                size: currentZoom > 14 ? 14 : 12,
+              )
+            : null,
+      ),
     );
   }
 }
