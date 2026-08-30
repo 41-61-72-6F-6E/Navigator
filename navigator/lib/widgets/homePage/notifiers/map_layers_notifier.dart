@@ -11,6 +11,9 @@ class MapLayersNotifier extends ChangeNotifier {
   List<Polyline> funicularLines;
   List<Station> stations;
   Station? selectedStation;
+  bool isOverlayLoading;
+  String? overlayError;
+  DateTime? overlaysLastUpdated;
 
   bool showSubway;
   bool showLightRail;
@@ -32,6 +35,9 @@ class MapLayersNotifier extends ChangeNotifier {
     this.ferryLines = const [],
     this.funicularLines = const [],
     this.stations = const [],
+    this.isOverlayLoading = false,
+    this.overlayError,
+    this.overlaysLastUpdated,
     this.showSubway = true,
     this.showLightRail = true,
     this.showTram = true,
@@ -66,6 +72,22 @@ class MapLayersNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateOverlayStatus({
+    required bool isLoading,
+    String? error,
+    bool clearError = false,
+    DateTime? lastUpdated,
+  }) {
+    isOverlayLoading = isLoading;
+    if (clearError) {
+      overlayError = null;
+    } else if (error != null) {
+      overlayError = error;
+    }
+    if (lastUpdated != null) overlaysLastUpdated = lastUpdated;
+    notifyListeners();
+  }
+
   void updateVisibility({
     bool? showSubway,
     bool? showLightRail,
@@ -83,29 +105,49 @@ class MapLayersNotifier extends ChangeNotifier {
     if (showTram != null) this.showTram = showTram;
     if (showFerry != null) this.showFerry = showFerry;
     if (showFunicular != null) this.showFunicular = showFunicular;
-    if (showStationLabelsSubway != null) this.showStationLabelsSubway = showStationLabelsSubway;
-    if (showStationLabelsLightRail != null) this.showStationLabelsLightRail = showStationLabelsLightRail;
-    if (showStationLabelsTram != null) this.showStationLabelsTram = showStationLabelsTram;
-    if (showStationLabelsFerry != null) this.showStationLabelsFerry = showStationLabelsFerry;
-    if (showStationLabelsFunicular != null) this.showStationLabelsFunicular = showStationLabelsFunicular;
+    if (showStationLabelsSubway != null) {
+      this.showStationLabelsSubway = showStationLabelsSubway;
+    }
+    if (showStationLabelsLightRail != null) {
+      this.showStationLabelsLightRail = showStationLabelsLightRail;
+    }
+    if (showStationLabelsTram != null) {
+      this.showStationLabelsTram = showStationLabelsTram;
+    }
+    if (showStationLabelsFerry != null) {
+      this.showStationLabelsFerry = showStationLabelsFerry;
+    }
+    if (showStationLabelsFunicular != null) {
+      this.showStationLabelsFunicular = showStationLabelsFunicular;
+    }
     notifyListeners();
   }
 
   bool getShowLabels(String transportType) {
     switch (transportType) {
-      case 'lightRail': return showStationLabelsLightRail;
-      case 'subway': return showStationLabelsSubway;
-      case 'tram': return showStationLabelsTram;
-      case 'ferry': return showStationLabelsFerry;
-      case 'funicular': return showStationLabelsFunicular;
-      default: return false;
+      case 'rail':
+        return showStationLabelsLightRail ||
+            showStationLabelsSubway ||
+            showStationLabelsTram ||
+            showStationLabelsFerry ||
+            showStationLabelsFunicular;
+      case 'lightRail':
+        return showStationLabelsLightRail;
+      case 'subway':
+        return showStationLabelsSubway;
+      case 'tram':
+        return showStationLabelsTram;
+      case 'ferry':
+        return showStationLabelsFerry;
+      case 'funicular':
+        return showStationLabelsFunicular;
+      default:
+        return false;
     }
   }
 
-  void selectStation(Station station)
-  {
+  void selectStation(Station station) {
     selectedStation = station;
     notifyListeners();
   }
-
 }

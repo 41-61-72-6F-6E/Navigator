@@ -1,10 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
-import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/widgets/GeneralUIComponents/map/open_free_map_bright_layer.dart';
-import 'package:navigator/widgets/homePage/UIComponents/editFavoritesModal/editFavoritesModal.dart';
 import 'package:navigator/widgets/homePage/UIComponents/favesBar/favesBar.dart';
 import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMarkerLayer.dart';
 import 'package:navigator/widgets/homePage/UIComponents/mapOptionsModal/mapOptionsModal.dart';
@@ -17,11 +17,7 @@ class HomePageView extends StatefulWidget {
   final HomePageModel model;
   final int design;
 
-  const HomePageView({
-    super.key,
-    required this.model,
-    required this.design,
-  });
+  const HomePageView({super.key, required this.model, required this.design});
 
   @override
   State<HomePageView> createState() => _HomePageViewState();
@@ -29,22 +25,20 @@ class HomePageView extends StatefulWidget {
 
 class _HomePageViewState extends State<HomePageView>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widget.model.initiateLines();
-    widget.model.fetchStations();
-    widget.model.setInitialUserLocation(this);
-    widget.model.initializeOngoingJourney();
-    widget.model.getFaves();
+    unawaited(widget.model.initializeMap(vsync: this));
+    unawaited(widget.model.initializeOngoingJourney());
+    unawaited(widget.model.getFaves());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       widget.model.resumeOngoingJourneySync();
+      widget.model.resumeMapDataLoading();
     } else {
       widget.model.pauseOngoingJourneySync();
     }
@@ -95,22 +89,27 @@ class _HomePageViewState extends State<HomePageView>
                       end: Offset.zero,
                     ).animate(anim);
                     return SlideTransition(
-                        position: offsetAnimation, child: child);
+                      position: offsetAnimation,
+                      child: child,
+                    );
                   },
                   child: hasResults
                       ? SafeArea(
                           child: ListView.builder(
                             key: const ValueKey('list'),
                             padding: const EdgeInsets.fromLTRB(
-                                16, 8, 16, bottomSheetHeight + 16),
-                            itemCount:
-                                widget.model.faves.searchResults.length,
+                              16,
+                              8,
+                              16,
+                              bottomSheetHeight + 16,
+                            ),
+                            itemCount: widget.model.faves.searchResults.length,
                             itemBuilder: (context, i) {
-                              final r =
-                                  widget.model.faves.searchResults[i];
+                              final r = widget.model.faves.searchResults[i];
                               return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 child: r is Station
                                     ? StationResultCard(
                                         design: widget.design,
@@ -174,12 +173,16 @@ class _HomePageViewState extends State<HomePageView>
                       style: TextStyle(color: colors.onPrimaryContainer),
                       decoration: InputDecoration(
                         hintText: 'Where do you want to go?',
-                        prefixIcon:
-                            Icon(Icons.location_pin, color: colors.primary),
+                        prefixIcon: Icon(
+                          Icons.location_pin,
+                          color: colors.primary,
+                        ),
                         filled: true,
                         fillColor: colors.primaryContainer,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -199,10 +202,7 @@ class _HomePageViewState extends State<HomePageView>
                 ],
               ),
               const SizedBox(height: 8),
-              FavesBar(
-                design: widget.design,
-                model: widget.model,
-              ),
+              FavesBar(design: widget.design, model: widget.model),
             ],
           ),
         ),
@@ -231,7 +231,8 @@ class _HomePageViewState extends State<HomePageView>
             minZoom: 3.0,
             maxZoom: 18.0,
             interactionOptions: InteractionOptions(
-              flags: InteractiveFlag.drag |
+              flags:
+                  InteractiveFlag.drag |
                   InteractiveFlag.flingAnimation |
                   InteractiveFlag.pinchZoom |
                   InteractiveFlag.doubleTapZoom |
@@ -244,16 +245,11 @@ class _HomePageViewState extends State<HomePageView>
           ),
           children: [
             const OpenFreeMapBrightLayer(),
-            if (lay.showSubway)
-              PolylineLayer(polylines: lay.subwayLines),
-            if (lay.showLightRail)
-              PolylineLayer(polylines: lay.lightRailLines),
-            if (lay.showTram)
-              PolylineLayer(polylines: lay.tramLines),
-            if (lay.showFerry)
-              PolylineLayer(polylines: lay.ferryLines),
-            if (lay.showFunicular)
-              PolylineLayer(polylines: lay.funicularLines),
+            if (lay.showSubway) PolylineLayer(polylines: lay.subwayLines),
+            if (lay.showLightRail) PolylineLayer(polylines: lay.lightRailLines),
+            if (lay.showTram) PolylineLayer(polylines: lay.tramLines),
+            if (lay.showFerry) PolylineLayer(polylines: lay.ferryLines),
+            if (lay.showFunicular) PolylineLayer(polylines: lay.funicularLines),
             if (jrn.ongoingJourney != null && jrn.polylines.isNotEmpty)
               PolylineLayer(polylines: jrn.polylines),
             CurrentLocationLayer(
@@ -261,14 +257,19 @@ class _HomePageViewState extends State<HomePageView>
                   widget.model.alignPositionStreamController.stream,
               alignPositionOnUpdate: pos.alignPositionOnUpdate,
               style: LocationMarkerStyle(
-                marker:
-                    DefaultLocationMarker(color: Colors.lightBlue[800]!),
+                marker: DefaultLocationMarker(color: Colors.lightBlue[800]!),
                 markerSize: const Size(20, 20),
                 markerDirection: MarkerDirection.heading,
                 accuracyCircleColor: Colors.blue[200]!.withAlpha(0x20),
                 headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
                 headingSectorRadius: 60,
               ),
+            ),
+            HomePageMarkerLayer(
+              design: widget.design,
+              model: widget.model,
+              transportType: 'rail',
+              onStationTap: (station) => onStationTap(station),
             ),
             if (lay.showLightRail)
               HomePageMarkerLayer(
@@ -308,17 +309,15 @@ class _HomePageViewState extends State<HomePageView>
             Align(
               alignment: Alignment.bottomRight,
               child: Padding(
-                padding:
-                    const EdgeInsets.only(right: 20.0, bottom: 160.0),
+                padding: const EdgeInsets.only(right: 20.0, bottom: 160.0),
                 child: FloatingActionButton(
                   shape: const CircleBorder(),
                   onPressed: widget.model.recenterMap,
                   child: Icon(
                     Icons.my_location,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .tertiary
-                        .withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.tertiary.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -326,6 +325,68 @@ class _HomePageViewState extends State<HomePageView>
             const OpenFreeMapAttribution(
               padding: EdgeInsets.only(left: 4, bottom: 144),
             ),
+            if (lay.isOverlayLoading &&
+                lay.lines.isEmpty &&
+                lay.stations.isEmpty)
+              const Align(
+                alignment: Alignment.topCenter,
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 10),
+                            Text('Loading transit map…'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else if (lay.overlayError != null)
+              Align(
+                alignment: Alignment.topCenter,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 14),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              lay.lines.isEmpty && lay.stations.isEmpty
+                                  ? 'Transit map unavailable'
+                                  : 'Some transit data unavailable',
+                            ),
+                            TextButton(
+                              onPressed: () => unawaited(
+                                widget.model.loadMapOverlaysAt(
+                                  pos.currentCenter,
+                                ),
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -335,5 +396,4 @@ class _HomePageViewState extends State<HomePageView>
   void onStationTap(Station station) {
     StationSheet.show(context, widget.model, widget.design, station);
   }
-
 }

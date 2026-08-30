@@ -12,7 +12,7 @@ import 'package:navigator/services/geoLocator.dart';
 import 'package:navigator/services/overpassApi.dart';
 import 'package:navigator/models/subway_line.dart';
 import 'package:navigator/models/trip.dart'; // Add this import
-import 'package:navigator/models/leg.dart';   // Add this import
+import 'package:navigator/models/leg.dart'; // Add this import
 
 import '../models/journeySettings.dart';
 
@@ -26,8 +26,8 @@ class ServicesMiddle {
   GeoService geoService = GeoService();
   Overpassapi overpass = Overpassapi();
   List<SubwayLine> loadedSubwayLines = [];
-  List<List<LatLng>> get loadedPolylines => 
-    loadedSubwayLines.map((line) => line.points).toList();
+  List<List<LatLng>> get loadedPolylines =>
+      loadedSubwayLines.map((line) => line.points).toList();
 
   // Existing methods...
   Future<List<myApp.Location>> getLocations(String query) async {
@@ -35,33 +35,51 @@ class ServicesMiddle {
     return results;
   }
 
-  Future<List<DepartureArrival>> getDeparturesForStation(Station station) async {
+  Future<List<DepartureArrival>> getDeparturesForStation(
+    Station station,
+  ) async {
     Station s = station;
-    if(station.backend != "dbRest") {
-      print("Station backend (${station.backend}) is not dbRest. Attempting conversion...");
-      Station? convertedStation = await convertStationToDifferentBackend(station, "dbRest");
+    if (station.backend != "dbRest") {
+      print(
+        "Station backend (${station.backend}) is not dbRest. Attempting conversion...",
+      );
+      Station? convertedStation = await convertStationToDifferentBackend(
+        station,
+        "dbRest",
+      );
       if (convertedStation == null) {
-        print("Failed to convert station ${station.name} to dbRest backend. Returning empty departures.");
+        print(
+          "Failed to convert station ${station.name} to dbRest backend. Returning empty departures.",
+        );
         return [];
       }
       s = convertedStation;
     }
     final results = await dbRest.getDeparturesForStation(s.id);
     print("Fetched ${results.length} departures for station ID: ${s.id}");
-    print("Sample departure: ${results.isNotEmpty ? results.first.station.name : 'No departures'} at ${results.isNotEmpty ? results.first.when : 'N/A'}");
+    print(
+      "Sample departure: ${results.isNotEmpty ? results.first.station.name : 'No departures'} at ${results.isNotEmpty ? results.first.when : 'N/A'}",
+    );
     return results;
   }
 
   Future<String> getAddressFromLatLng(double latitude, double longitude) async {
     try {
-      List<geo.Placemark> placemarks = await geo.placemarkFromCoordinates(latitude, longitude);
+      List<geo.Placemark> placemarks = await geo.placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isNotEmpty) {
         final geo.Placemark place = placemarks.first;
         String address = [
           if (place.street != null && place.street!.isNotEmpty) place.street,
-          if (place.postalCode != null && place.postalCode!.isNotEmpty) place.postalCode,
-          if (place.locality != null && place.locality!.isNotEmpty) place.locality,
-          if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) place.administrativeArea,
+          if (place.postalCode != null && place.postalCode!.isNotEmpty)
+            place.postalCode,
+          if (place.locality != null && place.locality!.isNotEmpty)
+            place.locality,
+          if (place.administrativeArea != null &&
+              place.administrativeArea!.isNotEmpty)
+            place.administrativeArea,
           if (place.country != null && place.country!.isNotEmpty) place.country,
         ].whereType<String>().join(', ');
         return address;
@@ -74,8 +92,20 @@ class ServicesMiddle {
     }
   }
 
-  Future<List<Journey>> getJourneys(myApp.Location from, myApp.Location to, DateAndTime when, bool departure, {required JourneySettings journeySettings}) async {
-    final results = await dbRest.fetchJourneysByLocation(from, to, when, departure, journeySettings);
+  Future<List<Journey>> getJourneys(
+    myApp.Location from,
+    myApp.Location to,
+    DateAndTime when,
+    bool departure, {
+    required JourneySettings journeySettings,
+  }) async {
+    final results = await dbRest.fetchJourneysByLocation(
+      from,
+      to,
+      when,
+      departure,
+      journeySettings,
+    );
     return results;
   }
 
@@ -99,23 +129,22 @@ class ServicesMiddle {
     }
   }
 
-  Future<List<Journey>> getJourneysEarlierThanLastSearch() async
-  {
+  Future<List<Journey>> getJourneysEarlierThanLastSearch() async {
     return await dbRest.fetchEarlierOrLaterJourneys(true);
   }
 
-  Future<List<Journey>> getJourneysLaterThanLastSearch() async
-  {
+  Future<List<Journey>> getJourneysLaterThanLastSearch() async {
     return await dbRest.fetchEarlierOrLaterJourneys(false);
   }
 
   // NEW TRIP METHODS
-  
+
   /// Fetches detailed trip information by trip ID
   /// [tripId] - The unique identifier for the trip
   /// [includePolyline] - Whether to include geographic shape data
   /// [includeRemarks] - Whether to include hints and warnings
-  Future<Trip> getTripById(String tripId, {
+  Future<Trip> getTripById(
+    String tripId, {
     bool includePolyline = false,
     bool includeRemarks = true,
   }) async {
@@ -139,85 +168,101 @@ class ServicesMiddle {
   /// [leg] - The journey leg containing the trip ID
   /// [includePolyline] - Whether to include geographic shape data
   /// [includeRemarks] - Whether to include hints and warnings
-  Future<Trip?> getTripFromLeg(Leg leg, {
-  bool includePolyline = false,
-  bool includeRemarks = true,
-}) async {
-  try {
-    // Skip walking legs
-    if (leg.isWalking == true) {
-      print("DEBUG: Skipping walking leg from ${leg.origin.name} to ${leg.destination.name}");
+  Future<Trip?> getTripFromLeg(
+    Leg leg, {
+    bool includePolyline = false,
+    bool includeRemarks = true,
+  }) async {
+    try {
+      // Skip walking legs
+      if (leg.isWalking == true) {
+        print(
+          "DEBUG: Skipping walking leg from ${leg.origin.name} to ${leg.destination.name}",
+        );
+        return null;
+      }
+
+      // Check if leg has a trip ID
+      if (leg.tripID == null || leg.tripID!.isEmpty) {
+        print(
+          "DEBUG: Leg has no trip ID: ${leg.lineName ?? 'Unknown'} from ${leg.origin.name} to ${leg.destination.name}",
+        );
+        return null;
+      }
+
+      print(
+        "DEBUG: Fetching trip from leg: ${leg.lineName ?? 'Unknown'} (tripID: ${leg.tripID})",
+      );
+
+      final trip = await dbRest.fetchTripFromLeg(
+        leg,
+        stopovers: true,
+        remarks: includeRemarks,
+        polyline: includePolyline,
+      );
+
+      //print('yo mama ${trip.id}');
+
+      print(
+        "DEBUG: Successfully fetched trip: ${trip.line?.name ?? 'Unknown'}",
+      );
+      print("DEBUG: Trip has ${trip.stopovers.length} stopovers");
+
+      return trip;
+    } on HttpException catch (e) {
+      if (e.message.contains('not found') || e.message.contains('expired')) {
+        print('INFO: Trip not available for leg ${leg.lineName}: ${e.message}');
+        return null; // Gracefully handle missing trips
+      } else if (e.message.contains('Temporary server error')) {
+        print('WARN: Temporary error for trip ${leg.tripID}: ${e.message}');
+        // You might want to retry here or return null
+        return null;
+      } else {
+        print('ERROR: HTTP error fetching trip from leg: $e');
+        return null; // Don't crash the entire operation
+      }
+    } catch (e) {
+      print('ERROR: Unexpected error fetching trip from leg: $e');
+      print(
+        'DEBUG: Leg details - tripID: ${leg.tripID}, lineName: ${leg.lineName}, product: ${leg.product}',
+      );
       return null;
     }
-
-    // Check if leg has a trip ID
-    if (leg.tripID == null || leg.tripID!.isEmpty) {
-      print("DEBUG: Leg has no trip ID: ${leg.lineName ?? 'Unknown'} from ${leg.origin.name} to ${leg.destination.name}");
-      return null;
-    }
-
-    print("DEBUG: Fetching trip from leg: ${leg.lineName ?? 'Unknown'} (tripID: ${leg.tripID})");
-    
-    final trip = await dbRest.fetchTripFromLeg(
-      leg,
-      stopovers: true,
-      remarks: includeRemarks,
-      polyline: includePolyline,
-    );
-
-    //print('yo mama ${trip.id}');
-    
-    print("DEBUG: Successfully fetched trip: ${trip.line?.name ?? 'Unknown'}");
-    print("DEBUG: Trip has ${trip.stopovers.length} stopovers");
-    
-    return trip;
-  } on HttpException catch (e) {
-    if (e.message.contains('not found') || e.message.contains('expired')) {
-      print('INFO: Trip not available for leg ${leg.lineName}: ${e.message}');
-      return null; // Gracefully handle missing trips
-    } else if (e.message.contains('Temporary server error')) {
-      print('WARN: Temporary error for trip ${leg.tripID}: ${e.message}');
-      // You might want to retry here or return null
-      return null;
-    } else {
-      print('ERROR: HTTP error fetching trip from leg: $e');
-      return null; // Don't crash the entire operation
-    }
-  } catch (e) {
-    print('ERROR: Unexpected error fetching trip from leg: $e');
-    print('DEBUG: Leg details - tripID: ${leg.tripID}, lineName: ${leg.lineName}, product: ${leg.product}');
-    return null;
   }
-}
 
   /// Fetches multiple trips from a list of journey legs
   /// [legs] - List of journey legs to fetch trips for
   /// [includePolyline] - Whether to include geographic shape data
   /// [includeRemarks] - Whether to include hints and warnings
-  Future<List<Trip>> getTripsFromLegs(List<Leg> legs, {
+  Future<List<Trip>> getTripsFromLegs(
+    List<Leg> legs, {
     bool includePolyline = false,
     bool includeRemarks = true,
   }) async {
     List<Trip> trips = [];
-    
+
     print("🚂 Fetching trips from ${legs.length} legs");
-    
+
     for (int i = 0; i < legs.length; i++) {
       final leg = legs[i];
-      print("Processing leg ${i + 1}/${legs.length}: ${leg.lineName ?? 'Walking'}");
-      
+      print(
+        "Processing leg ${i + 1}/${legs.length}: ${leg.lineName ?? 'Walking'}",
+      );
+
       final trip = await getTripFromLeg(
         leg,
         includePolyline: includePolyline,
         includeRemarks: includeRemarks,
       );
-      
+
       if (trip != null) {
         trips.add(trip);
       }
     }
-    
-    print("✅ Successfully fetched ${trips.length} trips from ${legs.length} legs");
+
+    print(
+      "✅ Successfully fetched ${trips.length} trips from ${legs.length} legs",
+    );
     return trips;
   }
 
@@ -225,7 +270,8 @@ class ServicesMiddle {
   /// [journey] - The journey to fetch trips for
   /// [includePolyline] - Whether to include geographic shape data
   /// [includeRemarks] - Whether to include hints and warnings
-  Future<List<Trip>> getTripsFromJourney(Journey journey, {
+  Future<List<Trip>> getTripsFromJourney(
+    Journey journey, {
     bool includePolyline = false,
     bool includeRemarks = true,
   }) async {
@@ -246,7 +292,8 @@ class ServicesMiddle {
   /// [tripIds] - List of trip IDs to fetch
   /// [includePolyline] - Whether to include geographic shape data
   /// [includeRemarks] - Whether to include hints and warnings
-  Future<List<Trip>> getMultipleTrips(List<String> tripIds, {
+  Future<List<Trip>> getMultipleTrips(
+    List<String> tripIds, {
     bool includePolyline = false,
     bool includeRemarks = true,
   }) async {
@@ -270,32 +317,48 @@ class ServicesMiddle {
   Future<myApp.Location> getCurrentLocation() async {
     try {
       final pos = await geoService.determinePosition();
-      return myApp.Location.fromPosition("none",pos);
+      return myApp.Location.fromPosition("none", pos);
     } catch (err) {
       print('Error getting Location: $err');
-      return myApp.Location(backend: "none", type: '', id: '', name: '', latitude: 0, longitude: 0);
+      return myApp.Location(
+        backend: "none",
+        type: '',
+        id: '',
+        name: '',
+        latitude: 0,
+        longitude: 0,
+      );
     }
   }
 
-  Future<Station?> convertStationToDifferentBackend(Station station, String newBackend) async {
-    if(newBackend == station.backend) return station; // No conversion needed
-    if(newBackend == "dbRest")
-    {
+  Future<Station?> convertStationToDifferentBackend(
+    Station station,
+    String newBackend,
+  ) async {
+    if (newBackend == station.backend) return station; // No conversion needed
+    if (newBackend == "dbRest") {
       return await dbRest.convertStationToDbRest(station);
     }
-    print("Tried to convert station from ${station.backend} to unsupported backend: $newBackend");
+    print(
+      "Tried to convert station from ${station.backend} to unsupported backend: $newBackend",
+    );
     return station;
   }
-  
-  Future<void> refreshPolylines() async {
-    // Get current location
-    myApp.Location currentLocation = await getCurrentLocation();
 
-    // Fetch subway lines based on user's location with 50 km radius
+  Future<void> refreshPolylines() async {
+    final currentLocation = await getCurrentLocation();
+    if (currentLocation.latitude == 0 && currentLocation.longitude == 0) return;
+    await refreshPolylinesAt(currentLocation);
+  }
+
+  Future<void> refreshPolylinesAt(
+    myApp.Location location, {
+    int radius = 20000,
+  }) async {
     loadedSubwayLines = await overpass.fetchSubwayLinesWithColors(
-      lat: currentLocation.latitude,
-      lon: currentLocation.longitude,
-      radius: 50000 // 50 km in meters
+      lat: location.latitude,
+      lon: location.longitude,
+      radius: radius,
     );
   }
 }

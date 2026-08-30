@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/pages/page_models/home_page.dart';
+import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMarkerLayerAndroid.dart';
+import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 void main() {
   group('station transfer classification', () {
@@ -62,6 +67,43 @@ void main() {
       expect(marker, findsOneWidget);
       expect(tester.getSize(marker), const Size.square(26));
       expect(find.byIcon(Icons.subway), findsOneWidget);
+    });
+
+    testWidgets('major rail stations are visible at the initial zoom', (
+      tester,
+    ) async {
+      final model = HomePageModel(
+        page: HomePageIni(),
+        services: ServicesMiddle(),
+      );
+      addTearDown(model.dispose);
+      model.position.update(currentZoom: 12);
+      model.layers.updateStations([_station(national: true)]);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FlutterMap(
+              options: const MapOptions(
+                initialCenter: LatLng(52.5, 13.4),
+                initialZoom: 12,
+              ),
+              children: [
+                HomePageMarkerLayerAndroid(
+                  model: model,
+                  transportType: 'rail',
+                  onStationTap: (_) {},
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(HomePageStationMarkerSymbol.regularMarkerKey),
+        findsOneWidget,
+      );
     });
   });
 }

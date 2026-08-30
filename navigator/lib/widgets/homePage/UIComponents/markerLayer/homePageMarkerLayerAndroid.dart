@@ -24,7 +24,7 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
         final currentZoom = model.position.currentZoom;
         final stations = model.layers.stations;
 
-        if (!model.getShowLabels(transportType) || currentZoom <= 12) {
+        if (!model.getShowLabels(transportType)) {
           return const SizedBox.shrink();
         }
 
@@ -32,7 +32,8 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
 
         final markers = stations
             .where((station) {
-              if (!model.shouldShowStation(station, transportType)) return false;
+              if (!model.shouldShowStation(station, transportType))
+                return false;
               final minZoom = model.getMinZoomForStation(station);
               if (currentZoom < minZoom) return false;
               return true;
@@ -75,14 +76,18 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
                 width: 150,
                 height: 60,
                 child: GestureDetector(
-                  onTap: () {onStationTap(station);},
+                  onTap: () {
+                    onStationTap(station);
+                  },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (currentZoom > 15.5)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.surfaceContainer,
                             borderRadius: BorderRadius.circular(8),
@@ -125,10 +130,12 @@ class HomePageMarkerLayerAndroid extends StatelessWidget {
 }
 
 class HomePageStationMarkerSymbol extends StatelessWidget {
-  static const regularMarkerKey =
-      ValueKey<String>('home-page-regular-stop-marker');
-  static const transferMarkerKey =
-      ValueKey<String>('home-page-transfer-station-marker');
+  static const regularMarkerKey = ValueKey<String>(
+    'home-page-regular-stop-marker',
+  );
+  static const transferMarkerKey = ValueKey<String>(
+    'home-page-transfer-station-marker',
+  );
 
   final Station station;
   final IconData transportIcon;

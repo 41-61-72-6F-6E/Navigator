@@ -1,13 +1,109 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
+import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/models/subway_line.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 void main() {
+  group('transit map loading', () {
+    test('resolves location once and loads each overlay once', () async {
+      var locationCalls = 0;
+      var lineCalls = 0;
+      var stationCalls = 0;
+      int? lineRadius;
+      int? stationRadius;
+
+      final model = HomePageModel(
+        page: HomePageIni(),
+        services: ServicesMiddle(),
+        getCurrentLocation: () async {
+          locationCalls++;
+          return Location(
+            backend: 'test',
+            type: 'location',
+            id: 'current',
+            name: 'Current location',
+            latitude: 52.5,
+            longitude: 13.4,
+          );
+        },
+        loadTransitLines:
+            ({required lat, required lon, required radius}) async {
+              lineCalls++;
+              lineRadius = radius;
+              expect(lat, 52.5);
+              expect(lon, 13.4);
+              return [
+                SubwayLine(
+                  backend: 'OSM',
+                  points: const [LatLng(52.5, 13.4), LatLng(52.51, 13.41)],
+                  color: Colors.red,
+                  type: 'tram',
+                ),
+              ];
+            },
+        loadTransitStations:
+            ({required lat, required lon, required radius}) async {
+              stationCalls++;
+              stationRadius = radius;
+              expect(lat, 52.5);
+              expect(lon, 13.4);
+              return [_station('station', 'Station')];
+            },
+      );
+      addTearDown(model.dispose);
+
+      await model.initializeMap();
+
+      expect(locationCalls, 1);
+      expect(lineCalls, 1);
+      expect(stationCalls, 1);
+      expect(lineRadius, HomePageModel.overlayRadiusMeters);
+      expect(stationRadius, HomePageModel.overlayRadiusMeters);
+      expect(model.layers.tramLines, hasLength(1));
+      expect(model.layers.stations, hasLength(1));
+      expect(model.layers.overlayError, isNull);
+      expect(model.layers.isOverlayLoading, isFalse);
+    });
+
+    test('keeps a successful overlay when the other request fails', () async {
+      final model = HomePageModel(
+        page: HomePageIni(),
+        services: ServicesMiddle(),
+        getCurrentLocation: () async => Location(
+          backend: 'test',
+          type: 'location',
+          id: 'current',
+          name: 'Current location',
+          latitude: 52.5,
+          longitude: 13.4,
+        ),
+        loadTransitLines:
+            ({required lat, required lon, required radius}) async =>
+                throw Exception('lines offline'),
+        loadTransitStations:
+            ({required lat, required lon, required radius}) async => [
+              _station('station', 'Station'),
+            ],
+      );
+      addTearDown(model.dispose);
+
+      await model.initializeMap();
+
+      expect(model.layers.lines, isEmpty);
+      expect(model.layers.stations, hasLength(1));
+      expect(model.layers.overlayError, contains('lines offline'));
+      expect(model.layers.isOverlayLoading, isFalse);
+    });
+  });
+
   group('ongoing journey sync', () {
     test(
       'periodically refreshes and removes a journey after it ends',

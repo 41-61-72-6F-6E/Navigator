@@ -12,6 +12,7 @@ import 'package:navigator/models/location.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/stopover.dart';
+import 'package:navigator/models/subway_line.dart';
 import 'package:navigator/models/trip.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
@@ -22,7 +23,32 @@ import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart'
 import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
 import 'dart:math' as math;
 
+typedef TransitLinesLoader =
+    Future<List<SubwayLine>> Function({
+      required double lat,
+      required double lon,
+      required int radius,
+    });
+
+typedef TransitStationsLoader =
+    Future<List<Station>> Function({
+      required double lat,
+      required double lon,
+      required int radius,
+    });
+
+class _LoadResult<T> {
+  final T? value;
+  final Object? error;
+
+  const _LoadResult.success(this.value) : error = null;
+  const _LoadResult.failure(this.error) : value = null;
+}
+
 class HomePageModel {
+  static const int overlayRadiusMeters = 20000;
+  static const double overlayReloadDistanceKm = 8;
+
   final HomePageIni page;
   final ServicesMiddle services;
 
@@ -40,14 +66,21 @@ class HomePageModel {
       StreamController<double?>.broadcast();
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
+  Timer? _overlayReloadDebounce;
   Timer? _ongoingJourneySyncTimer;
   bool _ongoingJourneySyncInProgress = false;
   bool _ongoingJourneySyncPaused = false;
   bool _disposed = false;
+  int _overlayLoadGeneration = 0;
+  LatLng? _lastOverlayCenter;
+  DateTime? _lastOverlayLoadedAt;
 
   final Duration ongoingJourneySyncInterval;
   late final Future<List<Savedjourney>> Function() _loadSavedJourneys;
   late final Future<Journey> Function(String) _refreshJourneyByToken;
+  late final Future<Location> Function() _getCurrentLocation;
+  late final TransitLinesLoader _loadTransitLines;
+  late final TransitStationsLoader _loadTransitStations;
   late final DateTime Function() _now;
 
   HomePageModel({
@@ -56,11 +89,19 @@ class HomePageModel {
     this.ongoingJourneySyncInterval = const Duration(minutes: 1),
     Future<List<Savedjourney>> Function()? loadSavedJourneys,
     Future<Journey> Function(String)? refreshJourneyByToken,
+    Future<Location> Function()? getCurrentLocation,
+    TransitLinesLoader? loadTransitLines,
+    TransitStationsLoader? loadTransitStations,
     DateTime Function()? now,
   }) : assert(ongoingJourneySyncInterval > Duration.zero) {
     _loadSavedJourneys = loadSavedJourneys ?? Localdatasaver.getSavedJourneys;
     _refreshJourneyByToken =
         refreshJourneyByToken ?? services.refreshJourneyByToken;
+    _getCurrentLocation = getCurrentLocation ?? services.getCurrentLocation;
+    _loadTransitLines =
+        loadTransitLines ?? services.overpass.fetchSubwayLinesWithColors;
+    _loadTransitStations =
+        loadTransitStations ?? services.overpass.fetchStationsByType;
     _now = now ?? DateTime.now;
     searchController.addListener(() {
       _onSearchChanged(searchController.text.trim());
@@ -70,10 +111,30 @@ class HomePageModel {
   // ─── Init ────────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    initiateLines();
-    fetchStations();
-    await initializeOngoingJourney();
-    await getFaves();
+    await Future.wait([
+      initializeMap(),
+      initializeOngoingJourney(),
+      getFaves(),
+    ]);
+  }
+
+  /// Resolves location once, then uses that same center for both overlay
+  /// requests. If location is unavailable, the visible map center is still a
+  /// useful fallback instead of querying around the invalid (0, 0) coordinate.
+  Future<void> initializeMap({TickerProvider? vsync}) async {
+    final location = await _getCurrentLocation();
+    final hasLocation = location.latitude != 0 || location.longitude != 0;
+    final center = hasLocation
+        ? LatLng(location.latitude, location.longitude)
+        : position.currentCenter;
+
+    if (_disposed) return;
+    if (hasLocation) {
+      position.update(currentUserLocation: center);
+      if (vsync != null) animatedMapMove(center, 12.5, vsync);
+    }
+
+    await loadMapOverlaysAt(center);
   }
 
   Future<void> initializeOngoingJourney() async {
@@ -162,8 +223,9 @@ class HomePageModel {
       final journeyToRefresh = isCurrent ? current.journey : candidate.journey;
 
       try {
-        final refreshed =
-            await _refreshJourneyByToken(journeyToRefresh.refreshToken);
+        final refreshed = await _refreshJourneyByToken(
+          journeyToRefresh.refreshToken,
+        );
         if (_disposed) return null;
 
         if (_isOngoing(refreshed, _now())) {
@@ -257,11 +319,17 @@ class HomePageModel {
             print('DEBUG: - Stopovers count: ${trip.stopovers.length}');
 
             if (trip.stopovers.isNotEmpty) {
-              print('DEBUG: - First stopover: ${trip.stopovers.first.station.name}');
-              print('DEBUG: - Last stopover: ${trip.stopovers.last.station.name}');
+              print(
+                'DEBUG: - First stopover: ${trip.stopovers.first.station.name}',
+              );
+              print(
+                'DEBUG: - Last stopover: ${trip.stopovers.last.station.name}',
+              );
               for (int j = 0; j < trip.stopovers.length; j++) {
                 final stopover = trip.stopovers[j];
-                print('DEBUG: - Stopover $j: ${stopover.station.name} at ${stopover.plannedArrival}');
+                print(
+                  'DEBUG: - Stopover $j: ${stopover.station.name} at ${stopover.plannedArrival}',
+                );
               }
             } else {
               print('DEBUG: - WARNING: Trip has no stopovers!');
@@ -292,16 +360,21 @@ class HomePageModel {
       );
     }
 
-    print('DEBUG: journey.legIndexToTripMap has ${journey.legIndexToTripMap.length} entries');
+    print(
+      'DEBUG: journey.legIndexToTripMap has ${journey.legIndexToTripMap.length} entries',
+    );
     journey.legIndexToTripMap.forEach((legIndex, trip) {
-      print('DEBUG: Leg $legIndex -> Trip ${trip.id} with ${trip.stopovers.length} stopovers');
+      print(
+        'DEBUG: Leg $legIndex -> Trip ${trip.id} with ${trip.stopovers.length} stopovers',
+      );
     });
   }
 
   void _initializeOngoingJourneyLineColorListener() {
     if (journey.ongoingJourney != null) {
       for (Leg l in journey.ongoingJourney!.journey.legs) {
-        final cachedColor = journey.transitLineColorCache[_lineColorCacheKey(l)];
+        final cachedColor =
+            journey.transitLineColorCache[_lineColorCacheKey(l)];
         if (cachedColor != null) {
           l.lineColorNotifier.value = cachedColor;
         }
@@ -316,8 +389,9 @@ class HomePageModel {
   void _updateLineColor() {
     if (_disposed) return;
 
-    final updatedColors =
-        Map<String, Color>.from(journey.transitLineColorCache);
+    final updatedColors = Map<String, Color>.from(
+      journey.transitLineColorCache,
+    );
     for (final leg in journey.ongoingJourney?.journey.legs ?? <Leg>[]) {
       final color = leg.lineColorNotifier.value;
       if (color != null) {
@@ -368,7 +442,8 @@ class HomePageModel {
           ? polylineData
           : jsonDecode(polylineData);
 
-      if (geoJson['type'] == 'FeatureCollection' && geoJson['features'] is List) {
+      if (geoJson['type'] == 'FeatureCollection' &&
+          geoJson['features'] is List) {
         final List features = geoJson['features'];
         for (final feature in features) {
           if (feature['geometry'] != null &&
@@ -416,7 +491,9 @@ class HomePageModel {
         final leg = journey.ongoingJourney!.journey.legs[i];
         if (leg.polyline == null) continue;
 
-        final List<LatLng> legPoints = _extractPointsFromLegPolyline(leg.polyline);
+        final List<LatLng> legPoints = _extractPointsFromLegPolyline(
+          leg.polyline,
+        );
         if (legPoints.isEmpty) continue;
 
         Color lineColor;
@@ -427,11 +504,11 @@ class HomePageModel {
           final String cacheKey = _lineColorCacheKey(leg);
           String productType = leg.productName?.toLowerCase() ?? 'default';
 
-          lineColor = colorCache[cacheKey] ??
+          lineColor =
+              colorCache[cacheKey] ??
               leg.lineColorNotifier.value ??
               modeColors[productType] ??
               modeColors['default']!;
-
         }
 
         double strokeWidth = leg.isWalking == true ? 1.0 : 3.0;
@@ -468,7 +545,11 @@ class HomePageModel {
 
   // ─── Map ─────────────────────────────────────────────────────────────────
 
-  void animatedMapMove(LatLng destLocation, double destZoom, TickerProvider vsync) {
+  void animatedMapMove(
+    LatLng destLocation,
+    double destZoom,
+    TickerProvider vsync,
+  ) {
     final latTween = Tween<double>(
       begin: position.currentCenter.latitude,
       end: destLocation.latitude,
@@ -477,10 +558,7 @@ class HomePageModel {
       begin: position.currentCenter.longitude,
       end: destLocation.longitude,
     );
-    final zoomTween = Tween<double>(
-      begin: position.currentZoom,
-      end: destZoom,
-    );
+    final zoomTween = Tween<double>(begin: position.currentZoom, end: destZoom);
 
     var controller = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -510,13 +588,7 @@ class HomePageModel {
   }
 
   Future<void> setInitialUserLocation(TickerProvider vsync) async {
-    final loc = await page.service.getCurrentLocation();
-    if (loc.latitude != 0 && loc.longitude != 0) {
-      final newCenter = LatLng(loc.latitude, loc.longitude);
-      position.update(currentUserLocation: newCenter);
-      animatedMapMove(newCenter, 12.0, vsync);
-      fetchStations();
-    }
+    await initializeMap(vsync: vsync);
   }
 
   void onPositionChanged(MapCamera camera, bool hasGesture) {
@@ -535,6 +607,30 @@ class HomePageModel {
       position.currentZoom = newZoom;
       position.currentCenter = camera.center;
     }
+
+    if (hasGesture) {
+      _scheduleOverlayReload(camera.center);
+    }
+  }
+
+  void _scheduleOverlayReload(LatLng center) {
+    final lastCenter = _lastOverlayCenter;
+    if (lastCenter != null &&
+        _calculateDistance(
+              lastCenter.latitude,
+              lastCenter.longitude,
+              center.latitude,
+              center.longitude,
+            ) <
+            overlayReloadDistanceKm) {
+      return;
+    }
+
+    _overlayReloadDebounce?.cancel();
+    _overlayReloadDebounce = Timer(
+      const Duration(milliseconds: 800),
+      () => unawaited(loadMapOverlaysAt(center)),
+    );
   }
 
   bool _zoomCrossedThreshold(double oldZoom, double newZoom) {
@@ -582,11 +678,17 @@ class HomePageModel {
     });
   }
 
-  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+  double _calculateDistance(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
     const double earthRadius = 6371;
     final double dLat = _degreesToRadians(lat2 - lat1);
     final double dLng = _degreesToRadians(lng2 - lng1);
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_degreesToRadians(lat1)) *
             math.cos(_degreesToRadians(lat2)) *
             math.sin(dLng / 2) *
@@ -615,82 +717,126 @@ class HomePageModel {
   // ─── Stations & Lines ────────────────────────────────────────────────────
 
   Future<void> initiateLines() async {
-    await page.service.refreshPolylines();
-    if (page.service.loadedSubwayLines.isNotEmpty) {
-      layers.updateLines(
-        lines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty)
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 2.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-        subwayLines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty && l.type == 'subway')
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 2.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-        lightRailLines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty && l.type == 'light_rail')
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 2.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-        tramLines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty && l.type == 'tram')
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 2.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-        ferryLines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty && l.type == 'ferry')
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 1.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-        funicularLines: page.service.loadedSubwayLines
-            .where((l) => l.points.isNotEmpty && l.type == 'funicular')
-            .map((l) => Polyline(
-                  points: l.points,
-                  strokeWidth: 2.0,
-                  color: l.color,
-                  borderColor: l.color.withAlpha(60),
-                ))
-            .toList(),
-      );
-    }
+    final center = position.currentCenter;
+    final lines = await _loadTransitLines(
+      lat: center.latitude,
+      lon: center.longitude,
+      radius: overlayRadiusMeters,
+    );
+    if (!_disposed) _updateTransitLines(lines);
   }
 
   Future<void> fetchStations() async {
-    final location = await page.service.getCurrentLocation();
-    if (location.latitude != 0 && location.longitude != 0) {
-      try {
-        final fetchedStations = await page.service.overpass.fetchStationsByType(
-          lat: location.latitude,
-          lon: location.longitude,
-          radius: 50000,
-        );
-        layers.updateStations(fetchedStations);
-      } catch (e) {
-        print('Error fetching stations: $e');
-      }
+    final center = position.currentCenter;
+    final stations = await _loadTransitStations(
+      lat: center.latitude,
+      lon: center.longitude,
+      radius: overlayRadiusMeters,
+    );
+    if (!_disposed) layers.updateStations(stations);
+  }
+
+  Future<void> loadMapOverlaysAt(LatLng center) async {
+    if (_disposed) return;
+    final generation = ++_overlayLoadGeneration;
+    layers.updateOverlayStatus(isLoading: true, clearError: true);
+
+    final linesFuture = _capture(
+      _loadTransitLines(
+        lat: center.latitude,
+        lon: center.longitude,
+        radius: overlayRadiusMeters,
+      ),
+    );
+    final stationsFuture = _capture(
+      _loadTransitStations(
+        lat: center.latitude,
+        lon: center.longitude,
+        radius: overlayRadiusMeters,
+      ),
+    );
+    final linesResult = await linesFuture;
+    final stationsResult = await stationsFuture;
+
+    if (_disposed || generation != _overlayLoadGeneration) return;
+
+    var loadedAnything = false;
+    if (linesResult.value != null) {
+      _updateTransitLines(linesResult.value!);
+      loadedAnything = true;
+    }
+    if (stationsResult.value != null) {
+      layers.updateStations(stationsResult.value!);
+      loadedAnything = true;
+    }
+    if (loadedAnything) {
+      _lastOverlayCenter = center;
+      _lastOverlayLoadedAt = _now();
+    }
+
+    final errors = [
+      linesResult.error,
+      stationsResult.error,
+    ].whereType<Object>().map((error) => error.toString()).toSet().join('\n');
+    layers.updateOverlayStatus(
+      isLoading: false,
+      error: errors.isEmpty ? null : errors,
+      clearError: errors.isEmpty,
+      lastUpdated: loadedAnything ? _lastOverlayLoadedAt : null,
+    );
+  }
+
+  Future<_LoadResult<T>> _capture<T>(Future<T> future) async {
+    try {
+      return _LoadResult.success(await future);
+    } catch (error) {
+      debugPrint('Error loading map overlay: $error');
+      return _LoadResult.failure(error);
     }
   }
+
+  void _updateTransitLines(List<SubwayLine> transitLines) {
+    List<Polyline> polylinesFor(String? type, {double strokeWidth = 2}) {
+      return transitLines
+          .where(
+            (line) =>
+                line.points.isNotEmpty && (type == null || line.type == type),
+          )
+          .map(
+            (line) => Polyline(
+              points: line.points,
+              strokeWidth: strokeWidth,
+              color: line.color,
+              borderColor: line.color.withAlpha(60),
+            ),
+          )
+          .toList(growable: false);
+    }
+
+    layers.updateLines(
+      lines: polylinesFor(null),
+      subwayLines: polylinesFor('subway'),
+      lightRailLines: polylinesFor('light_rail'),
+      tramLines: polylinesFor('tram'),
+      ferryLines: polylinesFor('ferry', strokeWidth: 1),
+      funicularLines: polylinesFor('funicular'),
+    );
+  }
+
+  void resumeMapDataLoading() {
+    if (_disposed) return;
+    final lastLoaded = _lastOverlayLoadedAt;
+    final needsReload =
+        layers.overlayError != null ||
+        layers.lines.isEmpty ||
+        layers.stations.isEmpty ||
+        lastLoaded == null ||
+        _now().difference(lastLoaded) > const Duration(minutes: 15);
+    if (needsReload) {
+      unawaited(loadMapOverlaysAt(position.currentCenter));
+    }
+  }
+
   Future<List<DepartureArrival>> getDeparturesForStation(
     Station station,
   ) async {
@@ -699,8 +845,10 @@ class HomePageModel {
 
   Future<Station?> selectStation(Station station) async {
     try {
-      final convertedStation =
-          await services.convertStationToDifferentBackend(station, "dbRest");
+      final convertedStation = await services.convertStationToDifferentBackend(
+        station,
+        "dbRest",
+      );
       if (convertedStation == null) {
         debugPrint(
           "Error converting station ${station.name} to the current backend format",
@@ -740,7 +888,8 @@ class HomePageModel {
   // ─── Favourites ──────────────────────────────────────────────────────────
 
   Future<void> reloadFaves() async {
-    List<FavoriteLocation> updatedFaves = await Localdatasaver.getFavouriteLocations();
+    List<FavoriteLocation> updatedFaves =
+        await Localdatasaver.getFavouriteLocations();
     faves.updateFaves(updatedFaves);
   }
 
@@ -799,31 +948,42 @@ class HomePageModel {
     if (station.national || station.nationalExpress) return 9.5;
     if (station.regional || station.regionalExpress) return 10.5;
     if (station.suburban || station.subway) return 12.5;
-    if (station.tram || station.ferry || station.bus || station.taxi) return 14.5;
+    if (station.tram || station.ferry || station.bus || station.taxi)
+      return 14.5;
     return 16.5;
   }
 
-  bool getShowLabels(String transportType) => layers.getShowLabels(transportType);
+  bool getShowLabels(String transportType) =>
+      layers.getShowLabels(transportType);
 
   bool shouldShowStation(Station station, String transportType) {
-    if (station.national ||
-        station.nationalExpress ||
-        station.regional ||
-        station.regionalExpress) return true;
     switch (transportType) {
-      case 'lightRail': return station.suburban;
-      case 'subway': return station.subway;
-      case 'tram': return station.tram;
-      case 'ferry': return station.ferry;
-      case 'funicular': return false;
-      default: return false;
+      case 'rail':
+        return station.national ||
+            station.nationalExpress ||
+            station.regional ||
+            station.regionalExpress;
+      case 'lightRail':
+        return station.suburban;
+      case 'subway':
+        return station.subway;
+      case 'tram':
+        return station.tram;
+      case 'ferry':
+        return station.ferry;
+      case 'funicular':
+        return false;
+      default:
+        return false;
     }
   }
 
   String getLabelCollisionKey(Station station, double zoom) {
     double gridSize = 100;
-    if (zoom > 16.5) gridSize = 150;
-    else if (zoom > 15.5) gridSize = 120;
+    if (zoom > 16.5)
+      gridSize = 150;
+    else if (zoom > 15.5)
+      gridSize = 120;
     final gridX = (station.latitude * 1000 / gridSize).round();
     final gridY = (station.longitude * 1000 / gridSize).round();
     return "$gridX:$gridY";
@@ -870,7 +1030,8 @@ class HomePageModel {
     if (station.tram) return Icons.tram;
     if (station.suburban) return Icons.directions_subway;
     if (station.national || station.nationalExpress) return Icons.train;
-    if (station.regional || station.regionalExpress) return Icons.directions_railway;
+    if (station.regional || station.regionalExpress)
+      return Icons.directions_railway;
     if (station.ferry) return Icons.directions_ferry;
     if (station.bus) return Icons.directions_bus;
     return Icons.location_on;
@@ -878,8 +1039,10 @@ class HomePageModel {
 
   void dispose() {
     _disposed = true;
+    _overlayLoadGeneration++;
     pauseOngoingJourneySync();
     _debounce?.cancel();
+    _overlayReloadDebounce?.cancel();
     searchController.dispose();
     alignPositionStreamController.close();
     _disposeOngoingJourneyLineColorListener();
