@@ -17,7 +17,23 @@ void main() {
 
     expect(departure.cancelled, isTrue);
     expect(departure.when, departure.plannedWhen);
-    expect(departure.line?.operator, 'DB Regio');
+    expect(departure.line?.operator?.name, 'DB Regio');
+  });
+
+  test('parses a string operator into the Operator model', () {
+    final departure = DepartureArrival.fromJson('dbRest', {
+      'stop': null,
+      'station': _stationJson,
+      'when': '2026-08-30T12:15:00+02:00',
+      'plannedWhen': '2026-08-30T12:15:00+02:00',
+      'cancelled': false,
+      'line': {
+        'name': 'RE 1',
+        'operator': 'DB Regio',
+      },
+    }, isDeparture: true);
+
+    expect(departure.line?.operator?.name, 'DB Regio');
   });
 }
 

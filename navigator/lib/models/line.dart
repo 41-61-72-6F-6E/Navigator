@@ -28,6 +28,8 @@ class Line extends baseModel {
   });
 
   factory Line.fromJson(String backend, Map<String, dynamic> json) {
+    final operatorData = json['operator'];
+
     return Line(
       backend: backend,
       type: json['type'] ?? '',
@@ -39,9 +41,11 @@ class Line extends baseModel {
       productName: json['productName'],
       mode: json['mode'] ?? '',
       product: json['product'] ?? '',
-      operator: json['operator'] != null
-          ? Operator.fromJson(backend, json['operator'])
-          : null,
+      operator: operatorData is Map
+          ? Operator.fromJson(backend, operatorData)
+          : operatorData != null
+              ? Operator.fromJson(backend, {'name': operatorData.toString()})
+              : null,
     );
   }
 
