@@ -42,7 +42,7 @@ class Line extends baseModel {
       mode: json['mode'] ?? '',
       product: json['product'] ?? '',
       operator: operatorData is Map
-          ? Operator.fromJson(backend, operatorData)
+          ? Operator.fromJson(backend, Map<String, dynamic>.from(operatorData))
           : operatorData != null
               ? Operator.fromJson(backend, {'name': operatorData.toString()})
               : null,
