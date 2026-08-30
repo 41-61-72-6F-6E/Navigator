@@ -6,6 +6,7 @@ import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/open_free_map_bright_layer.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/destinationComponent/destinationComponent.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/emptyState/emptyState.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/interchangeComponent/interchangeComponent.dart';
@@ -714,11 +715,7 @@ class _JourneyPageAndroidViewState extends State<JourneyPageAndroidView>
             },
           ),
           children: [
-            TileLayer(
-              urlTemplate:
-                  'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.app',
-            ),
+            const OpenFreeMapBrightLayer(),
             _buildPolylineLayer(),
             MarkerLayer(markers: _buildStationMarkers(context)),
             CurrentLocationLayer(
@@ -733,6 +730,9 @@ class _JourneyPageAndroidViewState extends State<JourneyPageAndroidView>
                 headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
                 headingSectorRadius: 60,
               ),
+            ),
+            const OpenFreeMapAttribution(
+              alignment: Alignment.topRight,
             ),
           ],
         ),

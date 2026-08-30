@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/open_free_map_bright_layer.dart';
 import 'package:navigator/widgets/homePage/UIComponents/editFavoritesModal/editFavoritesModal.dart';
 import 'package:navigator/widgets/homePage/UIComponents/favesBar/favesBar.dart';
 import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMarkerLayer.dart';
@@ -242,11 +243,7 @@ class _HomePageViewState extends State<HomePageView>
             onPositionChanged: widget.model.onPositionChanged,
           ),
           children: [
-            TileLayer(
-              urlTemplate:
-                  'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.app',
-            ),
+            const OpenFreeMapBrightLayer(),
             if (lay.showSubway)
               PolylineLayer(polylines: lay.subwayLines),
             if (lay.showLightRail)
@@ -325,6 +322,9 @@ class _HomePageViewState extends State<HomePageView>
                   ),
                 ),
               ),
+            ),
+            const OpenFreeMapAttribution(
+              padding: EdgeInsets.only(left: 4, bottom: 144),
             ),
           ],
         );
