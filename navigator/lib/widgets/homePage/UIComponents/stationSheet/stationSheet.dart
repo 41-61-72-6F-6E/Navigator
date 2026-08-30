@@ -14,21 +14,44 @@ class StationSheet {
     required this.station,
   });
 
-  @override
-  static Future<T?> show<T>(BuildContext context, HomePageModel model, int design, Station station) {
+  static Future<T?> show<T>(
+    BuildContext context,
+    HomePageModel model,
+    int design,
+    Station station,
+  ) {
     switch (design) {
       case 0:
         return showModalBottomSheet<T>(
           context: context,
-          builder: (context) => StationSheetAndroid(model: model, station: station),
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          builder: (context) => FractionallySizedBox(
+            heightFactor: 0.82,
+            child: StationSheetAndroid(model: model, station: station),
+          ),
         );
       // Future designs can be added here
       default:
         return showModalBottomSheet<T>(
           context: context,
-          builder: (context) => StationSheetAndroid(model: model, station: station),
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          builder: (context) => FractionallySizedBox(
+            heightFactor: 0.82,
+            child: StationSheetAndroid(model: model, station: station),
+          ),
         );
     }
   }
 }
-

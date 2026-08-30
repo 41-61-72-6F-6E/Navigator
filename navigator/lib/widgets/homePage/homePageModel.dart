@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
@@ -690,23 +691,28 @@ class HomePageModel {
       }
     }
   }
-  Future<void> getDeparturesForStation(Station station) async {
-    try {
-      final departures = await page.service.getDeparturesForStation(station);
-    } catch (e) {
-      print('Error fetching departures for station ${station.name}: $e');
-    }
+  Future<List<DepartureArrival>> getDeparturesForStation(
+    Station station,
+  ) async {
+    return services.getDeparturesForStation(station);
   }
 
-  Future<void> selectStation(Station station) async
-  {
-    Station? convertedStation = await services.convertStationToDifferentBackend(station, "dbRest");
-    if(Station == null)
-    {
-      print("Error converting station ${station.name} to the current backend format");
-      return;
+  Future<Station?> selectStation(Station station) async {
+    try {
+      final convertedStation =
+          await services.convertStationToDifferentBackend(station, "dbRest");
+      if (convertedStation == null) {
+        debugPrint(
+          "Error converting station ${station.name} to the current backend format",
+        );
+        return null;
+      }
+      layers.selectStation(convertedStation);
+      return convertedStation;
+    } catch (error) {
+      debugPrint('Error selecting station ${station.name}: $error');
+      return null;
     }
-    layers.selectStation(convertedStation!);
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────
