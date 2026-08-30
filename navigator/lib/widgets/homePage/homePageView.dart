@@ -333,7 +333,6 @@ class _HomePageViewState extends State<HomePageView>
   }
 
   void onStationTap(Station station) {
-    widget.model.selectStation(station);
     StationSheet.show(context, widget.model, widget.design, station);
   }
 

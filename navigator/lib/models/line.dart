@@ -1,6 +1,6 @@
 import 'package:navigator/models/baseModel.dart';
 
-class Line extends baseModel{
+class Line extends baseModel {
   final String? type;
   final String? id;
   final String? fahrtNr;
@@ -24,6 +24,8 @@ class Line extends baseModel{
   });
 
   factory Line.fromJson(String backend, Map<String, dynamic> json) {
+    final operatorData = json['operator'];
+
     return Line(
       backend: backend,
       type: json['type'],
@@ -34,7 +36,9 @@ class Line extends baseModel{
       productName: json['productName'],
       mode: json['mode'],
       product: json['product'],
-      operator: json['operator'],
+      operator: operatorData is Map
+          ? operatorData['name']?.toString()
+          : operatorData?.toString(),
     );
   }
 }

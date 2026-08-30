@@ -618,32 +618,47 @@ Future<Station?> convertStationToDbRest(Station station) async {
 }
 
   Future<List<DepartureArrival>> getDeparturesForStation(String stationId) async {
-  final url = 'http://$baseUrl/stops/$stationId/departures?';
-  final uri = Uri.parse(url);
-  print('Fetching departures for station ID: $stationId from URL: $url');
-  
-  try {
-    final response = await http.get(uri);
-    
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> jsonData = json.decode(response.body);
-      final List<dynamic> departuresJson = jsonData['departures'] ?? [];
-      
-      return departuresJson
-          .where((d) => d['when'] != null && d['plannedWhen'] != null)
-          .map((departureJson) {
-            // The API returns 'stop' but our model expects 'station'
-            final normalized = Map<String, dynamic>.from(departureJson);
-            normalized['station'] = departureJson['stop'];
-            return DepartureArrival.fromJson("dbRest", normalized, isDeparture: true);
-          })
-          .toList();
-    } else {
-      throw HttpException('Failed to fetch departures: ${response.statusCode}');
+    final uri = Uri.http(baseUrl, '/stops/$stationId/departures', {
+      'duration': '120',
+      'results': '30',
+      'remarks': 'true',
+    });
+    print('Fetching departures for station ID: $stationId from URL: $uri');
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData =
+            json.decode(utf8.decode(response.bodyBytes));
+        final List<dynamic> departuresJson = jsonData['departures'] ?? [];
+
+        return departuresJson
+            .where((d) =>
+                d is Map<String, dynamic> &&
+                d['plannedWhen'] != null &&
+                d['stop'] is Map<String, dynamic>)
+            .map((departureJson) {
+              // The API returns 'stop' but our model expects 'station'
+              final normalized = Map<String, dynamic>.from(departureJson);
+              normalized['station'] = departureJson['stop'];
+              return DepartureArrival.fromJson(
+                "dbRest",
+                normalized,
+                isDeparture: true,
+              );
+            })
+            .toList()
+          ..sort((a, b) => a.when.compareTo(b.when));
+      } else {
+        throw HttpException(
+          'Failed to fetch departures: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching departures for station $stationId: $e');
+      throw Exception('Failed to fetch departures: $e');
     }
-  } catch (e) {
-    print('Error fetching departures for station $stationId: $e');
-    throw Exception('Failed to fetch departures: $e');
   }
-}
+
 }

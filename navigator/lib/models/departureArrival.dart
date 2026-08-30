@@ -3,7 +3,7 @@ import 'package:navigator/models/remark.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/baseModel.dart';
 
-class DepartureArrival extends baseModel{
+class DepartureArrival extends baseModel {
   final Station station;
   final DateTime when;
   final DateTime plannedWhen;
@@ -17,6 +17,7 @@ class DepartureArrival extends baseModel{
   final Station? origin;
   final Station? destination;
   final bool isDeparture;
+  final bool cancelled;
 
   DepartureArrival({
     required super.backend,
@@ -33,29 +34,43 @@ class DepartureArrival extends baseModel{
     this.origin,
     this.destination,
     required this.isDeparture,
+    this.cancelled = false,
   });
 
-  factory DepartureArrival.fromJson(String backend,Map<String, dynamic> json, {required bool isDeparture}) {
+  factory DepartureArrival.fromJson(
+    String backend,
+    Map<String, dynamic> json, {
+    required bool isDeparture,
+  }) {
+    final plannedWhen = DateTime.parse(json['plannedWhen']);
+
     return DepartureArrival(
       backend: backend,
       station: Station.fromJson(backend, json['station']),
-      when: DateTime.parse(json['when']),
-      plannedWhen: DateTime.parse(json['plannedWhen']),
+      // Cancelled services have no real-time value. Keeping their planned
+      // time lets the station board show the cancellation instead of silently
+      // dropping it.
+      when: json['when'] == null ? plannedWhen : DateTime.parse(json['when']),
+      plannedWhen: plannedWhen,
       delay: json['delay'],
       platform: json['platform'],
       plannedPlatform: json['plannedPlatform'],
       direction: json['direction'],
       provenance: json['provenance'],
       line: json['line'] != null ? Line.fromJson(backend, json['line']) : null,
-      remarks: (json['remarks'] as List<dynamic>?)
+      remarks:
+          (json['remarks'] as List<dynamic>?)
               ?.map((remarkJson) => Remark.fromJson(backend, remarkJson))
               .toList() ??
           [],
-      origin: json['origin'] != null ? Station.fromJson(backend, json['origin']) : null,
-      destination:
-          json['destination'] != null ? Station.fromJson(backend, json['destination']) : null,
+      origin: json['origin'] != null
+          ? Station.fromJson(backend, json['origin'])
+          : null,
+      destination: json['destination'] != null
+          ? Station.fromJson(backend, json['destination'])
+          : null,
       isDeparture: isDeparture,
+      cancelled: json['cancelled'] == true,
     );
   }
-
-  }
+}
