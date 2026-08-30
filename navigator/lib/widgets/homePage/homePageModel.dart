@@ -842,15 +842,20 @@ class HomePageModel {
     }
   }
 
-  Future<void> getDeparturesForStation(Station station) async {
+  Future<List<DepartureArrival>> getDeparturesForStation(
+    Station station,
+  ) async {
     stationSheetNotifier.setLoading(true);
     try {
-      final departures = await page.service.getDeparturesForStation(station);
+      final departures = await services.getDeparturesForStation(station);
       stationSheetNotifier.updateDepartures(departures);
+      return departures;
     } catch (e) {
       print('Error fetching departures for station ${station.name}: $e');
+      return [];
+    } finally {
+      stationSheetNotifier.setLoading(false);
     }
-    stationSheetNotifier.setLoading(false);
   }
 
   Future<void> getarrivalsForStation(Station station) async {
