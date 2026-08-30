@@ -9,8 +9,7 @@ import 'package:navigator/models/subway_line.dart';
 class Overpassapi {
   static const _defaultEndpoints = [
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.private.coffee/api/interpreter',
-    'https://overpass.osm.ch/api/interpreter',
+    'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   ];
 
   final http.Client _client;
