@@ -10,7 +10,6 @@ import 'package:navigator/models/favouriteLocation.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/location.dart';
-import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/stopover.dart';
