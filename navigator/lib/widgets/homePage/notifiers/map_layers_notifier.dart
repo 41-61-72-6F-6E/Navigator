@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/station.dart';
 
 class MapLayersNotifier extends ChangeNotifier {
@@ -145,7 +146,6 @@ class MapLayersNotifier extends ChangeNotifier {
         return false;
     }
   }
-
   void selectStation(Station station) {
     selectedStation = station;
     notifyListeners();

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
@@ -14,13 +15,16 @@ import 'package:navigator/models/station.dart';
 import 'package:navigator/models/stopover.dart';
 import 'package:navigator/models/subway_line.dart';
 import 'package:navigator/models/trip.dart';
+import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/services/servicesMiddle.dart';
+import 'package:navigator/widgets/connectionsPage/connectionsPage.dart';
 import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/ongoing_journey_notifier.dart';
+import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/station_sheet_notifier.dart';
 import 'dart:math' as math;
 
 typedef TransitLinesLoader =
@@ -58,6 +62,7 @@ class HomePageModel {
   final MapLayersNotifier layers = MapLayersNotifier();
   final OngoingJourneyNotifier journey = OngoingJourneyNotifier();
   final FavesNotifier faves = FavesNotifier();
+  final StationSheetNotifier stationSheetNotifier = StationSheetNotifier();
 
   // ─── Controllers ─────────────────────────────────────────────────────────
 
@@ -840,27 +845,79 @@ class HomePageModel {
   Future<List<DepartureArrival>> getDeparturesForStation(
     Station station,
   ) async {
-    return services.getDeparturesForStation(station);
+    stationSheetNotifier.setLoading(true);
+    try {
+      final departures = await services.getDeparturesForStation(station);
+      stationSheetNotifier.updateDepartures(departures);
+      return departures;
+    } catch (e) {
+      print('Error fetching departures for station ${station.name}: $e');
+      return [];
+    } finally {
+      stationSheetNotifier.setLoading(false);
+    }
   }
 
-  Future<Station?> selectStation(Station station) async {
+  Future<void> getarrivalsForStation(Station station) async {
+    stationSheetNotifier.setLoading(true);
     try {
-      final convertedStation = await services.convertStationToDifferentBackend(
-        station,
-        "dbRest",
-      );
-      if (convertedStation == null) {
-        debugPrint(
-          "Error converting station ${station.name} to the current backend format",
-        );
-        return null;
-      }
-      layers.selectStation(convertedStation);
-      return convertedStation;
-    } catch (error) {
-      debugPrint('Error selecting station ${station.name}: $error');
-      return null;
+      final arrivals = await page.service.getArrivalsForStation(station);
+      stationSheetNotifier.updateArrivals(arrivals);
+    } catch (e) {
+      print('Error fetching arrivals for station ${station.name}: $e');
     }
+    stationSheetNotifier.setLoading(false);
+  }
+
+  void navigateLocation(
+    BuildContext context,
+    Location location,
+    bool useAsOrigin,
+  ) {
+    final emptyLocation = Location(
+      backend: "dbRest",
+      id: '',
+      latitude: 0,
+      longitude: 0,
+      name: '',
+      type: '',
+    );
+    final origin = useAsOrigin ? location : emptyLocation;
+    final destination = useAsOrigin ? emptyLocation : location;
+
+    Navigator.of(context, rootNavigator: false).push(
+      MaterialPageRoute(
+        builder: (_) => ConnectionsPage(
+          ConnectionsPageIni(
+            from: origin,
+            to: destination,
+            services: page.service,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> selectStation(Station station) async {
+    stationSheetNotifier.setLoading(true);
+    final convertedStation = await services.convertStationToDifferentBackend(
+      station,
+      "dbRest",
+    );
+    if (convertedStation == null) {
+      print("Error converting station ${station.name} to the current backend format");
+      stationSheetNotifier.setLoading(false);
+      return;
+    }
+    stationSheetNotifier.selectStation(convertedStation);
+    await getDeparturesForStation(convertedStation);
+  }
+
+  void deselectStation()
+  {
+    print("deselecting");
+    stationSheetNotifier.selectedStation = null;
+    stationSheetNotifier.clearDeparturesAndArrivals();
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────

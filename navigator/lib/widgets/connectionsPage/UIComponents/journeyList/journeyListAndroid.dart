@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:navigator/models/journey.dart';
+import 'package:navigator/widgets/GeneralUIComponents/loadingCircle/loadingCircle.dart';
 import 'package:navigator/widgets/connectionsPage/UIComponents/journeyCard/journeyCard.dart';
 import 'package:navigator/widgets/connectionsPage/connectionsPageModel.dart';
 
@@ -26,7 +27,7 @@ class JourneyListAndroid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (model.currentJourneys == null) {
-      return Expanded(child: Center(child: CircularProgressIndicator()));
+      return Expanded(child: Center(child: LoadingCircle(design: 0)));
     }
     if (model.currentJourneys!.isEmpty) {
       return Expanded(child: Center(child: Text('No journeys found')));

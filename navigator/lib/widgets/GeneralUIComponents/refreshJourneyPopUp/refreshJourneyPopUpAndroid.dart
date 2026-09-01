@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:navigator/widgets/GeneralUIComponents/loadingCircle/loadingCircle.dart';
 
 class RefreshJourneyPopUpAndroid {
   static Future<void> show(
@@ -12,7 +13,7 @@ class RefreshJourneyPopUpAndroid {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
+            const LoadingCircle(design: 0),
             const SizedBox(height: 16),
             Text(
               message,
