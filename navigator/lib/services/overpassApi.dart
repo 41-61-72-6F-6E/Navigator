@@ -8,8 +8,9 @@ import 'package:navigator/models/subway_line.dart';
 
 class Overpassapi {
   static const _defaultEndpoints = [
-    'https://overpass-api.de/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass-api.de/api/interpreter',
   ];
 
   final http.Client _client;
@@ -17,14 +18,14 @@ class Overpassapi {
   final Duration requestTimeout;
   final Duration cacheTtl;
   final DateTime Function() _now;
-  static Future<void> _requestTail = Future<void>.value();
+  Future<void> _requestTail = Future<void>.value();
   _SpatialCache<List<SubwayLine>>? _lineCache;
   _SpatialCache<List<Station>>? _stationCache;
 
   Overpassapi({
     http.Client? client,
     List<String> endpoints = _defaultEndpoints,
-    this.requestTimeout = const Duration(seconds: 25),
+    this.requestTimeout = const Duration(seconds: 12),
     this.cacheTtl = const Duration(minutes: 15),
     DateTime Function()? now,
   }) : assert(endpoints.isNotEmpty),
@@ -44,7 +45,7 @@ class Overpassapi {
 
     final query =
         '''
-[out:json][timeout:25];
+[out:json][timeout:12];
 (
   relation["route"="subway"](around:$radius, $lat, $lon);
   relation["route"="light_rail"](around:$radius, $lat, $lon);
@@ -184,7 +185,7 @@ out geom;
 
     final query =
         '''
-[out:json][timeout:25];
+[out:json][timeout:12];
 (
   nwr["railway"~"station|halt|tram_stop"](around:$radius,$lat,$lon);
   nwr["station"~"subway|light_rail|funicular"](around:$radius,$lat,$lon);
@@ -297,7 +298,14 @@ out center;
     for (final endpoint in _endpoints) {
       try {
         final response = await _client
-            .post(endpoint, body: {'data': query})
+            .post(
+              endpoint,
+              headers: const {
+                'Accept': 'application/json',
+                'User-Agent': 'com.example.navigator/1.0',
+              },
+              body: {'data': query},
+            )
             .timeout(requestTimeout);
         if (response.statusCode != 200) {
           failures.add('${endpoint.host}: HTTP ${response.statusCode}');
