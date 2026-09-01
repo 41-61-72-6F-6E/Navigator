@@ -741,13 +741,9 @@ class HomePageModel {
     final generation = ++_overlayLoadGeneration;
     layers.updateOverlayStatus(isLoading: true, clearError: true);
 
-    final linesFuture = _capture(
-      _loadTransitLines(
-        lat: center.latitude,
-        lon: center.longitude,
-        radius: overlayRadiusMeters,
-      ),
-    );
+    // Station markers are the most useful interactive layer and their query is
+    // much lighter than route geometry. Queue and publish them first so a slow
+    // line request cannot leave the map empty.
     final stationsFuture = _capture(
       _loadTransitStations(
         lat: center.latitude,
@@ -755,18 +751,28 @@ class HomePageModel {
         radius: overlayRadiusMeters,
       ),
     );
-    final linesResult = await linesFuture;
-    final stationsResult = await stationsFuture;
+    final linesFuture = _capture(
+      _loadTransitLines(
+        lat: center.latitude,
+        lon: center.longitude,
+        radius: overlayRadiusMeters,
+      ),
+    );
 
+    final stationsResult = await stationsFuture;
     if (_disposed || generation != _overlayLoadGeneration) return;
 
     var loadedAnything = false;
-    if (linesResult.value != null) {
-      _updateTransitLines(linesResult.value!);
-      loadedAnything = true;
-    }
     if (stationsResult.value != null) {
       layers.updateStations(stationsResult.value!);
+      loadedAnything = true;
+    }
+
+    final linesResult = await linesFuture;
+    if (_disposed || generation != _overlayLoadGeneration) return;
+
+    if (linesResult.value != null) {
+      _updateTransitLines(linesResult.value!);
       loadedAnything = true;
     }
     if (loadedAnything) {
@@ -824,7 +830,7 @@ class HomePageModel {
   }
 
   void resumeMapDataLoading() {
-    if (_disposed) return;
+    if (_disposed || layers.isOverlayLoading) return;
     final lastLoaded = _lastOverlayLoadedAt;
     final needsReload =
         layers.overlayError != null ||

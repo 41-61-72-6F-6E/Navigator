@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,6 +15,41 @@ import 'package:navigator/widgets/homePage/homePageModel.dart';
 
 void main() {
   group('transit map loading', () {
+    test('publishes stations before a slow line request finishes', () async {
+      final linesCompleter = Completer<List<SubwayLine>>();
+      var lineCalls = 0;
+      var stationCalls = 0;
+      final model = HomePageModel(
+        page: HomePageIni(),
+        services: ServicesMiddle(),
+        loadTransitLines: ({required lat, required lon, required radius}) {
+          lineCalls++;
+          return linesCompleter.future;
+        },
+        loadTransitStations:
+            ({required lat, required lon, required radius}) async {
+              stationCalls++;
+              return [_station('station', 'Station')];
+            },
+      );
+      addTearDown(model.dispose);
+
+      final load = model.loadMapOverlaysAt(const LatLng(52.5, 13.4));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(model.layers.stations, hasLength(1));
+      expect(model.layers.lines, isEmpty);
+      expect(model.layers.isOverlayLoading, isTrue);
+
+      model.resumeMapDataLoading();
+      expect(stationCalls, 1);
+      expect(lineCalls, 1);
+
+      linesCompleter.complete([]);
+      await load;
+      expect(model.layers.isOverlayLoading, isFalse);
+    });
+
     test('resolves location once and loads each overlay once', () async {
       var locationCalls = 0;
       var lineCalls = 0;
