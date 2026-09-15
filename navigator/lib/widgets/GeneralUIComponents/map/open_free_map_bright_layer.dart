@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
+import 'package:navigator/widgets/GeneralUIComponents/map/curated_map_theme.dart';
 
 class OpenFreeMapBrightLayer extends StatefulWidget {
   static const styleUrl = 'https://tiles.openfreemap.org/styles/bright';
@@ -21,9 +22,19 @@ class _OpenFreeMapBrightLayerState extends State<OpenFreeMapBrightLayer> {
   }
 
   Future<vt.Style> _loadStyle() async {
-    final style = await const vt.StyleReader(
+    final sourceStyle = await const vt.StyleReader(
       uri: OpenFreeMapBrightLayer.styleUrl,
     ).read();
+    final style = vt.Style(
+      theme: CuratedMapTheme.curate(sourceStyle.theme),
+      providers: sourceStyle.providers,
+      rasterSources: sourceStyle.rasterSources,
+      sprites: sourceStyle.sprites,
+      center: sourceStyle.center,
+      zoom: sourceStyle.zoom,
+      name: sourceStyle.name,
+      attributions: sourceStyle.attributions,
+    );
 
     if (mounted) {
       _style = style;
