@@ -6,6 +6,7 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/location.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/models/dateAndTime.dart';
+import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUp.dart';
 import 'package:navigator/widgets/journeyPage/journeyPage.dart';
 import 'package:navigator/pages/page_models/connections_page.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
@@ -41,58 +42,64 @@ class _ConnectionsPageState
   Timer? _debounce;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
-
   @override
-  void initState() {
-    super.initState();
-    _model.page = widget.page;
+void initState() {
+  super.initState();
+  _model.page = widget.page;
 
-    _fromFocusNode = FocusNode();
-    _toFocusNode = FocusNode();
-    _toController =
-        TextEditingController(text: widget.page.to.name);
-    _fromController =
-        TextEditingController(text: 'Current Location');
-    _scrollController = ScrollController();
+  _fromFocusNode = FocusNode();
+  _toFocusNode = FocusNode();
+  _toController = TextEditingController(text: '');
+  _fromController = TextEditingController(text: '');
+  _scrollController = ScrollController();
 
-    _fromFocusNode.addListener(() {
-      if (!_fromFocusNode.hasFocus) {
-        setState(() {
-          _model.searchResultsFrom.clear();
-          _uiState.searching = false;
-        });
-      }
-      if (_fromFocusNode.hasFocus) {
-        setState(() {
-          _uiState.searching = true;
-          _uiState.searchingFrom = true;
-        });
-      }
-    });
+  _fromFocusNode.addListener(() {
+    if (!_fromFocusNode.hasFocus) {
+      setState(() {
+        _model.searchResultsFrom.clear();
+        _uiState.searching = false;
+      });
+    }
+    if (_fromFocusNode.hasFocus) {
+      setState(() {
+        _uiState.searching = true;
+        _uiState.searchingFrom = true;
+      });
+    }
+  });
 
-    _toFocusNode.addListener(() {
-      if (!_toFocusNode.hasFocus) {
-        setState(() {
-          _model.searchResultsTo.clear();
-          _uiState.searching = false;
-        });
-      }
-      if (_toFocusNode.hasFocus) {
-        setState(() {
-          _uiState.searching = true;
-          _uiState.searchingFrom = false;
-        });
-      }
-    });
+  _toFocusNode.addListener(() {
+    if (!_toFocusNode.hasFocus) {
+      setState(() {
+        _model.searchResultsTo.clear();
+        _uiState.searching = false;
+      });
+    }
+    if (_toFocusNode.hasFocus) {
+      setState(() {
+        _uiState.searching = true;
+        _uiState.searchingFrom = false;
+      });
+    }
+  });
 
-    _toController.addListener(
-        () => _onSearchChanged(_toController.text.trim(), false));
-    _fromController.addListener(
-        () => _onSearchChanged(_fromController.text.trim(), true));
+  _toController.addListener(
+      () => _onSearchChanged(_toController.text.trim(), false));
+  _fromController.addListener(
+      () => _onSearchChanged(_fromController.text.trim(), true));
 
-    _getFaves();
+  _getFaves();
+  if(widget.page.from.id == '')
+  {
     _updateLocationWithCurrentPosition(true, true);
   }
+  else
+  {
+    _updateLocationWithCurrentPosition(false, true);
+  }
+}
+
+
 
   @override
   void dispose() {
@@ -126,8 +133,12 @@ class _ConnectionsPageState
       setState(() {
         if (from) {
           widget.page.from = l;
+          _toController.text = widget.page.to.name;
+          _fromController.text = 'Current Location';
         } else {
           widget.page.to = l;
+          _toController.text = 'Current Location';
+          _fromController.text = widget.page.from.name;
         }
       });
       if (startSearchWhenFinished) _search();
@@ -336,65 +347,13 @@ class _ConnectionsPageState
   }
 
   void _handleJourneyTap(Journey j) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text(
-              'Refreshing journey information...',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final refreshedJourney = await _model.refreshJourney(j);
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (context) => JourneyPage(
-              JourneyPageIni(journey: refreshedJourney),
-              journey: refreshedJourney,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not refresh journey: ${e.toString()}'),
-            backgroundColor:
-                Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-      if (context.mounted) {
-        Navigator.of(context, rootNavigator: false).push(
-          MaterialPageRoute(
-            builder: (context) => JourneyPage(
-              JourneyPageIni(journey: j),
-              journey: j,
-            ),
-          ),
-        );
-      }
-    }
-  }
+  RefreshJourneyPopUp.navigateToJourney(
+    context,
+    j,
+    null, // no model needed here
+    (_) async {}, // nothing to do after navigation on this page
+  );
+}
 
   void _handleResetToNow() {
     setState(() {
@@ -411,6 +370,10 @@ class _ConnectionsPageState
   }
 
   void _search() async {
+  setState(() {
+    _uiState.inJourneySearchAnimation = true;
+    // ... rest unchanged
+  });
     setState(() {
       _uiState.inJourneySearchAnimation = true;
       _uiState.rotatingSearchIconTurns++;
