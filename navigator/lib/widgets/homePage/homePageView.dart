@@ -219,9 +219,15 @@ class _HomePageViewState extends State<HomePageView>
         widget.model.journey,
       ]),
       builder: (context, _) {
+        final colors = Theme.of(context).colorScheme;
         final pos = widget.model.position;
         final lay = widget.model.layers;
         final jrn = widget.model.journey;
+        final overlayLoadingMessage = lay.stations.isEmpty
+            ? 'Loading nearby stations…'
+            : lay.lines.isEmpty
+            ? 'Loading transit lines…'
+            : 'Refreshing transit map…';
 
         return FlutterMap(
           mapController: widget.model.mapController,
@@ -325,17 +331,24 @@ class _HomePageViewState extends State<HomePageView>
             const OpenFreeMapAttribution(
               padding: EdgeInsets.only(left: 4, bottom: 144),
             ),
-            if (lay.isOverlayLoading &&
-                lay.lines.isEmpty &&
-                lay.stations.isEmpty)
-              const Align(
+            if (lay.isOverlayLoading)
+              Align(
                 alignment: Alignment.topCenter,
                 child: SafeArea(
                   child: Padding(
-                    padding: EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: 12),
                     child: Card(
+                      color: colors.inverseSurface,
+                      elevation: 6,
+                      shadowColor: Colors.black54,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: colors.onInverseSurface.withValues(alpha: 0.2),
+                        ),
+                      ),
                       child: Padding(
-                        padding: EdgeInsets.symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
                         ),
@@ -344,10 +357,21 @@ class _HomePageViewState extends State<HomePageView>
                           children: [
                             SizedBox.square(
                               dimension: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.inversePrimary,
+                                backgroundColor: colors.onInverseSurface
+                                    .withValues(alpha: 0.2),
+                              ),
                             ),
-                            SizedBox(width: 10),
-                            Text('Loading transit map…'),
+                            const SizedBox(width: 10),
+                            Text(
+                              overlayLoadingMessage,
+                              style: TextStyle(
+                                color: colors.onInverseSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
