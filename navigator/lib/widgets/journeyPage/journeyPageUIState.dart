@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 
 class JourneyPageAndroidUIState {
@@ -7,7 +6,8 @@ class JourneyPageAndroidUIState {
   final LatLng? currentUserLocation;
   final LatLng currentCenter;
   final double currentZoom;
-  final AlignOnUpdate alignPositionOnUpdate;
+  final double locationAccuracy;
+  final double locationHeading;
   final Map<String, Color> transitLineColorCache;
 
   const JourneyPageAndroidUIState({
@@ -15,7 +15,8 @@ class JourneyPageAndroidUIState {
     this.currentUserLocation,
     this.currentCenter = const LatLng(52.513416, 13.412364),
     this.currentZoom = 10,
-    this.alignPositionOnUpdate = AlignOnUpdate.never,
+    this.locationAccuracy = 0,
+    this.locationHeading = 0,
     this.transitLineColorCache = const {},
   });
 
@@ -24,7 +25,8 @@ class JourneyPageAndroidUIState {
     LatLng? currentUserLocation,
     LatLng? currentCenter,
     double? currentZoom,
-    AlignOnUpdate? alignPositionOnUpdate,
+    double? locationAccuracy,
+    double? locationHeading,
     Map<String, Color>? transitLineColorCache,
   }) {
     return JourneyPageAndroidUIState(
@@ -32,8 +34,8 @@ class JourneyPageAndroidUIState {
       currentUserLocation: currentUserLocation ?? this.currentUserLocation,
       currentCenter: currentCenter ?? this.currentCenter,
       currentZoom: currentZoom ?? this.currentZoom,
-      alignPositionOnUpdate:
-          alignPositionOnUpdate ?? this.alignPositionOnUpdate,
+      locationAccuracy: locationAccuracy ?? this.locationAccuracy,
+      locationHeading: locationHeading ?? this.locationHeading,
       transitLineColorCache:
           transitLineColorCache ?? this.transitLineColorCache,
     );

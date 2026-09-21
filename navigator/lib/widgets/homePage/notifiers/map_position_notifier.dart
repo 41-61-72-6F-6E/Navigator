@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 
 class MapPositionNotifier extends ChangeNotifier {
   double currentZoom;
   LatLng currentCenter;
   LatLng? currentUserLocation;
-  AlignOnUpdate alignPositionOnUpdate;
+  double locationAccuracy;
+  double locationHeading;
 
   MapPositionNotifier({
     this.currentZoom = 12.0,
     LatLng? currentCenter,
     this.currentUserLocation,
-    this.alignPositionOnUpdate = AlignOnUpdate.never,
+    this.locationAccuracy = 0,
+    this.locationHeading = 0,
   }) : currentCenter = currentCenter ?? const LatLng(52.52, 13.405);
 
   void update({
     double? currentZoom,
     LatLng? currentCenter,
     LatLng? currentUserLocation,
-    AlignOnUpdate? alignPositionOnUpdate,
+    double? locationAccuracy,
+    double? locationHeading,
     bool clearUserLocation = false,
   }) {
     if (currentZoom != null) this.currentZoom = currentZoom;
@@ -29,9 +31,8 @@ class MapPositionNotifier extends ChangeNotifier {
     } else if (currentUserLocation != null) {
       this.currentUserLocation = currentUserLocation;
     }
-    if (alignPositionOnUpdate != null) {
-      this.alignPositionOnUpdate = alignPositionOnUpdate;
-    }
+    if (locationAccuracy != null) this.locationAccuracy = locationAccuracy;
+    if (locationHeading != null) this.locationHeading = locationHeading;
     notifyListeners();
   }
 }

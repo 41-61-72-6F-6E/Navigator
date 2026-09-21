@@ -1,9 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/favouriteLocation.dart';
@@ -20,6 +18,7 @@ import 'package:navigator/pages/page_models/home_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
 import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/connectionsPage/connectionsPage.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/map_feature.dart';
 import 'package:navigator/widgets/homePage/notifiers/faves_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_layers_notifier.dart';
 import 'package:navigator/widgets/homePage/notifiers/map_position_notifier.dart';
@@ -66,10 +65,9 @@ class HomePageModel {
 
   // ─── Controllers ─────────────────────────────────────────────────────────
 
-  final MapController mapController = MapController();
-  final StreamController<double?> alignPositionStreamController =
-      StreamController<double?>.broadcast();
+  NavigatorMapCamera? _mapCamera;
   final TextEditingController searchController = TextEditingController();
+  StreamSubscription<Position>? _locationSubscription;
   Timer? _debounce;
   Timer? _overlayReloadDebounce;
   Timer? _ongoingJourneySyncTimer;
@@ -126,7 +124,7 @@ class HomePageModel {
   /// Resolves location once, then uses that same center for both overlay
   /// requests. If location is unavailable, the visible map center is still a
   /// useful fallback instead of querying around the invalid (0, 0) coordinate.
-  Future<void> initializeMap({TickerProvider? vsync}) async {
+  Future<void> initializeMap() async {
     final location = await _getCurrentLocation();
     final hasLocation = location.latitude != 0 || location.longitude != 0;
     final center = hasLocation
@@ -136,10 +134,45 @@ class HomePageModel {
     if (_disposed) return;
     if (hasLocation) {
       position.update(currentUserLocation: center);
-      if (vsync != null) animatedMapMove(center, 12.5, vsync);
+      unawaited(animatedMapMove(center, 12.5));
     }
 
     await loadMapOverlaysAt(center);
+  }
+
+  void attachMapCamera(NavigatorMapCamera camera) {
+    _mapCamera = camera;
+    _startLocationTracking();
+    final userLocation = position.currentUserLocation;
+    if (userLocation != null) {
+      unawaited(camera.animateTo(userLocation, position.currentZoom));
+    }
+  }
+
+  void _startLocationTracking() {
+    if (_locationSubscription != null || _disposed) return;
+    _locationSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 1,
+          ),
+        ).listen(
+          (location) {
+            if (_disposed) return;
+            position.update(
+              currentUserLocation: LatLng(
+                location.latitude,
+                location.longitude,
+              ),
+              locationAccuracy: location.accuracy,
+              locationHeading: location.heading,
+            );
+          },
+          onError: (Object error) {
+            debugPrint('Unable to track current location: $error');
+          },
+        );
   }
 
   Future<void> initializeOngoingJourney() async {
@@ -473,10 +506,10 @@ class HomePageModel {
     return points;
   }
 
-  List<Polyline> _extractOngoingJourneyPolylines() {
+  List<NavigatorMapLine> _extractOngoingJourneyPolylines() {
     if (journey.ongoingJourney == null) return [];
 
-    List<Polyline> polylines = [];
+    List<NavigatorMapLine> polylines = [];
     final Map<String, Color> modeColors = {
       'train': const Color(0xFF9C27B0),
       'subway': const Color(0xFF0075BF),
@@ -522,15 +555,15 @@ class HomePageModel {
         }
 
         polylines.add(
-          Polyline(
+          NavigatorMapLine(
+            id: 'ongoing-journey-leg-$i',
             borderColor: isDark ? Colors.white : Colors.black,
-            borderStrokeWidth: 5,
+            borderWidth: 5,
             points: legPoints,
             color: lineColor,
-            strokeWidth: strokeWidth,
-            pattern: leg.isWalking == true
-                ? StrokePattern.dotted()
-                : StrokePattern.solid(),
+            width: strokeWidth,
+            dashed: leg.isWalking == true,
+            properties: {'kind': 'ongoingJourney', 'legIndex': i},
           ),
         );
       }
@@ -550,71 +583,29 @@ class HomePageModel {
 
   // ─── Map ─────────────────────────────────────────────────────────────────
 
-  void animatedMapMove(
-    LatLng destLocation,
-    double destZoom,
-    TickerProvider vsync,
-  ) {
-    final latTween = Tween<double>(
-      begin: position.currentCenter.latitude,
-      end: destLocation.latitude,
-    );
-    final lngTween = Tween<double>(
-      begin: position.currentCenter.longitude,
-      end: destLocation.longitude,
-    );
-    final zoomTween = Tween<double>(begin: position.currentZoom, end: destZoom);
-
-    var controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: vsync,
-    );
-
-    Animation<double> animation = CurvedAnimation(
-      parent: controller,
-      curve: Curves.easeOut,
-    );
-
-    controller.addListener(() {
-      mapController.move(
-        LatLng(latTween.evaluate(animation), lngTween.evaluate(animation)),
-        zoomTween.evaluate(animation),
-      );
-    });
-
-    controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed ||
-          status == AnimationStatus.dismissed) {
-        controller.dispose();
-      }
-    });
-
-    controller.forward();
+  Future<void> animatedMapMove(LatLng destLocation, double destZoom) async {
+    position.update(currentCenter: destLocation, currentZoom: destZoom);
+    await _mapCamera?.animateTo(destLocation, destZoom);
   }
 
-  Future<void> setInitialUserLocation(TickerProvider vsync) async {
-    await initializeMap(vsync: vsync);
+  Future<void> setInitialUserLocation() async {
+    await initializeMap();
   }
 
-  void onPositionChanged(MapCamera camera, bool hasGesture) {
-    if (hasGesture && position.alignPositionOnUpdate != AlignOnUpdate.never) {
-      position.update(alignPositionOnUpdate: AlignOnUpdate.never);
-    }
-
-    final newZoom = camera.zoom;
+  void onPositionChanged(LatLng center, double newZoom, bool hasGesture) {
     final oldZoom = position.currentZoom;
 
     // Only notify marker layer listeners when zoom crosses a render threshold.
     // For pure pan (no zoom change crossing a threshold), update silently.
     if (_zoomCrossedThreshold(oldZoom, newZoom)) {
-      position.update(currentZoom: newZoom, currentCenter: camera.center);
+      position.update(currentZoom: newZoom, currentCenter: center);
     } else {
       position.currentZoom = newZoom;
-      position.currentCenter = camera.center;
+      position.currentCenter = center;
     }
 
     if (hasGesture) {
-      _scheduleOverlayReload(camera.center);
+      _scheduleOverlayReload(center);
     }
   }
 
@@ -647,8 +638,10 @@ class HomePageModel {
   }
 
   void recenterMap() {
-    position.update(alignPositionOnUpdate: AlignOnUpdate.always);
-    alignPositionStreamController.add(18);
+    final userLocation = position.currentUserLocation;
+    if (userLocation != null) {
+      unawaited(animatedMapMove(userLocation, 18));
+    }
   }
 
   void focusMapOnLeg(Leg leg) {
@@ -674,12 +667,8 @@ class HomePageModel {
     print("Leg center: $legCenter, zoom: $legZoom");
 
     Future.microtask(() {
-      position.update(
-        alignPositionOnUpdate: AlignOnUpdate.never,
-        currentCenter: legCenter,
-        currentZoom: legZoom,
-      );
-      mapController.move(legCenter, legZoom);
+      position.update(currentCenter: legCenter, currentZoom: legZoom);
+      unawaited(_mapCamera?.moveTo(legCenter, legZoom));
     });
   }
 
@@ -807,18 +796,25 @@ class HomePageModel {
   }
 
   void _updateTransitLines(List<SubwayLine> transitLines) {
-    List<Polyline> polylinesFor(String? type, {double strokeWidth = 2}) {
+    List<NavigatorMapLine> polylinesFor(
+      String? type, {
+      double strokeWidth = 2,
+    }) {
       return transitLines
           .where(
             (line) =>
                 line.points.isNotEmpty && (type == null || line.type == type),
           )
+          .toList(growable: false)
+          .indexed
           .map(
-            (line) => Polyline(
-              points: line.points,
-              strokeWidth: strokeWidth,
-              color: line.color,
-              borderColor: line.color.withAlpha(60),
+            (entry) => NavigatorMapLine(
+              id: 'transit-${type ?? 'all'}-${entry.$1}',
+              points: entry.$2.points,
+              width: strokeWidth,
+              color: entry.$2.color,
+              borderColor: entry.$2.color.withAlpha(60),
+              properties: {'kind': 'transit', 'transportType': type ?? 'all'},
             ),
           )
           .toList(growable: false);
@@ -911,7 +907,9 @@ class HomePageModel {
       "dbRest",
     );
     if (convertedStation == null) {
-      print("Error converting station ${station.name} to the current backend format");
+      print(
+        "Error converting station ${station.name} to the current backend format",
+      );
       stationSheetNotifier.setLoading(false);
       return;
     }
@@ -919,8 +917,7 @@ class HomePageModel {
     await getDeparturesForStation(convertedStation);
   }
 
-  void deselectStation()
-  {
+  void deselectStation() {
     print("deselecting");
     stationSheetNotifier.selectedStation = null;
     stationSheetNotifier.clearDeparturesAndArrivals();
@@ -1106,8 +1103,8 @@ class HomePageModel {
     pauseOngoingJourneySync();
     _debounce?.cancel();
     _overlayReloadDebounce?.cancel();
+    _locationSubscription?.cancel();
     searchController.dispose();
-    alignPositionStreamController.close();
     _disposeOngoingJourneyLineColorListener();
     if (journey.ongoingJourney != null) {
       for (final leg in journey.ongoingJourney!.journey.legs) {

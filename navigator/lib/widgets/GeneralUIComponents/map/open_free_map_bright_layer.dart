@@ -1,95 +1,44 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
+import 'package:http/http.dart' as http;
 import 'package:navigator/widgets/GeneralUIComponents/map/curated_map_theme.dart';
 
-class OpenFreeMapBrightLayer extends StatefulWidget {
+typedef MapStyleFetcher = Future<String> Function(Uri uri);
+
+class OpenFreeMapStyleLoader {
   static const styleUrl = 'https://tiles.openfreemap.org/styles/bright';
+  static final OpenFreeMapStyleLoader instance = OpenFreeMapStyleLoader();
 
-  const OpenFreeMapBrightLayer({super.key});
+  final MapStyleFetcher _fetchStyle;
+  Future<String>? _cachedStyle;
 
-  @override
-  State<OpenFreeMapBrightLayer> createState() => _OpenFreeMapBrightLayerState();
-}
+  OpenFreeMapStyleLoader({MapStyleFetcher? fetchStyle})
+    : _fetchStyle = fetchStyle ?? _defaultFetch;
 
-class _OpenFreeMapBrightLayerState extends State<OpenFreeMapBrightLayer> {
-  late Future<vt.Style> _styleFuture;
-  vt.Style? _style;
+  Future<String> load() => _cachedStyle ??= _load();
 
-  @override
-  void initState() {
-    super.initState();
-    _styleFuture = _loadStyle();
+  void invalidate() {
+    _cachedStyle = null;
   }
 
-  Future<vt.Style> _loadStyle() async {
-    final sourceStyle = await const vt.StyleReader(
-      uri: OpenFreeMapBrightLayer.styleUrl,
-    ).read();
-    final style = vt.Style(
-      theme: CuratedMapTheme.curate(sourceStyle.theme),
-      providers: sourceStyle.providers,
-      rasterSources: sourceStyle.rasterSources,
-      sprites: sourceStyle.sprites,
-      center: sourceStyle.center,
-      zoom: sourceStyle.zoom,
-      name: sourceStyle.name,
-      attributions: sourceStyle.attributions,
-    );
-
-    if (mounted) {
-      _style = style;
-    } else {
-      style.dispose();
+  Future<String> _load() async {
+    try {
+      final body = await _fetchStyle(Uri.parse(styleUrl));
+      final source = jsonDecode(body) as Map<String, dynamic>;
+      return jsonEncode(CuratedMapTheme.curate(source));
+    } catch (_) {
+      _cachedStyle = null;
+      rethrow;
     }
-    return style;
   }
 
-  void _retry() {
-    setState(() {
-      _styleFuture = _loadStyle();
-    });
-  }
-
-  @override
-  void dispose() {
-    _style?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<vt.Style>(
-      future: _styleFuture,
-      builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          final style = snapshot.requireData;
-          return vt.VectorTileLayer(
-            theme: style.theme,
-            tileProviders: style.providers,
-            rasterSources: style.rasterSources,
-            sprites: style.sprites,
-          );
-        }
-
-        if (snapshot.hasError) {
-          return ColoredBox(
-            color: const Color(0xFFF8F4F0),
-            child: Center(
-              child: FilledButton.tonalIcon(
-                onPressed: _retry,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reload map'),
-              ),
-            ),
-          );
-        }
-
-        return const ColoredBox(
-          color: Color(0xFFF8F4F0),
-          child: Center(child: CircularProgressIndicator()),
-        );
-      },
-    );
+  static Future<String> _defaultFetch(Uri uri) async {
+    final response = await http.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Map style request failed (${response.statusCode})');
+    }
+    return utf8.decode(response.bodyBytes);
   }
 }
 

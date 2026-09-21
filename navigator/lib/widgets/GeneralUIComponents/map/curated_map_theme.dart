@@ -1,14 +1,5 @@
-import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
-
-/// Reduces the base map to POIs that help someone plan or interrupt a journey.
-///
-/// The OpenFreeMap Bright style renders the complete OpenMapTiles `poi` layer,
-/// which includes transit stops already drawn by Navigator as well as street
-/// furniture such as waste baskets and benches. Keeping an allowlist makes new
-/// or unknown POI classes hidden by default instead of gradually adding noise.
 abstract final class CuratedMapTheme {
   static const Set<String> usefulPoiClasses = {
-    // Food and everyday supplies.
     'restaurant',
     'cafe',
     'fast_food',
@@ -17,12 +8,8 @@ abstract final class CuratedMapTheme {
     'bar',
     'bakery',
     'grocery',
-
-    // Accommodation.
     'lodging',
     'campsite',
-
-    // Health and urgent help.
     'hospital',
     'pharmacy',
     'doctors',
@@ -30,8 +17,6 @@ abstract final class CuratedMapTheme {
     'clinic',
     'police',
     'fire_station',
-
-    // Useful during a journey.
     'toilets',
     'drinking_water',
     'atm',
@@ -41,8 +26,6 @@ abstract final class CuratedMapTheme {
     'bicycle_rental',
     'car_rental',
     'laundry',
-
-    // Destinations, culture, and recreation.
     'attraction',
     'museum',
     'art_gallery',
@@ -61,8 +44,6 @@ abstract final class CuratedMapTheme {
     'town_hall',
   };
 
-  /// Useful specializations whose broader class is intentionally hidden.
-  /// For example, post offices are useful but individual post boxes are not.
   static const Set<String> usefulPoiSubclasses = {
     'food_court',
     'biergarten',
@@ -92,77 +73,47 @@ abstract final class CuratedMapTheme {
     'picnic_site',
   };
 
-  static const Set<String> _removedLayerIds = {'poi_transit'};
-
   static bool isUsefulPoi(Map<String, Object?> properties) {
-    final poiClass = properties['class']?.toString();
-    final subclass = properties['subclass']?.toString();
-    return usefulPoiClasses.contains(poiClass) ||
-        usefulPoiSubclasses.contains(subclass);
+    return usefulPoiClasses.contains(properties['class']) ||
+        usefulPoiSubclasses.contains(properties['subclass']);
   }
 
-  static vt.Theme curate(vt.Theme source) {
-    final layers = <vt.ThemeLayer>[];
-    for (final layer in source.layers) {
-      if (_removedLayerIds.contains(layer.id)) continue;
+  static Map<String, dynamic> curate(Map<String, dynamic> source) {
+    final curated = Map<String, dynamic>.from(source);
+    final sourceLayers = source['layers'] as List<dynamic>? ?? const [];
+    final layers = <Map<String, dynamic>>[];
 
-      if (layer is vt.SymbolThemeLayer && layer.sourceLayer == 'poi') {
-        layers.add(_curatePoiLayer(layer));
-      } else {
-        layers.add(layer);
+    for (final rawLayer in sourceLayers) {
+      final layer = Map<String, dynamic>.from(rawLayer as Map);
+      if (layer['id'] == 'poi_transit') continue;
+
+      if (layer['source-layer'] == 'poi' && layer['type'] == 'symbol') {
+        final existingFilter = layer['filter'];
+        final usefulFilter = [
+          'any',
+          [
+            'match',
+            ['get', 'class'],
+            usefulPoiClasses.toList()..sort(),
+            true,
+            false,
+          ],
+          [
+            'match',
+            ['get', 'subclass'],
+            usefulPoiSubclasses.toList()..sort(),
+            true,
+            false,
+          ],
+        ];
+        layer['filter'] = existingFilter == null
+            ? usefulFilter
+            : ['all', existingFilter, usefulFilter];
       }
+      layers.add(layer);
     }
 
-    return vt.Theme(id: '${source.id}-navigator-pois-v1', layers: layers);
-  }
-
-  static vt.SymbolThemeLayer _curatePoiLayer(vt.SymbolThemeLayer source) {
-    final layer = vt.SymbolThemeLayer(
-      id: source.id,
-      source: source.source,
-      sourceLayer: source.sourceLayer,
-      minzoom: source.minzoom,
-      maxzoom: source.maxzoom,
-      filter: (context) =>
-          source.matches(context) && isUsefulPoi(context.properties),
-      placement: source.placement,
-      sortKey: source.sortKey,
-      spacing: source.spacing,
-      textField: source.textField,
-      textSize: source.textSize,
-      textFont: source.textFont,
-      textMaxWidth: source.textMaxWidth,
-      textLetterSpacing: source.textLetterSpacing,
-      textTransform: source.textTransform,
-      textAnchor: source.textAnchor,
-      textVariableAnchor: source.textVariableAnchor,
-      textRadialOffset: source.textRadialOffset,
-      textOffset: source.textOffset,
-      textPadding: source.textPadding,
-      textAllowOverlap: source.textAllowOverlap,
-      textOptional: source.textOptional,
-      textMaxAngle: source.textMaxAngle,
-      textKeepUpright: source.textKeepUpright,
-      textRotationAlignment: source.textRotationAlignment,
-      iconImage: source.iconImage,
-      iconSize: source.iconSize,
-      iconAnchor: source.iconAnchor,
-      iconOffset: source.iconOffset,
-      iconAllowOverlap: source.iconAllowOverlap,
-      textColor: source.textColor,
-      textHaloColor: source.textHaloColor,
-      textHaloWidth: source.textHaloWidth,
-      textOpacity: source.textOpacity,
-      iconOpacity: source.iconOpacity,
-      iconColor: source.iconColor,
-      iconHaloColor: source.iconHaloColor,
-      iconHaloWidth: source.iconHaloWidth,
-    );
-    layer.referencedProperties = {
-      ...?source.referencedProperties,
-      'class',
-      'subclass',
-    };
-    return layer;
+    curated['layers'] = layers;
+    return curated;
   }
 }

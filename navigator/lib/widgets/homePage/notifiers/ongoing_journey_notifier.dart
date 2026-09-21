@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:navigator/models/savedJourney.dart';
 import 'package:navigator/models/trip.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/map_feature.dart';
 
 class OngoingJourneyNotifier extends ChangeNotifier {
   Savedjourney? ongoingJourney;
   Map<int, Trip> legIndexToTripMap;
   List<int> legsOfOngoingJourneyThatHaveATrip;
   List<Trip> tripsForOngoingJourneyLegs;
-  List<Polyline> polylines;
+  List<NavigatorMapLine> polylines;
   Map<String, Color> transitLineColorCache;
   bool intermediateStopsExpanded;
   int? currentLegIndex;
@@ -59,7 +59,7 @@ class OngoingJourneyNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updatePolylines(List<Polyline> polylines) {
+  void updatePolylines(List<NavigatorMapLine> polylines) {
     this.polylines = polylines;
     notifyListeners();
   }

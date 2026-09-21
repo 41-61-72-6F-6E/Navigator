@@ -1,33 +1,26 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/map_feature.dart';
 import 'package:navigator/widgets/journeyPage/journeyPageUIState.dart';
 
 class JourneyPageAndroidModel extends ChangeNotifier {
   final JourneyPageIni page;
   final Journey journey;
 
-  // Controllers exposed to the view
-  final MapController mapController = MapController();
-  final StreamController<double?> alignPositionStreamController =
-      StreamController<double?>();
-  late final StreamController<LocationMarkerPosition> locationStreamController;
-  late final StreamController<LocationMarkerHeading> headingStreamController;
+  NavigatorMapCamera? _mapCamera;
   StreamSubscription<Position>? _geolocatorSubscription;
 
   JourneyPageAndroidUIState _state = const JourneyPageAndroidUIState();
   JourneyPageAndroidUIState get state => _state;
 
   JourneyPageAndroidModel({required this.page, required this.journey}) {
-    _initializeLocationTracking();
     updateIsSaved();
     _computeInitialMapPosition();
   }
@@ -76,10 +69,12 @@ class JourneyPageAndroidModel extends ChangeNotifier {
     final distance = calculateDistance(startLat, startLng, endLat, endLng);
     final zoom = calculateZoomLevel(distance);
 
-    _updateState(_state.copyWith(
-      currentCenter: LatLng(centerLat, centerLng),
-      currentZoom: zoom,
-    ));
+    _updateState(
+      _state.copyWith(
+        currentCenter: LatLng(centerLat, centerLng),
+        currentZoom: zoom,
+      ),
+    );
   }
 
   /// Keeps UIState in sync with the camera without triggering a rebuild.
@@ -88,8 +83,26 @@ class JourneyPageAndroidModel extends ChangeNotifier {
     _state = _state.copyWith(currentCenter: center, currentZoom: zoom);
   }
 
-  void updateAlignPosition(AlignOnUpdate value) {
-    _updateState(_state.copyWith(alignPositionOnUpdate: value));
+  void attachMapCamera(NavigatorMapCamera camera) {
+    _mapCamera = camera;
+    _initializeLocationTracking();
+  }
+
+  Future<void> moveMap(
+    LatLng center,
+    double zoom, {
+    bool animate = false,
+  }) async {
+    updateCurrentPosition(center, zoom);
+    if (animate) {
+      await _mapCamera?.animateTo(
+        center,
+        zoom,
+        duration: const Duration(milliseconds: 600),
+      );
+    } else {
+      await _mapCamera?.moveTo(center, zoom);
+    }
   }
 
   void updateTransitLineColorCache(String key, Color color) {
@@ -116,16 +129,12 @@ class JourneyPageAndroidModel extends ChangeNotifier {
 
   // ── Math helpers ───────────────────────────────────────────────────────────
 
-  double calculateDistance(
-    double lat1,
-    double lng1,
-    double lat2,
-    double lng2,
-  ) {
+  double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
     const double earthRadius = 6371;
     final double dLat = degreesToRadians(lat2 - lat1);
     final double dLng = degreesToRadians(lng2 - lng1);
-    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(degreesToRadians(lat1)) *
             math.cos(degreesToRadians(lat2)) *
             math.sin(dLng / 2) *
@@ -163,47 +172,37 @@ class JourneyPageAndroidModel extends ChangeNotifier {
   // ── Location tracking ──────────────────────────────────────────────────────
 
   void _initializeLocationTracking() {
-    locationStreamController = StreamController<LocationMarkerPosition>();
-    headingStreamController = StreamController<LocationMarkerHeading>();
-
-    _geolocatorSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 1,
-      ),
-    ).listen((Position position) {
-      final locationMarkerPosition = LocationMarkerPosition(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        accuracy: position.accuracy,
-      );
-
-      final locationMarkerHeading = LocationMarkerHeading(
-        heading: position.heading * math.pi / 180,
-        accuracy: position.headingAccuracy * math.pi / 180,
-      );
-
-      _updateState(_state.copyWith(
-        currentUserLocation: LatLng(position.latitude, position.longitude),
-      ));
-
-      if (!locationStreamController.isClosed) {
-        locationStreamController.add(locationMarkerPosition);
-      }
-      if (!headingStreamController.isClosed) {
-        headingStreamController.add(locationMarkerHeading);
-      }
-    });
+    if (_geolocatorSubscription != null) return;
+    _geolocatorSubscription =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 1,
+          ),
+        ).listen(
+          (Position position) {
+            _updateState(
+              _state.copyWith(
+                currentUserLocation: LatLng(
+                  position.latitude,
+                  position.longitude,
+                ),
+                locationAccuracy: position.accuracy,
+                locationHeading: position.heading,
+              ),
+            );
+          },
+          onError: (Object error) {
+            debugPrint('Unable to track current location: $error');
+          },
+        );
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void dispose() {
-    locationStreamController.close();
-    headingStreamController.close();
     _geolocatorSubscription?.cancel();
-    alignPositionStreamController.close();
     super.dispose();
   }
 }
