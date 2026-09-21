@@ -1,4 +1,3 @@
-import 'package:flutter_map_vector_tiles/flutter_map_vector_tiles.dart' as vt;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator/widgets/GeneralUIComponents/map/curated_map_theme.dart';
 
@@ -49,31 +48,30 @@ void main() {
       }
     });
 
-    test('removes the transit layer and filters general POI layers', () {
-      final source = const vt.ThemeReader().read({
-        'id': 'test-theme',
+    test('removes transit POIs and filters general POI layers', () {
+      final roads = <String, dynamic>{
+        'id': 'roads',
+        'type': 'line',
+        'source': 'openmaptiles',
+        'source-layer': 'transportation',
+      };
+      final existingFilter = <dynamic>[
+        'match',
+        ['geometry-type'],
+        ['Point', 'MultiPoint'],
+        true,
+        false,
+      ];
+      final source = <String, dynamic>{
+        'version': 8,
         'layers': [
-          {
-            'id': 'roads',
-            'type': 'line',
-            'source': 'openmaptiles',
-            'source-layer': 'transportation',
-          },
+          roads,
           {
             'id': 'poi_r1',
             'type': 'symbol',
             'source': 'openmaptiles',
             'source-layer': 'poi',
-            'filter': [
-              'match',
-              ['geometry-type'],
-              ['Point', 'MultiPoint'],
-              true,
-              false,
-            ],
-            'layout': {
-              'text-field': ['get', 'name'],
-            },
+            'filter': existingFilter,
           },
           {
             'id': 'poi_transit',
@@ -82,31 +80,18 @@ void main() {
             'source-layer': 'poi',
           },
         ],
-      });
+      };
 
       final curated = CuratedMapTheme.curate(source);
+      final layers = curated['layers']! as List<dynamic>;
 
-      expect(curated.id, endsWith('-navigator-pois-v1'));
-      expect(curated.layers.map((layer) => layer.id), ['roads', 'poi_r1']);
-      expect(identical(curated.layers.first, source.layers.first), isTrue);
-
-      final poiLayer = curated.layers.last as vt.SymbolThemeLayer;
-      expect(poiLayer.matches(_feature('restaurant')), isTrue);
-      expect(poiLayer.matches(_feature('waste_basket')), isFalse);
-      expect(poiLayer.matches(_feature('rail')), isFalse);
-      expect(
-        poiLayer.matches(_feature('restaurant', geometryType: 'LineString')),
-        isFalse,
-      );
-      expect(poiLayer.referencedProperties, containsAll(['class', 'subclass']));
+      expect(layers.map((layer) => layer['id']), ['roads', 'poi_r1']);
+      expect(identical(layers.first, roads), isFalse);
+      final filter = layers.last['filter'] as List<dynamic>;
+      expect(filter.first, 'all');
+      expect(filter[1], existingFilter);
+      expect(filter[2], isA<List<dynamic>>());
+      expect(source['layers'], hasLength(3), reason: 'input is not mutated');
     });
   });
-}
-
-vt.EvalContext _feature(String poiClass, {String geometryType = 'Point'}) {
-  return vt.EvalContext(
-    zoom: 17,
-    geometryType: geometryType,
-    properties: {'class': poiClass, 'subclass': poiClass, 'name': 'Test'},
-  );
 }

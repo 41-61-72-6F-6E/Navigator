@@ -1,17 +1,19 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/map_feature.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/navigator_maplibre_map.dart';
 import 'package:navigator/widgets/GeneralUIComponents/map/open_free_map_bright_layer.dart';
 import 'package:navigator/widgets/homePage/UIComponents/favesBar/favesBar.dart';
-import 'package:navigator/widgets/homePage/UIComponents/markerLayer/homePageMarkerLayer.dart';
 import 'package:navigator/widgets/homePage/UIComponents/mapOptionsModal/mapOptionsModal.dart';
 import 'package:navigator/widgets/homePage/UIComponents/ongoingJourneyBanner/ongoingJourneyBanner.dart';
 import 'package:navigator/widgets/homePage/UIComponents/searchResultsCard/searchResultsCard.dart';
 import 'package:navigator/widgets/GeneralUIComponents/stationDepartureArrivals/stationSheet/stationSheet.dart';
 import 'package:navigator/widgets/homePage/homePageModel.dart';
+import 'package:navigator/widgets/homePage/home_station_features.dart';
 
 class HomePageView extends StatefulWidget {
   final HomePageModel model;
@@ -24,12 +26,12 @@ class HomePageView extends StatefulWidget {
 }
 
 class _HomePageViewState extends State<HomePageView>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(widget.model.initializeMap(vsync: this));
+    unawaited(widget.model.initializeMap());
     unawaited(widget.model.initializeOngoingJourney());
     unawaited(widget.model.getFaves());
   }
@@ -229,89 +231,43 @@ class _HomePageViewState extends State<HomePageView>
             ? 'Loading transit lines…'
             : 'Refreshing transit map…';
 
-        return FlutterMap(
-          mapController: widget.model.mapController,
-          options: MapOptions(
-            initialCenter: pos.currentUserLocation ?? pos.currentCenter,
-            initialZoom: pos.currentZoom,
-            minZoom: 3.0,
-            maxZoom: 18.0,
-            interactionOptions: InteractionOptions(
-              flags:
-                  InteractiveFlag.drag |
-                  InteractiveFlag.flingAnimation |
-                  InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.rotate,
-              rotationThreshold: 20.0,
-              pinchZoomThreshold: 0.5,
-              pinchMoveThreshold: 40.0,
+        final lines = <NavigatorMapLine>[
+          if (lay.showSubway) ...lay.subwayLines,
+          if (lay.showLightRail) ...lay.lightRailLines,
+          if (lay.showTram) ...lay.tramLines,
+          if (lay.showFerry) ...lay.ferryLines,
+          if (lay.showFunicular) ...lay.funicularLines,
+          if (jrn.ongoingJourney != null) ...jrn.polylines,
+        ];
+        final stationFeatures = buildHomeStationFeatures(widget.model, colors);
+        final points = <NavigatorMapPoint>[
+          ...stationFeatures.points,
+          if (pos.currentUserLocation case final location?)
+            _locationPoint(
+              location,
+              pos.currentZoom,
+              pos.locationAccuracy,
+              pos.locationHeading,
             ),
-            onPositionChanged: widget.model.onPositionChanged,
-          ),
+        ];
+
+        return Stack(
           children: [
-            const OpenFreeMapBrightLayer(),
-            if (lay.showSubway) PolylineLayer(polylines: lay.subwayLines),
-            if (lay.showLightRail) PolylineLayer(polylines: lay.lightRailLines),
-            if (lay.showTram) PolylineLayer(polylines: lay.tramLines),
-            if (lay.showFerry) PolylineLayer(polylines: lay.ferryLines),
-            if (lay.showFunicular) PolylineLayer(polylines: lay.funicularLines),
-            if (jrn.ongoingJourney != null && jrn.polylines.isNotEmpty)
-              PolylineLayer(polylines: jrn.polylines),
-            CurrentLocationLayer(
-              alignPositionStream:
-                  widget.model.alignPositionStreamController.stream,
-              alignPositionOnUpdate: pos.alignPositionOnUpdate,
-              style: LocationMarkerStyle(
-                marker: DefaultLocationMarker(color: Colors.lightBlue[800]!),
-                markerSize: const Size(20, 20),
-                markerDirection: MarkerDirection.heading,
-                accuracyCircleColor: Colors.blue[200]!.withAlpha(0x20),
-                headingSectorColor: Colors.blue[400]!.withAlpha(0x90),
-                headingSectorRadius: 60,
+            Positioned.fill(
+              child: NavigatorMapLibreMap(
+                idPrefix: 'home',
+                initialCenter: pos.currentUserLocation ?? pos.currentCenter,
+                initialZoom: pos.currentZoom,
+                lines: lines,
+                points: points,
+                onMapReady: widget.model.attachMapCamera,
+                onCameraChanged: widget.model.onPositionChanged,
+                onPointTap: (key) {
+                  final station = stationFeatures.stationsByKey[key];
+                  if (station != null) unawaited(onStationTap(station));
+                },
               ),
             ),
-            HomePageMarkerLayer(
-              design: widget.design,
-              model: widget.model,
-              transportType: 'rail',
-              onStationTap: (station) => onStationTap(station),
-            ),
-            if (lay.showLightRail)
-              HomePageMarkerLayer(
-                design: widget.design,
-                model: widget.model,
-                transportType: 'lightRail',
-                onStationTap: (station) => onStationTap(station),
-              ),
-            if (lay.showSubway)
-              HomePageMarkerLayer(
-                design: widget.design,
-                model: widget.model,
-                transportType: 'subway',
-                onStationTap: (station) => onStationTap(station),
-              ),
-            if (lay.showTram)
-              HomePageMarkerLayer(
-                design: widget.design,
-                model: widget.model,
-                transportType: 'tram',
-                onStationTap: (station) => onStationTap(station),
-              ),
-            if (lay.showFerry)
-              HomePageMarkerLayer(
-                design: widget.design,
-                model: widget.model,
-                transportType: 'ferry',
-                onStationTap: (station) => onStationTap(station),
-              ),
-            if (lay.showFunicular)
-              HomePageMarkerLayer(
-                design: widget.design,
-                model: widget.model,
-                transportType: 'funicular',
-                onStationTap: (station) => onStationTap(station),
-              ),
             Align(
               alignment: Alignment.bottomRight,
               child: Padding(
@@ -414,6 +370,35 @@ class _HomePageViewState extends State<HomePageView>
           ],
         );
       },
+    );
+  }
+
+  NavigatorMapPoint _locationPoint(
+    LatLng location,
+    double zoom,
+    double accuracyMeters,
+    double heading,
+  ) {
+    final metersPerPixel =
+        156543.03392 *
+        math.cos(location.latitude * math.pi / 180) /
+        math.pow(2, zoom);
+    final accuracyRadius = metersPerPixel <= 0
+        ? 0.0
+        : (accuracyMeters / metersPerPixel).clamp(0, 120).toDouble();
+    return NavigatorMapPoint(
+      id: 'current-location',
+      point: location,
+      color: Colors.lightBlue.shade800,
+      strokeColor: Colors.white,
+      radius: 10,
+      strokeWidth: 2,
+      icon: 'navigator-location',
+      iconSize: 0.07,
+      heading: heading,
+      accuracyRadius: accuracyRadius,
+      accuracyColor: Colors.blue.shade200.withAlpha(0x20),
+      properties: const {'kind': 'currentLocation'},
     );
   }
 

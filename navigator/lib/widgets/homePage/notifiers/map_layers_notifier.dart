@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:navigator/models/departureArrival.dart';
 import 'package:navigator/models/station.dart';
+import 'package:navigator/widgets/GeneralUIComponents/map/map_feature.dart';
 
 class MapLayersNotifier extends ChangeNotifier {
-  List<Polyline> lines;
-  List<Polyline> subwayLines;
-  List<Polyline> lightRailLines;
-  List<Polyline> tramLines;
-  List<Polyline> ferryLines;
-  List<Polyline> funicularLines;
+  List<NavigatorMapLine> lines;
+  List<NavigatorMapLine> subwayLines;
+  List<NavigatorMapLine> lightRailLines;
+  List<NavigatorMapLine> tramLines;
+  List<NavigatorMapLine> ferryLines;
+  List<NavigatorMapLine> funicularLines;
   List<Station> stations;
   Station? selectedStation;
   bool isOverlayLoading;
@@ -52,12 +51,12 @@ class MapLayersNotifier extends ChangeNotifier {
   });
 
   void updateLines({
-    List<Polyline>? lines,
-    List<Polyline>? subwayLines,
-    List<Polyline>? lightRailLines,
-    List<Polyline>? tramLines,
-    List<Polyline>? ferryLines,
-    List<Polyline>? funicularLines,
+    List<NavigatorMapLine>? lines,
+    List<NavigatorMapLine>? subwayLines,
+    List<NavigatorMapLine>? lightRailLines,
+    List<NavigatorMapLine>? tramLines,
+    List<NavigatorMapLine>? ferryLines,
+    List<NavigatorMapLine>? funicularLines,
   }) {
     if (lines != null) this.lines = lines;
     if (subwayLines != null) this.subwayLines = subwayLines;
@@ -146,6 +145,7 @@ class MapLayersNotifier extends ChangeNotifier {
         return false;
     }
   }
+
   void selectStation(Station station) {
     selectedStation = station;
     notifyListeners();
