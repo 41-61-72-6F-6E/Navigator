@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/models/station.dart';
 import 'package:navigator/widgets/GeneralUIComponents/map/open_free_map_bright_layer.dart';
+import 'package:navigator/widgets/GeneralUIComponents/refreshJourneyPopUp/refreshJourneyPopUpAndroid.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/destinationComponent/destinationComponent.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/emptyState/emptyState.dart';
 import 'package:navigator/widgets/journeyPage/UIComponents/interchangeComponent/interchangeComponent.dart';
@@ -181,6 +182,28 @@ class _JourneyPageAndroidViewState extends State<JourneyPageAndroidView>
     }
   }
 
+  Future<void> _reloadJourney() async {
+    RefreshJourneyPopUpAndroid.show(
+      context,
+      message: 'Refreshing journey information...',
+    );
+
+    try {
+      await widget.model.reloadJourney();
+      if (!mounted) return;
+      RefreshJourneyPopUpAndroid.hide(context);
+    } catch (error) {
+      if (!mounted) return;
+      RefreshJourneyPopUpAndroid.hide(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not refresh journey: $error'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   bool _haveSameRil100Station(List<String> ids1, List<String> ids2) {
@@ -265,8 +288,7 @@ class _JourneyPageAndroidViewState extends State<JourneyPageAndroidView>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
+                        Expanded(
                           child: Text(
                             'Journey Details',
                             style: Theme.of(context)
@@ -277,18 +299,29 @@ class _JourneyPageAndroidViewState extends State<JourneyPageAndroidView>
                                 ),
                           ),
                         ),
-                        if (!widget.model.state.isSaved)
-                          FilledButton.tonalIcon(
-                            onPressed: () => widget.model.saveJourney(),
-                            label: const Text('Save Journey'),
-                            icon: const Icon(Icons.bookmark_outline),
-                          ),
-                        if (widget.model.state.isSaved)
-                          FilledButton.tonalIcon(
-                            onPressed: () => widget.model.removeSavedJourney(),
-                            label: const Text('Journey Saved'),
-                            icon: const Icon(Icons.bookmark),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: _reloadJourney,
+                              tooltip: 'Reload journey',
+                              icon: const Icon(Icons.refresh),
+                            ),
+                            if (!widget.model.state.isSaved)
+                              FilledButton.tonalIcon(
+                                onPressed: () => widget.model.saveJourney(),
+                                label: const Text('Save Journey'),
+                                icon: const Icon(Icons.bookmark_outline),
+                              ),
+                            if (widget.model.state.isSaved)
+                              FilledButton.tonalIcon(
+                                onPressed: () =>
+                                    widget.model.removeSavedJourney(),
+                                label: const Text('Journey Saved'),
+                                icon: const Icon(Icons.bookmark),
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

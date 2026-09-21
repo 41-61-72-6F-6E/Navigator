@@ -9,11 +9,16 @@ import 'package:navigator/models/journey.dart';
 import 'package:navigator/models/leg.dart';
 import 'package:navigator/pages/page_models/journey_page.dart';
 import 'package:navigator/services/localDataSaver.dart';
+import 'package:navigator/services/servicesMiddle.dart';
 import 'package:navigator/widgets/journeyPage/journeyPageUIState.dart';
+
+typedef JourneyRefresher = Future<Journey> Function(String refreshToken);
 
 class JourneyPageAndroidModel extends ChangeNotifier {
   final JourneyPageIni page;
-  final Journey journey;
+  final JourneyRefresher _refreshJourneyByToken;
+  Journey _journey;
+  Journey get journey => _journey;
 
   // Controllers exposed to the view
   final MapController mapController = MapController();
@@ -26,8 +31,15 @@ class JourneyPageAndroidModel extends ChangeNotifier {
   JourneyPageAndroidUIState _state = const JourneyPageAndroidUIState();
   JourneyPageAndroidUIState get state => _state;
 
-  JourneyPageAndroidModel({required this.page, required this.journey}) {
-    _initializeLocationTracking();
+  JourneyPageAndroidModel({
+    required this.page,
+    required Journey journey,
+    JourneyRefresher? refreshJourneyByToken,
+    Stream<Position>? positionStream,
+  })  : _journey = journey,
+        _refreshJourneyByToken =
+            refreshJourneyByToken ?? ServicesMiddle().refreshJourneyByToken {
+    _initializeLocationTracking(positionStream);
     updateIsSaved();
     _computeInitialMapPosition();
   }
@@ -53,6 +65,18 @@ class JourneyPageAndroidModel extends ChangeNotifier {
 
   Future<void> removeSavedJourney() async {
     await Localdatasaver.removeSavedJourney(journey);
+    await updateIsSaved();
+  }
+
+  // ── Reload ────────────────────────────────────────────────────────────────
+
+  Future<void> reloadJourney() async {
+    final refreshedJourney = await _refreshJourneyByToken(journey.refreshToken);
+    refreshedJourney.initializeLineColors();
+
+    _journey = refreshedJourney;
+    page.journey = refreshedJourney;
+    _computeInitialMapPosition();
     await updateIsSaved();
   }
 
@@ -162,16 +186,19 @@ class JourneyPageAndroidModel extends ChangeNotifier {
 
   // ── Location tracking ──────────────────────────────────────────────────────
 
-  void _initializeLocationTracking() {
+  void _initializeLocationTracking(Stream<Position>? positionStream) {
     locationStreamController = StreamController<LocationMarkerPosition>();
     headingStreamController = StreamController<LocationMarkerHeading>();
 
-    _geolocatorSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 1,
-      ),
-    ).listen((Position position) {
+    final positions = positionStream ??
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 1,
+          ),
+        );
+
+    _geolocatorSubscription = positions.listen((Position position) {
       final locationMarkerPosition = LocationMarkerPosition(
         latitude: position.latitude,
         longitude: position.longitude,
